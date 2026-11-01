@@ -2,34 +2,25 @@
 
 > **Note:** Every command you need — building, running, testing, linting,
 > formatting — is defined as a recipe in the project `justfile`. Run
-> `just --list` to see them. Do not invoke `./ninja`, `./run`, or scripts
-> under `./tools` directly — use the `just` recipes instead.
+> `just --list` to see them.
 
 ## Project Overview
 
-Anki is a spaced repetition flashcard program with a multi-layered architecture. Main components:
+EvolAnki is a slim, FSRS-only spaced repetition web app, modified from Anki. Main components:
 
 - Web frontend: Svelte/TypeScript in ts/
-- PyQt GUI, which embeds the web components in aqt/
-- Python library which wraps our rust Layer (pylib/, with Rust module in pylib/rsbridge)
 - Core Rust layer in rslib/
-- Protobuf definitions in proto/ that are used by the different layers to
-  talk to each other.
+- `evolanki-server` in rslib/web-server, which serves the pages and backend (docs/web-server.md)
+- Protobuf definitions in proto/ that the layers use to talk to each other.
 
-## Running Anki
-
-To build and run Anki in development mode:
+## Running
 
 ```
 just run
 ```
 
-This builds pylib and qt, then launches Anki with debugging enabled. Web
-views are served at http://localhost:40000/_anki/pages/ (e.g.,
-deckconfig.html). Use `just run-optimized` for a release-optimized build.
-For live-reloading during web development, run `just web-watch` in a
-separate terminal — it monitors ts/, sass/, and qt/aqt/data/web/ and
-auto-rebuilds on changes (`just rebuild-web` triggers a one-off rebuild).
+This builds the pages and server, then serves a demo collection at
+http://127.0.0.1:8765. Only use throwaway collections.
 
 ## Building/checking
 
@@ -43,24 +34,26 @@ Run `just` (or `just --list`) to see all available commands.
 During development, you can build/check subsections of our code:
 
 - Rust: `cargo check`
-- Python: `just lint` (runs mypy/ruff), and if wheel-related, `just wheels`
-- TypeScript/Svelte: `just lint` (includes check:svelte and check:typescript)
+- TypeScript/Svelte: `just lint` (includes check:svelte)
 
-Language-specific tests are also available: `just test-rust`, `just test-py`,
-`just test-ts`. Use `just fmt` / `just fix-fmt` for formatting and
-`just fix-lint` to auto-fix lint issues.
+Language-specific tests are also available: `just test-rust`, `just test-ts`.
+Use `just fmt` / `just fix-fmt` for formatting and `just fix-lint` to auto-fix
+lint issues.
 
-TypeScript/Svelte browser e2e tests live in `ts/tests/e2e/` and run with
-`just test-e2e`. The harness launches a temporary Anki instance and drives
-mediasrv pages with Playwright's Chromium.
+Browser e2e tests live in `ts/tests/web/` and run with `just test-e2e`. Each test
+starts evolanki-server on a temporary collection, and drives it with Playwright's
+Chromium.
 
 Be mindful that some changes (such as modifications to .proto files) may
 need a full build with `just check` first.
 
+Don't run `check:svelte` in the same ninja invocation as a web build, as that
+has caused a broken bundle.
+
 ## Testing guidance
 
-Before adding or changing unit or component tests, read and follow the
-[Writing Unit Tests for Anki](docs-site/developers/unit-testing.mdx).
+Before adding or changing unit or component tests, read and follow
+[Writing Unit Tests](docs/unit-testing.md).
 
 ## Build tooling
 
@@ -71,19 +64,16 @@ project `justfile` for the full set of recipes.
 ## Translations
 
 ftl/ contains our Fluent translation files. We have scripts in rslib/i18n
-to auto-generate an API for Rust, TypeScript and Python so that our code can
+to auto-generate an API for Rust and TypeScript so that our code can
 access the translations in a type-safe manner. Changes should be made to
-ftl/core or ftl/qt. Except for features specific to our Qt interface, prefer
-the core module. When adding new strings, confirm the appropriate ftl file
+ftl/core. When adding new strings, confirm the appropriate ftl file
 first, and try to match the existing style.
 
 ## Protobuf and IPC
 
 Our build scripts use the .proto files to define our Rust library's
-non-Rust API. pylib/rsbridge exposes that API, and \_backend.py exposes
-snake_case methods for each protobuf RPC that call into the API.
-Similar tooling creates a @generated/backend TypeScript module for
-communicating with the Rust backend (which happens over POST requests).
+non-Rust API. A @generated/backend TypeScript module communicates with the
+Rust backend over POST requests, which rslib/web-server/src/rpc.rs allow-lists.
 
 ## Fixing errors
 
@@ -95,13 +85,8 @@ don't attempt to grep the codebase.
 ## Ignores
 
 The files in out/ are auto-generated. Mostly you should ignore that folder,
-though you may sometimes find it useful to view out/{pylib/anki,qt/\_aqt,ts/lib/generated} when dealing with cross-language communication or our other generated sourcecode.
-
-## Installer
-
-The code for our Briefcase-based installer is in qt/installer, with
-separate templates for each platform (mac-template/, linux-template/,
-windows-template/).
+though you may sometimes find it useful to view out/ts/lib/generated when dealing
+with cross-language communication or our other generated sourcecode.
 
 ## Rust dependencies
 

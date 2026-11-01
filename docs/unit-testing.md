@@ -1,12 +1,4 @@
-<!-- DO NOT MANUALLY EDIT THIS FILE -->
-<!-- This file is copied from docs-site/developers/unit-testing.mdx automatically -->
-
-# Writing Unit Tests for Anki
-
-<!-- <<<<cog
-from cogdocs import get_file_contents
-cog.out(get_file_contents("unit-testing"))
->>>> -->
+# Writing Unit Tests
 
 This guide helps maintainers, contributors, and coding assistants write unit and
 component tests for Anki. It is independent of any particular feature, module, or
@@ -14,7 +6,7 @@ bug. Use it together with the behavior being changed, the surrounding production
 code, and nearby tests.
 
 This guide assumes basic familiarity with automated tests. If testing is new to you,
-start with one of the introductory resources in [References](https://anki.mintlify.app/developers/unit-testing#references-and-rationale),
+start with one of the introductory resources in [References](#references-and-rationale),
 then return here for Anki-specific guidance.
 
 ## Quick summary
@@ -64,9 +56,9 @@ Use the lowest-cost test that can prove the behavior:
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Pure unit               | Calculations, parsing, validation, conversion, and deterministic state transitions                                          | Framework wiring or cross-process behavior              |
 | Unit with collaborators | A small group of fast, in-process collaborators                                                                             | Network, real subprocesses, or a user's persistent data |
-| UI component            | A Qt component's visible state, signals/events, and interaction; for Svelte, extracted logic and stores                     | Whole application workflows                             |
+| UI component            | For Svelte, extracted logic and stores                     | Whole application workflows                             |
 | Integration             | Database mappings, protobuf/language bridges, filesystem contracts, and framework integration that a unit test cannot prove | Repeating every unit-level branch                       |
-| End-to-end              | A small number of critical workflows through a real Anki instance and browser                                               | Exhaustive validation and edge cases                    |
+| End-to-end              | A small number of critical workflows through a real server and browser                                               | Exhaustive validation and edge cases                    |
 
 Most scenarios should be below the end-to-end layer. If a higher-level test discovers
 a defect, add a lower-level regression test when that level can reproduce the defect.
@@ -74,18 +66,13 @@ Keep the higher-level test only when it proves additional behavior.
 
 For Svelte specifically, "UI component" means extracted logic and stores: the
 repository does not wire rendered-component tests into the unit suite (see
-[Svelte, TypeScript, and JavaScript](https://anki.mintlify.app/developers/unit-testing#svelte-typescript-and-javascript)).
+[Svelte, TypeScript, and JavaScript](#svelte-typescript-and-javascript)).
 
 Anki spans several implementation layers. Test a rule at the layer that owns it:
 
 - Business rules implemented in Rust **should** normally be tested in Rust.
-- Python library tests should cover Python-owned behavior, compatibility surfaces,
-  orchestration, and adaptations instead of duplicating Rust assertions.
-- Python/Qt tests should cover GUI-owned state, signals, callbacks, and backend
-  orchestration. Move framework-independent logic into a form that can be tested
-  without constructing the full GUI when practical.
 - TypeScript/JavaScript tests should cover web-owned logic, stores, DOM helpers, and
-  component behavior. Use end-to-end tests only when a real browser/Anki boundary is
+  component behavior. Use end-to-end tests only when a real browser/server boundary is
   essential.
 - Generated protobuf code does not need tests. Test custom conversion, validation,
   or bridge behavior at its owning layer; use an integration test if correctness
@@ -140,8 +127,6 @@ Real examples from the codebase:
 - Rust: `answer_easy_graduates_new_card_to_review_queue`,
   `bury_leaves_suspended_card_untouched`,
   `add_or_update_notetype_preserves_usn_when_flag_is_set`
-- Python/Qt: `test_update_collection_skips_backend_when_unchanged`,
-  `test_is_audio_file_rejects_no_extension`
 
 Vitest names the behavior in the `test(...)` description string rather than in an
 identifier, e.g. `test("event handler attributes are stripped")`.
@@ -253,7 +238,7 @@ Do not spend test maintenance on:
 
 ## UI testing scope and cost
 
-Qt and Svelte tests have a higher setup and maintenance cost than tests for pure
+Svelte tests have a higher setup and maintenance cost than tests for pure
 logic. Do not attempt to test every widget, component, property, or markup detail. A
 UI test **should** protect behavior whose value and risk justify that cost.
 
@@ -269,8 +254,8 @@ Avoid unit tests for styling, exact geometry, incidental DOM structure or CSS/Sa
 class names, animation timing, platform-native rendering, generated UI code,
 framework internals, and large UI snapshots.
 
-When possible, extract logic from the Qt widget or Svelte component and test it as
-ordinary Python or TypeScript/JavaScript. Keep only a small wiring test at the UI
+When possible, extract logic from the Svelte component and test it as
+ordinary TypeScript/JavaScript. Keep only a small wiring test at the UI
 layer when it provides additional confidence.
 
 Check presentation during UI review, or with visual regression if appearance is a
@@ -284,78 +269,6 @@ may be the better trade-off.
 The examples below are illustrative pseudocode. Names such as `State`, `Model`, and
 `normalize_value` are not Anki APIs and **must not** be copied without inspecting the
 actual code.
-
-### Python library
-
-Python library tests live under `pylib/tests/` and use `pytest`.
-
-- Name files/functions `test_*` and use plain `assert` for diagnostic diffs.
-- Use `pytest.raises()` for expected errors; match a stable message only when the
-  message is part of the contract or improves precision.
-- Use `pytest.mark.parametrize()` for compact equivalent cases.
-- Prefer typed fixtures, `tmp_path`, `monkeypatch`, and existing collection helpers;
-  close resources through fixtures or context managers.
-- Mock the Rust backend only when testing Python-owned orchestration or an otherwise
-  impractical failure. Do not mock it merely to make a domain-rule test appear unit
-  sized.
-
-Generic example:
-
-```python
-import pytest
-
-
-@pytest.mark.parametrize(
-    ("raw_value", "expected"),
-    [(" valid ", "valid"), ("", "default")],
-)
-def test_normalization_returns_the_documented_value(
-    raw_value: str, expected: str
-) -> None:
-    assert normalize_value(raw_value) == expected
-
-
-def test_invalid_value_is_rejected_without_mutating_state() -> None:
-    state = State(value="existing")
-
-    with pytest.raises(ValueError, match="invalid value"):
-        state.update("invalid")
-
-    assert state.value == "existing"
-```
-
-### Python/Qt
-
-Python/Qt tests live under `qt/tests/` and also use `pytest`.
-
-- Test framework-independent decisions as ordinary Python first.
-- Construct the smallest useful Qt object; do not launch a complete Anki window for
-  a unit test.
-- Trigger public actions or realistic input, then assert meaningful state, signals,
-  callbacks, or backend requests. Use `QSignalSpy` or a callback recorder when signal
-  arguments/count are the contract.
-- Await the event loop through a condition or signal with a bounded timeout; avoid
-  fixed sleeps.
-- Replace native dialogs, clipboard access, web requests, audio, and backend
-  operations at their boundary.
-- Keep `QApplication`, main-window state, and global hooks isolated and cleaned up.
-
-Generic example:
-
-```python
-from unittest.mock import MagicMock
-
-
-def test_submit_with_invalid_input_shows_error_without_saving() -> None:
-    save = MagicMock()
-    dialog = make_minimal_dialog(save=save)
-    dialog.form.value.setText("invalid")
-
-    dialog.accept()
-
-    assert dialog.form.error.isVisible()
-    save.assert_not_called()
-```
 
 ### Rust
 
@@ -404,7 +317,7 @@ mod tests {
 
 Web unit tests use Vitest. The current configuration discovers colocated
 `*.test.ts`, `*.spec.ts`, `*.test.js`, and `*.spec.js` files, excluding
-`ts/tests/e2e/`.
+`ts/tests/web/`.
 
 - Test TypeScript/JavaScript logic and Svelte stores without a DOM unless rendering
   and interaction prove an additional contract.
@@ -450,15 +363,14 @@ Use the repository's `just` recipes:
 
 ```sh
 just test-rust  # Rust
-just test-py    # Python library and Python/Qt
 just test-ts    # TypeScript/JavaScript/Svelte unit tests
-just test       # every stack (Rust, Python, TS)
+just test       # every stack (Rust, TS)
 just check      # required final formatting, build, lint, and test validation
 ```
 
 During development, run the relevant stack frequently. Before considering a code
-change complete, run `just check`. See [Testing and Coverage](https://anki.mintlify.app/developers/testing-coverage)
-for coverage commands and [End-to-End Testing](https://anki.mintlify.app/developers/e2e-testing) when the
+change complete, run `just check`. See [Testing and Coverage](testing-coverage.md)
+for coverage commands and [End-to-End Testing](e2e-testing.md) when the
 selected boundary requires Playwright.
 
 ## Review checklist
@@ -494,21 +406,12 @@ should finish by reporting what was tested, intentionally omitted, and not valid
 
 This guide adapts these references to Anki's architecture:
 
-- Beginner introductions: [Getting Started With Testing in Python](https://realpython.com/python-testing/)
-  and [How to Use pytest](https://www.freecodecamp.org/news/how-to-use-pytest-a-guide-to-testing-in-python/).
 - General principles: [behavior over implementation](https://testing.googleblog.com/2013/08/testing-on-toilet-test-behavior-not.html),
   [test sizes](https://testing.googleblog.com/2010/12/test-sizes.html),
   [unit-test characteristics and Arrange–Act–Assert](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices),
   and the [practical test pyramid](https://martinfowler.com/articles/practical-test-pyramid.html).
-- Python: pytest [fixtures](https://docs.pytest.org/en/stable/explanation/fixtures.html),
-  [parameterization](https://docs.pytest.org/en/stable/how-to/parametrize.html), and
-  [assertions](https://docs.pytest.org/en/stable/how-to/assert.html).
 - Rust: [test organization in The Rust Book](https://doc.rust-lang.org/book/ch11-03-test-organization.html).
-- Qt: [QtTest](https://doc.qt.io/qtforpython-6/PySide6/QtTest/index.html) and
-  [QSignalSpy](https://doc.qt.io/qt-6/qsignalspy.html).
 - Web: Vitest [mock functions](https://vitest.dev/guide/learn/mock-functions),
   [timers](https://vitest.dev/guide/mocking/timers), and
   [component testing](https://vitest.dev/guide/browser/component-testing), plus
   Testing Library's [accessible query priority](https://testing-library.com/docs/queries/about/).
-
-<!-- <<<<end>>>> -->

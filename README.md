@@ -1,33 +1,42 @@
-# Anki
+# EvolAnki
 
-[![Build Status](https://github.com/ankitects/anki/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitects/anki/actions/workflows/ci.yml)
-[![Documentation](https://img.shields.io/badge/docs-dev--docs.ankiweb.net-blue)](https://dev-docs.ankiweb.net/en/latest/)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=ankitects_anki&metric=coverage)](https://sonarcloud.io/summary/new_code?id=ankitects_anki)
+A slim, FSRS-only spaced repetition web app for one person, served locally by
+`evolanki-server`. It is a modified version of
+[Anki](https://github.com/ankitects/anki), and isn't affiliated with Anki or its authors.
 
-This repo contains the source code for the computer version of
-[Anki](https://apps.ankiweb.net).
+## Getting started
 
-## About
+```
+git submodule update --init
+tools/run-web
+```
 
-Anki is a spaced repetition program. Please see the [website](https://apps.ankiweb.net) to learn more.
+That needs Rust and Ninja or N2, and downloads Node. It builds the pages and server, then
+serves a demo collection at <http://127.0.0.1:8765>. See
+[the server docs](./docs/web-server.md) and [Development](./docs/development.md).
 
-## Getting Started
+## Changes from Anki
 
-### Contributing
+As the GNU AGPL requires, this notes that this is a modified version of Anki. Compared to
+upstream, as of November 2026, EvolAnki:
 
-Want to contribute to Anki? Check out the [Contribution Guidelines](./docs/contributing.md).
+- removed the Qt desktop app, and with it add-ons and the launcher
+- removed the Python layer (`pylib`, `rsbridge`) and Python tooling
+- removed sync and AnkiHub: collection and media sync, the sync server, AnkiWeb and
+  GitHub update and add-on lookups, and AnkiDroid's backend support
+- removed installers and packaging (wheels, Briefcase templates, audio packages)
+- added `evolanki-server` (`rslib/web-server`), and web pages for the deck list, overview
+  and reviewer
+- always uses FSRS
 
-For more information on building and developing, please see [Development](./docs/development.md).
+The full history of changes is in this repository's commits.
 
-#### Contributors
+## Contributors
 
 The following people have contributed to Anki: [CONTRIBUTORS](./CONTRIBUTORS)
 
-### Anki Betas
-
-If you'd like to try development builds of Anki but don't feel comfortable
-building the code, please see [Anki betas](https://docs.ankiweb.net/releases/betas/intro).
-
 ## License
 
-Anki's license: [LICENSE](./LICENSE)
+GNU AGPL, version 3 or later, with other licenses for some included items:
+[LICENSE](./LICENSE). If you run a modified version for others over a network, the AGPL
+requires you to offer them its source.

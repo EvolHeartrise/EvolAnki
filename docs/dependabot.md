@@ -1,12 +1,4 @@
-<!-- DO NOT MANUALLY EDIT THIS FILE -->
-<!-- This file is copied from docs-site/developers/dependabot.mdx automatically -->
-
 # Dependabot updates
-
-<!-- <<<<cog
-from cogdocs import get_file_contents
-cog.out(get_file_contents("dependabot"))
->>>> -->
 
 Config lives in [`.github/dependabot.yml`](https://github.com/ankitects/anki/blob/main/.github/dependabot.yml).
 This page is for maintainers: how PRs are grouped, which ones to merge,
@@ -20,7 +12,7 @@ Security updates stay **individual**. Each advisory needs its own review (false 
 
 ## What gets opened
 
-Four ecosystems: Cargo, npm (Yarn), Python (`uv`), GitHub Actions.
+Three ecosystems: Cargo, npm (Yarn), GitHub Actions.
 
 | Kind           | When                                                           | Shape                                          | What to do                                                                                       |
 | -------------- | -------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -29,7 +21,7 @@ Four ecosystems: Cargo, npm (Yarn), Python (`uv`), GitHub Actions.
 | Major          | Quarterly, after a 30-day cooldown                             | One grouped PR per ecosystem (`*-major`)       | **Do not merge.** Treat as a notification. If a bump is wanted, open a human PR for that package |
 | GitHub Actions | Quarterly                                                      | One grouped PR (`actions`)                     | Merge if CI is green                                                                             |
 
-`open-pull-requests-limit` is 2 for Cargo / npm / Python (one slot for minor/patch, one for major) and 1 for Actions. That limit applies only to **version** updates. Security PRs are unlimited.
+`open-pull-requests-limit` is 2 for Cargo / npm (one slot for minor/patch, one for major) and 1 for Actions. That limit applies only to **version** updates. Security PRs are unlimited.
 
 Cooldown is 7 days for ordinary version bumps (a short supply-chain window) and 30 days for majors (`semver-major-days`). Security updates skip cooldown.
 
@@ -85,5 +77,3 @@ Dependabot cannot update git `rev` pins. Those bumps are always manual.
 - Do not put majors in the minor/patch group;
 - `open-pull-requests-limit` cannot cap security PRs;
 - Cooldown keys are `default-days` and `semver-major-days`.
-
-<!-- <<<<end>>>> -->

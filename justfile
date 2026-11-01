@@ -1,40 +1,22 @@
 set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
 
-mod release
-
 # Show available commands
 default:
     @just --list
 
-# Build the project
+# Build the web pages
 build:
-    {{ ninja }} pylib qt
+    {{ ninja }} web
 
-# Build and run Anki in development mode
+# Build and serve a collection; with no path, a demo one (macOS/Linux)
 run *args:
-    {{ run_script }} {{ args }}
-
-# Build and run Anki in optimized (release) mode
-run-optimized *args:
-    {{ if os() == "windows" { "$env:RELEASE='1'; .\\run.bat" } else { "RELEASE=1 ./run" } }} {{ args }}
-
-# Watch web sources and rebuild/reload Anki's web stack on change (macOS/Linux)
-web-watch:
-    ./tools/web-watch
-
-# Rebuild and reload Anki's web stack without restarting (macOS/Linux)
-rebuild-web:
-    ./tools/rebuild-web
-
-# Build wheels (needed for some platforms)
-wheels:
-    {{ ninja }} wheels
+    ./tools/run-web {{ args }}
 
 # Build and run all checks (lint + test) - lets ninja handle dependencies
 check:
-    {{ ninja }} pylib qt check
+    {{ ninja }} check
 
-# Run all tests (Rust, Python, TypeScript). Pass --coverage to enforce coverage, and --html to include HTML reports.
+# Run all tests (Rust, TypeScript). Pass --coverage to enforce coverage, and --html to include HTML reports.
 [arg("coverage", long="coverage", value="--coverage")]
 [arg("html", long="html", value="--html")]
 test coverage='' html='':
@@ -44,7 +26,6 @@ test coverage='' html='':
 [arg("html", long="html", value="--html")]
 coverage html='':
     just _coverage-rust {{ html }}
-    just _coverage-py {{ html }}
     just _coverage-ts {{ html }}
 
 # Run Rust tests. Pass --coverage to enforce Rust coverage, and --html to include an HTML report.
@@ -52,12 +33,6 @@ coverage html='':
 [arg("html", long="html", value="--html")]
 test-rust coverage='' html='':
     just {{ if coverage == "--coverage" { "_coverage-rust " + html } else { "_test-rust" } }}
-
-# Run Python tests (pylib + qt). Pass --coverage to enforce coverage, and --html to include HTML reports.
-[arg("coverage", long="coverage", value="--coverage")]
-[arg("html", long="html", value="--html")]
-test-py coverage='' html='':
-    just {{ if coverage == "--coverage" { "_coverage-py " + html } else { "_test-py" } }}
 
 # Run TypeScript/Svelte Vitest tests. Pass --coverage to enforce coverage, and --html to include an HTML report.
 [arg("coverage", long="coverage", value="--coverage")]
@@ -68,20 +43,17 @@ test-ts coverage='' html='':
 # Run Playwright end-to-end tests. Pass --ui to open the interactive UI.
 [arg("ui", long="ui", value="--ui")]
 test-e2e ui='': _install-playwright-browsers
-    {{ ninja }} pyenv ts:generated pylib qt
+    {{ ninja }} web
+    {{ if os_family() == "windows" { "$env:CARGO_TARGET_DIR='out\\rust'; cargo" } else { "CARGO_TARGET_DIR=$PWD/out/rust cargo" } }} build -p evolanki-server
     {{ playwright_env }} {{ yarn }} test:e2e {{ ui }}
 
 [private]
 _test:
-    {{ ninja }} check:rust_test check:pytest check:vitest
+    {{ ninja }} check:rust_test check:vitest
 
 [private]
 _test-rust:
     {{ ninja }} check:rust_test
-
-[private]
-_test-py:
-    {{ ninja }} check:pytest
 
 [private]
 _test-ts:
@@ -90,20 +62,6 @@ _test-ts:
 [private]
 _coverage-rust html='':
     {{ if os_family() == "windows" { "tools\\coverage\\coverage-rust" } else { "tools/coverage/coverage-rust" } }} {{ html }}
-
-[private]
-_coverage-py html='':
-    {{ ninja }} pylib qt
-    just _coverage-py-pylib {{ html }}
-    just _coverage-py-qt {{ html }}
-
-[private]
-_coverage-py-pylib html='':
-    {{ if os_family() == "windows" { "tools\\coverage\\coverage-py" } else { "tools/coverage/coverage-py" } }} pylib {{ html }}
-
-[private]
-_coverage-py-qt html='':
-    {{ if os_family() == "windows" { "tools\\coverage\\coverage-py" } else { "tools/coverage/coverage-py" } }} qt {{ html }}
 
 [private]
 _coverage-ts html='':
@@ -125,17 +83,11 @@ fix-fmt:
 
 # Run linting and type checking (requires build outputs)
 lint:
-    {{ ninja }} \
-        check:clippy \
-        check:mypy \
-        check:ruff \
-        check:eslint \
-        check:svelte \
-        check:typescript
+    {{ ninja }} check:clippy check:eslint check:svelte
 
-# Fix auto-fixable lint issues (ruff + eslint)
+# Fix auto-fixable lint issues
 fix-lint:
-    {{ ninja }} fix:ruff fix:eslint
+    {{ ninja }} fix:eslint
 
 # Run minilints (copyright, contributors, licenses)
 minilints:
@@ -153,15 +105,6 @@ ftl-sync:
 ftl-deprecate:
     {{ ninja }} ftl-deprecate
 
-# Build documentation site
-docs:
-    {{ uv }} run --group docs sphinx-build -b html docs out/docs/html
-    @echo "Docs built at out/docs/html/index.html"
-
-# Build and serve documentation site
-docs-serve:
-    {{ uv }} run --group docs sphinx-autobuild docs out/docs/html --host 127.0.0.1 --port 8000
-
 # Build Rust API docs
 docs-rust:
     cargo doc --open
@@ -170,23 +113,12 @@ docs-rust:
 ci branch:
     gh workflow run ci.yml --ref {{ branch }}
 
-# Run Complexipy in regression-only mode
-complexipy-diff:
-    {{ ninja }} complexipy-diff
-
-# Remove build outputs from out/ (pass keep-env to keep node_modules/pyenv); macOS/Linux
+# Remove build outputs from out/ (pass keep-env to keep node_modules); macOS/Linux
 clean *args:
     ./tools/clean {{ args }}
-
-# Fill the placeholder files in the docs directory with the english content.
-docs-release:
-    {{ ninja }} docs:release
 
 # Helpers to get the right commands for the platform
 
 ninja := if os() == "windows" { "tools\\ninja" } else { "./ninja" }
-run_script := if os() == "windows" { ".\\run.bat" } else { "./run" }
 playwright_env := if os() == "windows" { "set PLAYWRIGHT_BROWSERS_PATH=out\\playwright-browsers&&" } else { "PLAYWRIGHT_BROWSERS_PATH=out/playwright-browsers" }
 yarn := if os() == "windows" { "out\\extracted\\node\\yarn.cmd" } else { "out/extracted/node/bin/yarn" }
-uv := env("UV_BINARY", if os() == "windows" { "out\\extracted\\uv\\uv" } else { "out/extracted/uv/uv" })
-export UV_PROJECT_ENVIRONMENT := if os() == "windows" { "out\\pyenv" } else { "out/pyenv" }

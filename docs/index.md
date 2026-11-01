@@ -1,31 +1,13 @@
-```{include} ../README.md
-```
+# EvolAnki developer docs
 
-```{toctree}
----
-maxdepth: 2
-hidden:
----
-
-development
-build
-contributing
-dependabot
-unit-testing
-testing-coverage
-sonarcloud
-architecture
-protobuf
-```
-
-## Auto-generated API References
-
-```{toctree}
----
-maxdepth: 1
-hidden:
----
-
-api-python
-api-rust
-```
+- [Local web server](web-server.md): running `evolanki-server`, and its security model
+- [Development](development.md): building, running and checking the code
+- [Architecture](architecture.md)
+- [The build system](build.md)
+- [Protocol buffers](protobuf.md)
+- [Rust API](api-rust.md)
+- [Writing unit tests](unit-testing.md)
+- [Testing and coverage](testing-coverage.md)
+- [End-to-end testing](e2e-testing.md)
+- [Contributing](contributing.md)
+- [Dependabot updates](dependabot.md)

@@ -1,8 +1,8 @@
 # Local web server
 
 `evolanki-server` (`rslib/web-server`) serves a collection to a browser on the
-same machine. It links the Rust backend directly, with no Python or Qt at run time.
-Building it doesn't set up the Python environment either.
+same machine. It links the Rust backend directly. Building it needs Rust and Node,
+which the build downloads, and what [development.md](development.md) lists.
 
 ## Run
 
@@ -24,8 +24,7 @@ The repo path must not contain a space, as `./ninja` can't handle that.
 ## Build by hand
 
 ```
-./ninja qt:aqt:data:web:sveltekit qt:aqt:data:web:css qt:aqt:data:web:imgs \
-    qt:aqt:data:web:js qt:aqt:data:web:js:vendor
+./ninja web
 CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
 out/rust/debug/evolanki-server --collection /tmp/test/col.anki2 --create --seed-demo
 ```
@@ -36,7 +35,7 @@ out/rust/debug/evolanki-server --collection /tmp/test/col.anki2 --create --seed-
 - `--seed-file FILE`: add the decks and notes in this JSON file to a newly created
   collection instead. For tests; see `SeedFile` in `src/seed.rs`.
 - `--port N`: default 8765 (also AnkiConnect's default); 0 picks a free port.
-- `--web-root DIR`: default `out/qt/_aqt/data/web`, relative to the current folder.
+- `--web-root DIR`: default `out/web`, relative to the current folder.
 - `--lang CODE`: default `en`.
 
 ## Security
@@ -86,7 +85,7 @@ else in the collection. Keep that in mind when a card shows something sensitive.
 
 A card's `localStorage` throws and dialogs do nothing, because of the sandbox.
 
-## Differences from Qt
+## Differences from desktop Anki
 
 - Custom scheduling isn't run: `getSchedulingStatesWithContext` and
   `setSchedulingStates` still answer 501, card scripts can't reach them, and deck
@@ -94,7 +93,7 @@ A card's `localStorage` throws and dialogs do nothing, because of the sandbox.
 - TTS tags and video are not played, and `[latex]` isn't rendered. Flags, marks,
   timeboxing, auto advance, `reviewExtra`, editing and card info aren't in the reviewer.
 
-## Differences from mediasrv.py
+## Differences from desktop Anki's mediasrv.py
 
 - `updateDeckConfigs` returns when the save is done, with the real output.
   mediasrv.py started a Qt background op, returned nothing, and closed the dialog

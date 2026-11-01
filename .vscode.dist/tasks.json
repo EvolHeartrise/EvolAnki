@@ -5,14 +5,12 @@
             "label": "ninja",
             "command": "ninja",
             "args": [
-                "pylib",
-                "qt"
+                "web"
             ],
             "windows": {
                 "command": "tools/ninja.bat",
                 "args": [
-                    "pylib",
-                    "qt"
+                    "web"
                 ]
             }
         }

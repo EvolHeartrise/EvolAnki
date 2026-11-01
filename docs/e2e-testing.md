@@ -1,105 +1,30 @@
-<!-- DO NOT MANUALLY EDIT THIS FILE -->
-<!-- This file is copied from docs-site/developers/e2e-testing.mdx automatically -->
-
 # End-to-End Testing with Playwright
 
-<!-- <<<<cog
-from cogdocs import get_file_contents
-cog.out(get_file_contents("e2e-testing"))
->>>> -->
+Playwright drives pages served by a real `evolanki-server`. Tests live in
+`ts/tests/web/` and are entirely separate from the Vitest unit tests. Each test starts
+the server itself on a throwaway collection in a temporary folder
+(see `ts/tests/web/server.ts`), so a test can also restart it.
 
-Playwright drives a real headless Anki instance via its mediasrv HTTP API.
-Tests live in `ts/tests/e2e/` and are entirely separate from the Vitest unit tests.
-
-## Prerequisites
-
-Build Anki at least once before running e2e tests:
+## Running
 
 ```shell
-just build
+./ninja web
+CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
+out/extracted/node/bin/yarn playwright install chromium   # first time only
+out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts
 ```
 
-That's it. `just test-e2e` automatically installs Playwright's Chromium browser
-into `out/playwright-browsers/` on the first run (idempotent on subsequent runs).
-
-## Running tests
-
-### Managed mode (CI-style)
-
-Playwright starts and stops a throwaway Anki instance automatically:
-
-```shell
-just test-e2e
-```
-
-The first run can be slow (~60 s) because Anki must fully initialise before tests start.
-
-### Reuse-server mode (recommended for development)
-
-Start Anki once in a separate terminal, then reuse it across multiple test runs:
-
-```shell
-# Terminal 1 — keep running
-./run
-
-# Terminal 2 — fast iteration
-ANKI_E2E_REUSE_SERVER=1 just test-e2e
-```
-
-### Interactive UI mode
-
-Open Playwright's browser UI to inspect each test step with snapshots:
-
-```shell
-ANKI_E2E_REUSE_SERVER=1 just test-e2e --ui
-```
+Or `just test-e2e`, which does all of this. Results and traces of failures are written
+to `out/e2e-web-results/`.
 
 ## Writing tests
 
-Add test files to `ts/tests/e2e/` with the `.test.ts` suffix and import from
-`./fixtures` instead of directly from `@playwright/test`:
+Use `tempCollection()` and `Server.start()` from `server.ts`, and go to pages
+through `server.url`. `--seed-file` sets up the decks and notes a test needs; see
+`SeedFile` in `rslib/web-server/src/seed.rs`.
 
-```typescript
-import { expect, test } from "./fixtures";
+`failOnPageProblems()` in `pages.spec.ts` fails a test on anything a user would see go
+wrong, such as a dialog or a console error.
 
-test("my feature works", async ({ page }) => {
-    await page.goto("/some-anki-page");
-    await expect(page.locator("#some-element")).toBeVisible();
-});
-```
-
-`fixtures.ts` re-exports `expect` and a pre-configured `test` object. Add
-shared fixtures there as new features require them.
-
-## Calling the Anki API from tests
-
-Anki's `/_anki/` endpoints accept and return protobuf-encoded binary payloads
-(`Content-Type: application/binary`). Use `page.request.post` with
-`Buffer.from(protoMsg.toBinary())` and decode the response with the matching
-generated type from `ts/lib/generated/`.
-
-## Accessing Anki pages
-
-Anki's mediasrv serves the following pages over HTTP (non-exhaustive):
-
-| URL pattern              | Description                   |
-| ------------------------ | ----------------------------- |
-| `/graphs`                | Statistics graphs (SvelteKit) |
-| `/deck-options/[deckId]` | Deck options (SvelteKit)      |
-| `/congrats`              | Post-study screen (SvelteKit) |
-| `/card-info/[cardId]`    | Card info (SvelteKit)         |
-| `/editor/?mode=[mode]`   | Editor (SvelteKit)            |
-| `/congrats`              | Congrats page (SvelteKit)     |
-| `/favicon.ico`           | Mediasrv liveness probe       |
-
-## CI
-
-The e2e tests run as part of the `check-linux` job in `.github/workflows/ci.yml`,
-after the regular build and test steps. Screenshots and traces from failed runs
-are uploaded as artifacts and kept for 7 days.
-
-## See also
-
-- [Writing Unit Tests for Anki](https://anki.mintlify.app/developers/unit-testing)
-
-<!-- <<<<end>>>> -->
+See [Writing Unit Tests](unit-testing.md) for choosing what's worth testing here rather
+than in a faster test.

@@ -1,12 +1,4 @@
-<!-- DO NOT MANUALLY EDIT THIS FILE -->
-<!-- This file is copied from docs-site/developers/protobuf.mdx automatically -->
-
 # Protocol Buffers
-
-<!-- <<<<cog
-from cogdocs import get_file_contents
-cog.out(get_file_contents("protobuf"))
->>>> -->
 
 ProtoBuf is a format used both to save data in storage and transmit
 data between services. You can think of it as similar to JSON with
@@ -16,7 +8,7 @@ not in a human readable way.
 
 # Protocol Buffers
 
-Anki uses [different implementations of Protocol Buffers](https://anki.mintlify.app/developers/architecture#protobuf)
+Anki uses [different implementations of Protocol Buffers](architecture.md#protobuf)
 and each has its own peculiarities. This document highlights some aspects relevant
 to Anki and hopefully helps to avoid some common pitfalls.
 
@@ -32,7 +24,7 @@ namespace created by the message `FooBar` is called `foo_bar` in Rust.
 
 ### Optional Values
 
-In Python and Typescript, unset optional values will contain the type's default
+In Typescript, unset optional values will contain the type's default
 value rather than `None`, `null` or `undefined`. Here's an example:
 
 ```protobuf
@@ -42,28 +34,12 @@ message Foo {
 }
 ```
 
-```python
-message = Foo()
-assert message.number == 0
-assert message name == ""
-```
-
-In Python, we can use the message's `HasField()` method to check whether a field is
-actually set:
-
-```python
-message = Foo(name="")
-assert message.HasField("name")
-assert not message.HasField("number")
-```
-
-In Typescript, this is even less ergonomic and it can be easier to avoid using
-the default values in active fields. E.g. the `CsvMetadata` message uses 1-based
+It can be easier to avoid using the default values in active fields. E.g. the `CsvMetadata` message uses 1-based
 indices instead of optional 0-based ones to avoid ambiguity when an index is `0`.
 
 ### Oneofs
 
-All fields in a oneof are implicitly optional, so the caveats [above](https://anki.mintlify.app/developers/protobuf#optional-values)
+All fields in a oneof are implicitly optional, so the caveats [above](#optional-values)
 apply just as much to a message like this:
 
 ```protobuf
@@ -73,14 +49,6 @@ message Foo {
       int32 number = 2;
     }
 }
-```
-
-In addition to `HasField()`, `WhichOneof()` can be used to get the name of the set
-field:
-
-```python
-message = Foo(name="")
-assert message.WhichOneof("bar") == "name"
 ```
 
 ### Backwards Compatibility
@@ -104,10 +72,6 @@ should preferably be assigned a number between 1 and 15. If a message contains
 
 ## Implementation-Specific Notes
 
-### Python
-
-Protobuf has an official Python implementation with an extensive [reference](https://developers.google.com/protocol-buffers/docs/reference/python-generated).
-
 ### Typescript
 
 Anki uses [protobuf-es](https://github.com/bufbuild/protobuf-es), which offers
@@ -126,5 +90,3 @@ Inside the `pb` module you will find all generated Rust types and their implemen
   a valid variant, so the Rust code needs to deal with a lot of `Option`s. As we
   don't expect other parts of Anki to send invalid messages, using an `InvalidInput`
   error or `unwrap_or_default()` is usually fine.
-
-<!-- <<<<end>>>> -->
