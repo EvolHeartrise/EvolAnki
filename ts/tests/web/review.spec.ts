@@ -373,6 +373,10 @@ test("a leech is reported and suspended", async ({ page }) => {
     const input = title.locator("xpath=ancestor::*[.//input][1]").locator("input");
     await input.fill("1");
     await input.blur();
+    // the default is only to tag it
+    const action = page.locator(".setting-title", { hasText: "Leech action" });
+    await action.locator("xpath=ancestor::*[.//*[@role='combobox']][1]").getByRole("combobox").click();
+    await page.getByRole("option", { name: "Suspend Card" }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page).toHaveURL(/\/overview\/\d+$/);
 
@@ -391,10 +395,10 @@ test("a leech is reported and suspended", async ({ page }) => {
     await expect(page.getByRole("status")).toContainText("suspended");
     expect(problems).toEqual([]);
 
-    const rows = await query<{ queue: number }>(
-        "select queue from cards where nid = (select id from notes where sfld = 'leechy')",
+    const rows = await query<{ queue: number; lapses: number; tags: string }>(
+        "select c.queue, c.lapses, n.tags from cards c join notes n on c.nid = n.id where n.sfld = 'leechy'",
     );
-    expect(rows).toEqual([{ queue: -1 }]);
+    expect(rows).toEqual([{ queue: -1, lapses: 1, tags: " leech " }]);
 });
 
 test("media loads in the sandbox, and audio plays through the page", async ({ page }) => {
@@ -489,9 +493,7 @@ test("MathJax typesets in the sandbox, and template scripts run", async ({ page 
     await expect(card(page).locator("#scripted")).toHaveText(/^ran .*\bcard1\b/);
     // the fonts come from the frame's own prefix too, and are fetched with CORS
     await expect
-        .poll(() =>
-            card(page).evaluate(() => [...document.fonts].filter((f) => f.status === "loaded").length)
-        )
+        .poll(() => card(page).evaluate(() => [...document.fonts].filter((f) => f.status === "loaded").length))
         .toBeGreaterThan(0);
     expect(problems).toEqual([]);
 });
@@ -572,7 +574,7 @@ test("a malicious card can't touch the API, the page or the review", async ({ pa
                     fetch(url.replace("getQueuedCards", "frameBase"))
                         .then(r => r.status, e => "threw " + e.name),
                 ]).then((r) => parent.postMessage(r, "*"));
-            <\/script>`;
+            </script>`;
             document.body.append(frame);
         });
     });
@@ -587,7 +589,7 @@ test("a malicious card can't touch the API, the page or the review", async ({ pa
             { Origin: "null", "Sec-Fetch-Site": "cross-site", "Content-Type": "application/binary" },
             { Origin: "null", "Content-Type": "application/binary" },
             { "Sec-Fetch-Site": "cross-site", "Content-Type": "application/binary" },
-        ]
+        ] as Record<string, string>[]
     ) {
         const response = await request.post(`${server.url}/_anki/undo`, { headers, data: Buffer.alloc(0) });
         expect(response.status()).toBe(403);
@@ -697,8 +699,7 @@ test("the theme follows the browser's setting, in pages and cards", async ({ bro
         await page.goto(server.url);
         return { context, page, problems };
     };
-    const background = (page: Page) =>
-        page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const background = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const font = (page: Page) => page.evaluate(() => getComputedStyle(document.body).fontFamily);
 
     const light = await open("light");
@@ -746,7 +747,7 @@ test("deck options reports a slow save and returns to the deck", async ({ page }
     await input.fill("37");
     await input.blur();
 
-    let release = () => {};
+    let release = () => undefined as void;
     const held = new Promise<void>((resolve) => (release = resolve));
     await page.route("**/_anki/updateDeckConfigs", async (route) => {
         await held;

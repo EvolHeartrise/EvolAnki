@@ -12,7 +12,7 @@ import {
     UpdateDeckConfigsMode,
 } from "@generated/anki/deck_config_pb";
 import { get } from "svelte/store";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 
 import { DeckOptionsState } from "./lib";
 
@@ -308,4 +308,27 @@ test("aux data", () => {
             },
         },
     ]);
+});
+
+test("a save becomes the baseline for later changes", async () => {
+    const fetchMock = vi.fn(async () => new Response(new Uint8Array(), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+        const state = startingState();
+        state.resolveOriginalConfigs();
+        const config = get(state.currentConfig);
+        config.newPerDay += 1;
+        state.currentConfig.set(config);
+        expect(await state.isModified()).toBe(true);
+
+        await state.save(UpdateDeckConfigsMode.NORMAL);
+        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(await state.isModified()).toBe(false);
+
+        config.newPerDay += 1;
+        state.currentConfig.set(config);
+        expect(await state.isModified()).toBe(true);
+    } finally {
+        vi.unstubAllGlobals();
+    }
 });

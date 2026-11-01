@@ -21,6 +21,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         extractAvTags,
         extractClozeForTyping,
         getCard,
+        getCurrentDeck,
         getDeck,
         getDeckConfig,
         getNote,
@@ -390,6 +391,13 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         try {
             const result = await undo({}, { alertOnError: false });
             showNotice(tr.undoActionUndone({ action: result.operation }));
+            // selecting a deck is itself undoable, so this may have been in another
+            const deck = await getCurrentDeck({}, { alertOnError: false });
+            if (deck.id !== data.deckId) {
+                pendingNotice.text = notice;
+                await goto(`/overview/${deck.id}`);
+                return;
+            }
         } catch (err) {
             showNotice(err instanceof Error ? err.message : String(err));
         }

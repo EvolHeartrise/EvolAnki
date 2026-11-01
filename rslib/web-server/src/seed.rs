@@ -11,18 +11,18 @@ use anki_proto::cards::CardIds;
 use anki_proto::collection::OpChangesWithId;
 use anki_proto::decks::deck::Kind;
 use anki_proto::decks::Deck;
-use anki_proto::notes::NoteId;
-use anki_proto::scheduler::SetDueDateRequest;
 use anki_proto::generic;
 use anki_proto::notes::AddNoteRequest;
 use anki_proto::notes::AddNoteResponse;
 use anki_proto::notes::Note;
+use anki_proto::notes::NoteId;
 use anki_proto::notetypes::NotetypeId;
 use anki_proto::notetypes::NotetypeNames;
 use anki_proto::scheduler::card_answer::Rating;
 use anki_proto::scheduler::CardAnswer;
 use anki_proto::scheduler::GetQueuedCardsRequest;
 use anki_proto::scheduler::QueuedCards;
+use anki_proto::scheduler::SetDueDateRequest;
 use anyhow::Context;
 use anyhow::Result;
 use serde::Deserialize;
@@ -152,13 +152,8 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
             },
         )?;
         if seed_note.due {
-            let cards: CardIds = call_typed(
-                backend,
-                "cardsOfNote",
-                &NoteId {
-                    nid: added.note_id,
-                },
-            )?;
+            let cards: CardIds =
+                call_typed(backend, "cardsOfNote", &NoteId { nid: added.note_id })?;
             let _: anki_proto::collection::OpChanges = call_typed(
                 backend,
                 "setDueDate",

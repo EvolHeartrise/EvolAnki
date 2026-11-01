@@ -2,9 +2,9 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 //! The sandboxed document that card HTML and deck descriptions run in, and the
-//! few resources it may load. A sandboxed frame has an opaque origin, so to this
-//! server it is a stranger: guard.rs refuses its API calls, and CORP refuses it
-//! our usual responses. Everything it does need lives under
+//! few resources it may load. A sandboxed frame has an opaque origin, so to
+//! this server it is a stranger: guard.rs refuses its API calls, and CORP
+//! refuses it our usual responses. Everything it does need lives under
 //! `/_frame/<token>/`, where the token is random per run, so that other web
 //! sites, which get the same treatment as the frame, still can't embed the
 //! user's media. Pages get the prefix from `/_anki/frameBase`.
@@ -117,7 +117,8 @@ fn document(state: &AppState, is_static: bool) -> Response {
 fn document_csp(state: &AppState, is_static: bool, nonce: &str) -> String {
     let port = state.port;
     let token = &state.frame_token;
-    let ours = format!("http://127.0.0.1:{port}/_frame/{token}/ http://localhost:{port}/_frame/{token}/");
+    let ours =
+        format!("http://127.0.0.1:{port}/_frame/{token}/ http://localhost:{port}/_frame/{token}/");
     let scripts = if is_static {
         format!("'nonce-{nonce}'")
     } else {

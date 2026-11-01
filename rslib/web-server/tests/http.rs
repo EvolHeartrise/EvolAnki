@@ -549,14 +549,20 @@ fn frame_routes_are_narrow() {
 
     let host = server.host();
     let base = server.get("/_anki/frameBase").text();
-    assert!(base.starts_with("/_frame/") && base.ends_with('/'), "{base}");
+    assert!(
+        base.starts_with("/_frame/") && base.ends_with('/'),
+        "{base}"
+    );
     let null_origin = [("Host", host.as_str()), ("Origin", "null")];
 
     // a sandboxed frame or other site can't learn the prefix
     let reply = server.raw("GET", "/_anki/frameBase", &null_origin, b"");
     assert_eq!(reply.status, 403);
     let cross = [("Host", host.as_str()), ("Sec-Fetch-Site", "cross-site")];
-    assert_eq!(server.raw("GET", "/_anki/frameBase", &cross, b"").status, 403);
+    assert_eq!(
+        server.raw("GET", "/_anki/frameBase", &cross, b"").status,
+        403
+    );
 
     // embeddable through the prefix only
     let reply = server.raw("GET", &format!("{base}m/pic.png"), &null_origin, b"");
@@ -593,7 +599,11 @@ fn frame_routes_are_narrow() {
     assert_eq!(server.get(&format!("{base}a/js/editor.js")).status, 404);
     assert_eq!(server.get(&format!("{base}a/secret.js")).status, 404);
     assert_eq!(server.get(&format!("{base}other")).status, 404);
-    for bad in ["m/../../../secret.txt", "m/%2e%2e/%2e%2e/secret.txt", "a/js/../secret.js"] {
+    for bad in [
+        "m/../../../secret.txt",
+        "m/%2e%2e/%2e%2e/secret.txt",
+        "a/js/../secret.js",
+    ] {
         assert_ne!(server.get(&format!("{base}{bad}")).status, 200, "{bad}");
     }
 
@@ -608,7 +618,11 @@ fn frame_routes_are_narrow() {
         format!("{base}m/x"),
         format!("{base}../../_anki/getQueuedCards"),
     ] {
-        assert_eq!(server.raw("POST", &path, &binary, b"").status, 403, "{path}");
+        assert_eq!(
+            server.raw("POST", &path, &binary, b"").status,
+            403,
+            "{path}"
+        );
     }
     let reply = server.raw("GET", "/_anki/js/reviewer.js", &null_origin, b"");
     assert_eq!(reply.status, 403);

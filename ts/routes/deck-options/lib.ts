@@ -10,10 +10,10 @@ import type {
 } from "@generated/anki/deck_config_pb";
 import { DeckConfig, DeckConfig_Config, DeckConfigsForUpdate_CurrentDeck_Limits } from "@generated/anki/deck_config_pb";
 import { updateDeckConfigs } from "@generated/backend";
-import { runWithBackendProgress } from "@tslib/progress";
-import { isWebApp } from "@tslib/webapp";
 import { localeCompare } from "@tslib/i18n";
+import { runWithBackendProgress } from "@tslib/progress";
 import { promiseWithResolver } from "@tslib/promise";
+import { isWebApp } from "@tslib/webapp";
 import { cloneDeep, isEqual, isEqualWith } from "lodash-es";
 import { tick } from "svelte";
 import type { Readable, Writable } from "svelte/store";
