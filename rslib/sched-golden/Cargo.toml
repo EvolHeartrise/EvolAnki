@@ -13,6 +13,7 @@ path = "src/main.rs"
 name = "sched-golden"
 
 [build-dependencies]
+anki_proto.workspace = true
 anki_proto_gen.workspace = true
 anyhow.workspace = true
 

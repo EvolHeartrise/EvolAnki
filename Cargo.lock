@@ -855,6 +855,7 @@ name = "evolanki-sched-golden"
 version = "0.0.0"
 dependencies = [
  "anki",
+ "anki_proto",
  "anki_proto_gen",
  "anyhow",
  "evolanki-server",

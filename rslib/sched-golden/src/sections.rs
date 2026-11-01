@@ -636,30 +636,15 @@ fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<Stri
 fn recompute_case(harness: &mut Harness, source: &Path, reschedule: bool) -> Result<Value> {
     let path = harness.open_copy(source, "recompute")?;
     let (did, _, cards) = biggest_deck(harness)?;
-    let mut settings = harness.record("GetDeckConfigsForUpdate", json!({ "did": did }));
-    let current = settings["current_deck"]["config_id"].as_i64();
-    let mut configs = vec![];
-    let mut target = None;
-    for entry in settings["all_config"]
-        .as_array_mut()
-        .map(std::mem::take)
-        .unwrap_or_default()
-    {
-        let mut config = entry["config"].clone();
-        if config["id"].as_i64() == current {
-            config["config"]["desired_retention"] = 0.85.into();
-            target = Some(config);
-        } else {
-            configs.push(config);
-        }
-    }
-    let result = if let Some(target) = target {
-        configs.push(target);
+    let settings = harness.record("GetDeckConfigsForUpdate", json!({ "did": did }));
+    let mut config = settings["config"].clone();
+    let result = if config.is_object() {
+        config["config"]["desired_retention"] = 0.85.into();
         harness.record(
             "UpdateDeckConfigs",
             json!({
                 "target_deck_id": did,
-                "configs": configs,
+                "config": config,
                 "mode": "UPDATE_DECK_CONFIGS_MODE_NORMAL",
                 "limits": settings["current_deck"]["limits"],
                 "fsrs": true,
