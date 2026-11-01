@@ -2,17 +2,17 @@
 
 ## Requirements
 
-Clone the repo into a folder of your choosing. The path must not
-contain spaces, and should not be too long if you are on Windows.
+Clone the repo into a folder of your choosing. The path must not contain spaces. This
+is developed and run on Linux.
 
 You will need:
 
 - Rustup (https://rustup.rs/). The Rust version pinned in rust-toolchain.toml
   will be automatically downloaded if not yet installed.
-- N2 or Ninja. N2 gives better status output. You can install it with `tools/install-n2`,
-  or `bash tools\install-n2` on Windows. Ninja can be downloaded from
+- N2 or Ninja. N2 gives better status output. You can install it with `tools/install-n2`.
+  Ninja can be downloaded from
   https://github.com/ninja-build/ninja/releases/tag/v1.11.1 and placed on your path, or
-  from your distro/homebrew if it's 1.10+.
+  from your distro if it's 1.10+.
 - rsync, git, and a C compiler for the bundled SQLite and zstd.
 - (Optional) [just](https://just.systems/man/en/packages.html), a command runner.
 
@@ -34,8 +34,6 @@ To run all of them, from the top-level folder:
 ```
 ./ninja check
 ```
-
-(`tools\ninja check` on Windows).
 
 You can also run specific checks, such as `./ninja check:vitest`, `./ninja check:svelte`
 or `./ninja check:clippy`. Targets are hierarchical, so `./ninja check:format` runs all
@@ -68,8 +66,7 @@ output, but make the build much slower.
 
 ## Cleaning up build files
 
-Most build files go into the `out/` folder (and
-`node_modules` on Windows). You can delete that folder for a clean build, or
+Most build files go into the `out/` folder. You can delete that folder for a clean build, or
 to free space. `tools/clean` keeps downloads, and with `keep-env`, also node_modules.
 
 If you invoke Rust outside of the build scripts (eg by running cargo, or

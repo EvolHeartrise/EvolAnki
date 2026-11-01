@@ -310,13 +310,6 @@
         "path": "node_modules/internmap",
         "licenseFile": "node_modules/internmap/LICENSE"
     },
-    "jquery@3.7.1": {
-        "licenses": "MIT",
-        "repository": "https://github.com/jquery/jquery",
-        "publisher": "OpenJS Foundation and other contributors",
-        "path": "node_modules/jquery",
-        "licenseFile": "node_modules/jquery/LICENSE.txt"
-    },
     "lodash-es@4.18.1": {
         "licenses": "MIT",
         "repository": "https://github.com/lodash/lodash",

@@ -1,11 +1,8 @@
 .DS_Store
 anki.prof
 target
-/user.bazelrc
 /.idea/
 /.vscode
-/.bazel
-/windows.bazelrc
 /out
 node_modules
 .n2_db

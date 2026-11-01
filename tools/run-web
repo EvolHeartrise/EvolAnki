@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 ./ninja web
 
 export CARGO_TARGET_DIR="$PWD/out/rust"
-serve=(cargo run "${profile[@]}" -p evolanki-server -- --web-root "$PWD/out/web")
+serve=(cargo run "${profile[@]}" -p evolanki-server --bin evolanki-server -- --web-root "$PWD/out/web")
 if [ -n "$collection" ]; then
     exec "${serve[@]}" --collection "$collection" "$@"
 fi

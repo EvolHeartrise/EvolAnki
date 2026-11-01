@@ -235,11 +235,6 @@ deck-config-maximum-interval-tooltip =
     reached the limit, `Hard`, `Good` and `Easy` will all give the same delay.
     The shorter you set this, the greater your workload will be.
 
-## Easy Days section.
-
-deck-config-easy-days-normal = Normal
-
-
 ## Other Buttons
 
 deck-config-save-button = Save

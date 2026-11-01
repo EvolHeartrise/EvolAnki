@@ -1,13 +1,12 @@
 # Writing Unit Tests
 
-This guide helps maintainers, contributors, and coding assistants write unit and
-component tests for Anki. It is independent of any particular feature, module, or
+This guide helps coding assistants write unit and component tests for EvolAnki. It is independent of any particular feature, module, or
 bug. Use it together with the behavior being changed, the surrounding production
 code, and nearby tests.
 
 This guide assumes basic familiarity with automated tests. If testing is new to you,
 start with one of the introductory resources in [References](#references-and-rationale),
-then return here for Anki-specific guidance.
+then return here for guidance specific to this project.
 
 ## Quick summary
 
@@ -68,7 +67,7 @@ For Svelte specifically, "UI component" means extracted logic and stores: the
 repository does not wire rendered-component tests into the unit suite (see
 [Svelte, TypeScript, and JavaScript](#svelte-typescript-and-javascript)).
 
-Anki spans several implementation layers. Test a rule at the layer that owns it:
+EvolAnki spans several implementation layers. Test a rule at the layer that owns it:
 
 - Business rules implemented in Rust **should** normally be tested in Rust.
 - TypeScript/JavaScript tests should cover web-owned logic, stores, DOM helpers, and
@@ -148,7 +147,7 @@ behavior.
 - Keep test-specific setup in the test. Extract a helper only when it removes noise
   without concealing the scenario.
 - Use temporary directories, temporary collections/databases, and in-memory values.
-  Never read or modify a user's Anki profile.
+  Never read or modify a real collection.
 - Restore patched globals, environment variables, timers, DOM state, and callbacks.
   Prefer framework cleanup facilities that run even after an assertion fails.
 - Tests **must** pass independently, in any order, and when repeated.
@@ -213,12 +212,12 @@ whenever practical.
 ## Additional risk areas
 
 The scenario categories above apply to all behavior. Also consider risks specific to
-Anki:
+this project:
 
 - serialization or conversion code written by the project;
 - permission, path, escaping, and untrusted-input boundaries;
 - callbacks, signals, events, and async completion when they are part of the API;
-- compatibility behavior intentionally supported for add-ons or older data.
+- compatibility behavior intentionally supported for older data.
 
 ## What not to test
 
@@ -267,7 +266,7 @@ may be the better trade-off.
 ## Stack-specific guidance
 
 The examples below are illustrative pseudocode. Names such as `State`, `Model`, and
-`normalize_value` are not Anki APIs and **must not** be copied without inspecting the
+`normalize_value` are not this project's APIs and **must not** be copied without inspecting the
 actual code.
 
 ### Rust
@@ -404,7 +403,7 @@ should finish by reporting what was tested, intentionally omitted, and not valid
 
 ## References and rationale
 
-This guide adapts these references to Anki's architecture:
+This guide adapts these references to this project's architecture:
 
 - General principles: [behavior over implementation](https://testing.googleblog.com/2013/08/testing-on-toilet-test-behavior-not.html),
   [test sizes](https://testing.googleblog.com/2010/12/test-sizes.html),

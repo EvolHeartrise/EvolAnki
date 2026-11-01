@@ -19,8 +19,7 @@ The build/ folder is made up of 3 packages:
       the build file and then invoking Ninja
     - it wraps executable invocations in the build file, swallowing their output
       if they exit successfully
-    - it provides a few helpers for multi-step processes that can't be easily
-      described in a cross-platform manner thanks to differences on Windows.
+    - it provides a few helpers for multi-step processes.
 
 Node and protoc are downloaded as part of the build. To use your own, define
 NODE_BINARY, YARN_BINARY and/or PROTOC_BINARY.
