@@ -8,7 +8,6 @@ pub mod filtered;
 pub(crate) mod limits;
 mod name;
 mod remove;
-mod reparent;
 mod schema11;
 mod service;
 mod stats;

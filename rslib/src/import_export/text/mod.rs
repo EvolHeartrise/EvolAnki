@@ -3,7 +3,6 @@
 
 pub mod csv;
 mod import;
-mod json;
 
 use anki_proto::import_export::csv_metadata::DupeResolution;
 use anki_proto::import_export::csv_metadata::MatchScope;

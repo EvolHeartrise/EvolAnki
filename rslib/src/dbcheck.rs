@@ -673,7 +673,9 @@ mod test {
         note.tags.push("two".into());
         col.add_note(&mut note, DeckId(1))?;
 
-        col.set_tag_collapsed("one", false)?;
+        let mut tag = col.storage.get_tag("one")?.unwrap();
+        tag.expanded = true;
+        col.storage.update_tag(&tag)?;
 
         col.check_database()?;
 

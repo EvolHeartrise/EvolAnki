@@ -5,12 +5,8 @@ use anki_proto::generic;
 use crate::collection::Collection;
 use crate::error;
 use crate::error::OrNotFound;
-use crate::notes::NoteId;
-use crate::notetype::ChangeNotetypeInput;
 use crate::notetype::Notetype;
-use crate::notetype::NotetypeChangeInfo;
 use crate::notetype::NotetypeId;
-use crate::prelude::IntoNewtypeVec;
 
 impl crate::services::NotetypesService for Collection {
     fn add_notetype(
@@ -99,72 +95,6 @@ impl From<anki_proto::notetypes::Notetype> for Notetype {
     }
 }
 
-impl From<NotetypeChangeInfo> for anki_proto::notetypes::ChangeNotetypeInfo {
-    fn from(i: NotetypeChangeInfo) -> Self {
-        anki_proto::notetypes::ChangeNotetypeInfo {
-            old_notetype_name: i.old_notetype_name,
-            old_field_names: i.old_field_names,
-            old_template_names: i.old_template_names,
-            new_field_names: i.new_field_names,
-            new_template_names: i.new_template_names,
-            input: Some(i.input.into()),
-        }
-    }
-}
-
-impl From<anki_proto::notetypes::ChangeNotetypeRequest> for ChangeNotetypeInput {
-    fn from(i: anki_proto::notetypes::ChangeNotetypeRequest) -> Self {
-        ChangeNotetypeInput {
-            current_schema: i.current_schema.into(),
-            note_ids: i.note_ids.into_newtype(NoteId),
-            old_notetype_name: i.old_notetype_name,
-            old_notetype_id: i.old_notetype_id.into(),
-            new_notetype_id: i.new_notetype_id.into(),
-            new_fields: i
-                .new_fields
-                .into_iter()
-                .map(|v| if v == -1 { None } else { Some(v as usize) })
-                .collect(),
-            new_templates: {
-                let v: Vec<_> = i
-                    .new_templates
-                    .into_iter()
-                    .map(|v| if v == -1 { None } else { Some(v as usize) })
-                    .collect();
-                if v.is_empty() {
-                    None
-                } else {
-                    Some(v)
-                }
-            },
-        }
-    }
-}
-
-impl From<ChangeNotetypeInput> for anki_proto::notetypes::ChangeNotetypeRequest {
-    fn from(i: ChangeNotetypeInput) -> Self {
-        anki_proto::notetypes::ChangeNotetypeRequest {
-            current_schema: i.current_schema.into(),
-            note_ids: i.note_ids.into_iter().map(Into::into).collect(),
-            old_notetype_name: i.old_notetype_name,
-            old_notetype_id: i.old_notetype_id.into(),
-            new_notetype_id: i.new_notetype_id.into(),
-            new_fields: i
-                .new_fields
-                .into_iter()
-                .map(|idx| idx.map(|v| v as i32).unwrap_or(-1))
-                .collect(),
-            is_cloze: i.new_templates.is_none(),
-            new_templates: i
-                .new_templates
-                .unwrap_or_default()
-                .into_iter()
-                .map(|idx| idx.map(|v| v as i32).unwrap_or(-1))
-                .collect(),
-        }
-    }
-}
-
 impl From<anki_proto::notetypes::NotetypeId> for NotetypeId {
     fn from(ntid: anki_proto::notetypes::NotetypeId) -> Self {
         NotetypeId(ntid.ntid)
@@ -182,7 +112,7 @@ mod tests {
     use anki_proto::generic;
 
     use super::*;
-    use crate::prelude::*;
+    
     use crate::services::NotetypesService;
     use crate::tests::NoteAdder;
 
@@ -215,85 +145,7 @@ mod tests {
 
     // --- From<ChangeNotetypeRequest> for ChangeNotetypeInput ---
 
-    #[test]
-    fn change_notetype_request_maps_minus_one_to_none() {
-        let req = anki_proto::notetypes::ChangeNotetypeRequest {
-            new_fields: vec![-1, 0, 2],
-            new_templates: vec![],
-            ..Default::default()
-        };
-        let input: ChangeNotetypeInput = req.into();
-        assert!(input.new_fields[0].is_none(), "expected None for -1");
-        assert_eq!(input.new_fields[1], Some(0), "expected Some(0) for 0");
-        assert_eq!(input.new_fields[2], Some(2), "expected Some(2) for 2");
-        assert!(
-            input.new_templates.is_none(),
-            "expected None for empty templates vec"
-        );
-    }
-
-    #[test]
-    fn change_notetype_request_maps_minus_one_in_templates_to_none() {
-        let req = anki_proto::notetypes::ChangeNotetypeRequest {
-            new_templates: vec![-1, 0, 1],
-            ..Default::default()
-        };
-        let input: ChangeNotetypeInput = req.into();
-        let templates = input
-            .new_templates
-            .expect("expected Some for non-empty templates");
-        assert!(templates[0].is_none(), "expected None for -1");
-        assert_eq!(templates[1], Some(0), "expected Some(0) for 0");
-        assert_eq!(templates[2], Some(1), "expected Some(1) for 1");
-    }
-
     // --- From<ChangeNotetypeInput> for ChangeNotetypeRequest ---
-
-    #[test]
-    fn change_notetype_input_to_proto_sets_is_cloze_when_no_templates() {
-        let input = ChangeNotetypeInput {
-            current_schema: TimestampMillis(0),
-            note_ids: vec![],
-            old_notetype_name: "Old".to_string(),
-            old_notetype_id: NotetypeId(1),
-            new_notetype_id: NotetypeId(2),
-            new_fields: vec![],
-            new_templates: None,
-        };
-        let proto: anki_proto::notetypes::ChangeNotetypeRequest = input.into();
-        assert!(
-            proto.is_cloze,
-            "expected is_cloze=true when new_templates is None"
-        );
-    }
-
-    #[test]
-    fn change_notetype_input_to_proto_maps_none_to_minus_one_and_sets_is_cloze_false() {
-        let input = ChangeNotetypeInput {
-            current_schema: TimestampMillis(0),
-            note_ids: vec![],
-            old_notetype_name: String::new(),
-            old_notetype_id: NotetypeId(1),
-            new_notetype_id: NotetypeId(2),
-            new_fields: vec![None, Some(1)],
-            new_templates: Some(vec![None, Some(0)]),
-        };
-        let proto: anki_proto::notetypes::ChangeNotetypeRequest = input.into();
-        assert_eq!(
-            proto.new_fields,
-            vec![-1, 1],
-            "None→-1 and Some(1)→1 in fields"
-        );
-        assert!(
-            !proto.is_cloze,
-            "expected is_cloze=false when new_templates is Some"
-        );
-        assert_eq!(
-            proto.new_templates,
-            vec![-1, 0],
-            "None→-1 and Some(0)→0 in templates"
-        );
-    }
 
     // --- Service: get_notetype_legacy / get_stock_notetype_legacy ---
 

@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use super::CardGenContext;
-use super::Notetype;
 use super::NotetypeKind;
 use crate::prelude::*;
 use crate::search::JoinSearches;
@@ -27,6 +26,7 @@ pub struct ChangeNotetypeInput {
     pub new_templates: Option<Vec<Option<usize>>>,
 }
 
+#[cfg(test)]
 #[derive(Debug)]
 pub struct NotetypeChangeInfo {
     pub input: ChangeNotetypeInput,
@@ -69,56 +69,7 @@ impl TemplateMap {
     }
 }
 
-impl Collection {
-    pub fn notetype_change_info(
-        &mut self,
-        old_notetype_id: NotetypeId,
-        new_notetype_id: NotetypeId,
-    ) -> Result<NotetypeChangeInfo> {
-        let old_notetype = self
-            .get_notetype(old_notetype_id)?
-            .or_not_found(old_notetype_id)?;
-        let new_notetype = self
-            .get_notetype(new_notetype_id)?
-            .or_not_found(new_notetype_id)?;
-
-        let current_schema = self.storage.get_collection_timestamps()?.schema_change;
-        let old_notetype_name = &old_notetype.name;
-        let new_fields = default_field_map(&old_notetype, &new_notetype);
-        let new_templates = default_template_map(&old_notetype, &new_notetype);
-        Ok(NotetypeChangeInfo {
-            input: ChangeNotetypeInput {
-                current_schema,
-                note_ids: vec![],
-                old_notetype_name: old_notetype_name.clone(),
-                old_notetype_id,
-                new_notetype_id,
-                new_fields,
-                new_templates,
-            },
-            old_notetype_name: old_notetype_name.clone(),
-            old_field_names: old_notetype.fields.iter().map(|f| f.name.clone()).collect(),
-            old_template_names: old_notetype
-                .templates
-                .iter()
-                .map(|f| f.name.clone())
-                .collect(),
-            new_field_names: new_notetype.fields.iter().map(|f| f.name.clone()).collect(),
-            new_template_names: new_notetype
-                .templates
-                .iter()
-                .map(|f| f.name.clone())
-                .collect(),
-        })
-    }
-
-    pub fn change_notetype_of_notes(&mut self, input: ChangeNotetypeInput) -> Result<OpOutput<()>> {
-        self.transact(Op::ChangeNotetype, |col| {
-            col.change_notetype_of_notes_inner(input)
-        })
-    }
-}
-
+#[cfg(test)]
 fn default_template_map(
     current_notetype: &Notetype,
     new_notetype: &Notetype,
@@ -171,6 +122,7 @@ fn default_template_map(
     }
 }
 
+#[cfg(test)]
 fn default_field_map(current_notetype: &Notetype, new_notetype: &Notetype) -> Vec<Option<usize>> {
     // name -> (ordinal, is_used)
     let mut existing_fields: HashMap<&str, (usize, bool)> = current_notetype
@@ -372,6 +324,57 @@ fn remap_fields(fields: &mut Vec<String>, new_fields: &[Option<usize>]) {
             }
         })
         .collect();
+}
+
+#[cfg(test)]
+impl Collection {
+    pub fn notetype_change_info(
+        &mut self,
+        old_notetype_id: NotetypeId,
+        new_notetype_id: NotetypeId,
+    ) -> Result<NotetypeChangeInfo> {
+        let old_notetype = self
+            .get_notetype(old_notetype_id)?
+            .or_not_found(old_notetype_id)?;
+        let new_notetype = self
+            .get_notetype(new_notetype_id)?
+            .or_not_found(new_notetype_id)?;
+
+        let current_schema = self.storage.get_collection_timestamps()?.schema_change;
+        let old_notetype_name = &old_notetype.name;
+        let new_fields = default_field_map(&old_notetype, &new_notetype);
+        let new_templates = default_template_map(&old_notetype, &new_notetype);
+        Ok(NotetypeChangeInfo {
+            input: ChangeNotetypeInput {
+                current_schema,
+                note_ids: vec![],
+                old_notetype_name: old_notetype_name.clone(),
+                old_notetype_id,
+                new_notetype_id,
+                new_fields,
+                new_templates,
+            },
+            old_notetype_name: old_notetype_name.clone(),
+            old_field_names: old_notetype.fields.iter().map(|f| f.name.clone()).collect(),
+            old_template_names: old_notetype
+                .templates
+                .iter()
+                .map(|f| f.name.clone())
+                .collect(),
+            new_field_names: new_notetype.fields.iter().map(|f| f.name.clone()).collect(),
+            new_template_names: new_notetype
+                .templates
+                .iter()
+                .map(|f| f.name.clone())
+                .collect(),
+        })
+    }
+
+    pub fn change_notetype_of_notes(&mut self, input: ChangeNotetypeInput) -> Result<OpOutput<()>> {
+        self.transact(Op::ChangeNotetype, |col| {
+            col.change_notetype_of_notes_inner(input)
+        })
+    }
 }
 
 #[cfg(test)]

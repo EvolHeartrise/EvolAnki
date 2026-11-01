@@ -2,15 +2,12 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 mod bulkadd;
-mod complete;
 mod matcher;
 mod notes;
 mod register;
 mod remove;
 mod rename;
-mod reparent;
 mod service;
-mod tree;
 pub(crate) mod undo;
 
 use unicase::UniCase;
