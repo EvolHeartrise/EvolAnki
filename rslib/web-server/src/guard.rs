@@ -164,7 +164,11 @@ mod test {
     fn origins() {
         let host = ("host", "127.0.0.1:8765");
         assert!(run(Method::POST, &[host, BIN]).is_ok());
-        assert!(run(Method::POST, &[host, BIN, ("origin", "http://127.0.0.1:8765")]).is_ok());
+        assert!(run(
+            Method::POST,
+            &[host, BIN, ("origin", "http://127.0.0.1:8765")]
+        )
+        .is_ok());
         for origin in [
             "https://evil.example",
             "null",
@@ -177,14 +181,21 @@ mod test {
                 run(Method::POST, &[host, BIN, ("origin", origin)]).is_err(),
                 "{origin}"
             );
-            assert!(run(Method::GET, &[host, ("origin", origin)]).is_err(), "{origin}");
+            assert!(
+                run(Method::GET, &[host, ("origin", origin)]).is_err(),
+                "{origin}"
+            );
         }
     }
 
     #[test]
     fn fetch_metadata_and_content_type() {
         let host = ("host", "127.0.0.1:8765");
-        assert!(run(Method::POST, &[host, BIN, ("sec-fetch-site", "same-origin")]).is_ok());
+        assert!(run(
+            Method::POST,
+            &[host, BIN, ("sec-fetch-site", "same-origin")]
+        )
+        .is_ok());
         assert!(run(Method::POST, &[host, BIN, ("sec-fetch-site", "cross-site")]).is_err());
         assert!(run(Method::POST, &[host, BIN, ("sec-fetch-site", "same-site")]).is_err());
         assert!(run(Method::POST, &[host]).is_err());

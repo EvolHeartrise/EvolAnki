@@ -158,9 +158,10 @@ fn open_collection(backend: &Backend, path: &Path) -> Result<PathBuf> {
     let parent = path.parent().filter(|p| !p.as_os_str().is_empty());
     let parent = parent.unwrap_or(Path::new("."));
     std::fs::create_dir_all(parent).with_context(|| parent.display().to_string())?;
-    let path = parent
-        .canonicalize()?
-        .join(path.file_name().context("collection path has no filename")?);
+    let path = parent.canonicalize()?.join(
+        path.file_name()
+            .context("collection path has no filename")?,
+    );
 
     // same layout as media_paths_from_col_path() in pylib, so that collections are
     // interchangeable with a desktop profile
@@ -221,9 +222,7 @@ async fn rpc_response(state: Arc<AppState>, method: String, body: Bytes) -> Resp
         tokio::task::spawn_blocking(move || rpc::run(&state.backend, &method, &body)).await;
     match result {
         Ok(Ok(output)) if output.is_empty() => StatusCode::NO_CONTENT.into_response(),
-        Ok(Ok(output)) => {
-            ([(header::CONTENT_TYPE, "application/binary")], output).into_response()
-        }
+        Ok(Ok(output)) => ([(header::CONTENT_TYPE, "application/binary")], output).into_response(),
         Ok(Err(err)) => {
             tracing::info!("{name}: {}", err.message);
             (err.status, err.message).into_response()

@@ -271,7 +271,8 @@ async fn media(state: &AppState, path: &str, request: Request) -> Response {
         Err(_) => return invalid_path(StatusCode::NOT_FOUND, path),
     }
 
-    // ServeFile adds conditional and range requests, which audio/video seeking needs
+    // ServeFile adds conditional and range requests, which audio/video seeking
+    // needs
     let mut response = match ServeFile::new(&full).oneshot(request).await {
         Ok(response) => response.into_response(),
         Err(err) => return text_response(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),

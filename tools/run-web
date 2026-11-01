@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Build the web assets and server, then serve a collection on 127.0.0.1.
+#   tools/run-web [path/to/collection.anki2] [extra evolanki-server args]
+# With no path, a demo collection in out/web-dev is created on first use.
+set -e
+cd "$(dirname "$0")/.."
+
+./ninja qt:aqt:data:web:sveltekit qt:aqt:data:web:css qt:aqt:data:web:imgs \
+    qt:aqt:data:web:js qt:aqt:data:web:js:vendor
+
+export CARGO_TARGET_DIR="$PWD/out/rust"
+if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then
+    collection=$1
+    shift
+    exec cargo run -p evolanki-server -- --collection "$collection" "$@"
+fi
+exec cargo run -p evolanki-server -- --collection out/web-dev/demo.anki2 --create --seed-demo "$@"

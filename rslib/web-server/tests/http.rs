@@ -191,7 +191,8 @@ impl Server {
         O::decode(reply.body.as_slice()).unwrap()
     }
 
-    /// SIGTERM, then check that the collection was closed in an orderly fashion.
+    /// SIGTERM, then check that the collection was closed in an orderly
+    /// fashion.
     fn stop(mut self) {
         let pid = self.child.id().to_string();
         assert!(Command::new("kill").arg(&pid).status().unwrap().success());
@@ -335,31 +336,73 @@ fn bad_hosts_and_origins_are_refused() {
     let binary = ("Content-Type", "application/binary");
     let path = "/_anki/getGraphPreferences";
 
-    assert_eq!(server.raw("GET", "/graphs", &[("Host", &host)], b"").status, 200);
-    assert_eq!(server.raw("GET", "/graphs", &[("Host", &localhost)], b"").status, 200);
-    assert_eq!(server.raw("POST", path, &[("Host", &localhost), binary], b"").status, 200);
+    assert_eq!(
+        server.raw("GET", "/graphs", &[("Host", &host)], b"").status,
+        200
+    );
+    assert_eq!(
+        server
+            .raw("GET", "/graphs", &[("Host", &localhost)], b"")
+            .status,
+        200
+    );
+    assert_eq!(
+        server
+            .raw("POST", path, &[("Host", &localhost), binary], b"")
+            .status,
+        200
+    );
 
     // DNS rebinding
-    for bad in ["evil.example", "evil.example:80", "127.0.0.1", "localhost:1"] {
-        assert_eq!(server.raw("GET", "/graphs", &[("Host", bad)], b"").status, 403, "{bad}");
-        assert_eq!(server.raw("POST", path, &[("Host", bad), binary], b"").status, 403, "{bad}");
+    for bad in [
+        "evil.example",
+        "evil.example:80",
+        "127.0.0.1",
+        "localhost:1",
+    ] {
+        assert_eq!(
+            server.raw("GET", "/graphs", &[("Host", bad)], b"").status,
+            403,
+            "{bad}"
+        );
+        assert_eq!(
+            server
+                .raw("POST", path, &[("Host", bad), binary], b"")
+                .status,
+            403,
+            "{bad}"
+        );
     }
     assert_eq!(server.raw("GET", "/graphs", &[], b"").status, 403);
     let absolute = format!("http://evil.example:{}/graphs", server.port);
-    assert_eq!(server.raw("GET", &absolute, &[("Host", &host)], b"").status, 403);
+    assert_eq!(
+        server.raw("GET", &absolute, &[("Host", &host)], b"").status,
+        403
+    );
 
     // other sites
     for origin in ["https://evil.example", "null", "http://localhost:1"] {
         let headers = [("Host", host.as_str()), ("Origin", origin), binary];
-        assert_eq!(server.raw("POST", path, &headers, b"").status, 403, "{origin}");
+        assert_eq!(
+            server.raw("POST", path, &headers, b"").status,
+            403,
+            "{origin}"
+        );
     }
-    let headers = [("Host", host.as_str()), ("Sec-Fetch-Site", "cross-site"), binary];
+    let headers = [
+        ("Host", host.as_str()),
+        ("Sec-Fetch-Site", "cross-site"),
+        binary,
+    ];
     assert_eq!(server.raw("POST", path, &headers, b"").status, 403);
 
     // types a cross-origin form or simple fetch can send
     let headers = [("Host", host.as_str()), ("Content-Type", "text/plain")];
     assert_eq!(server.raw("POST", path, &headers, b"").status, 403);
-    assert_eq!(server.raw("POST", path, &[("Host", &host)], b"").status, 403);
+    assert_eq!(
+        server.raw("POST", path, &[("Host", &host)], b"").status,
+        403
+    );
 }
 
 #[test]
@@ -373,9 +416,15 @@ fn media_is_served_safely() {
 
     let reply = server.get("/pic.svg");
     assert_eq!(reply.status, 200);
-    assert_eq!(reply.header("content-type").as_deref(), Some("image/svg+xml"));
+    assert_eq!(
+        reply.header("content-type").as_deref(),
+        Some("image/svg+xml")
+    );
     let csp = reply.header("content-security-policy").unwrap();
-    assert!(csp.contains("script-src 'none'") && csp.contains("sandbox"), "{csp}");
+    assert!(
+        csp.contains("script-src 'none'") && csp.contains("sandbox"),
+        "{csp}"
+    );
 
     let reply = server.get("/sp%20ace%20%C3%A9.txt");
     assert_eq!(reply.text(), "0123456789");
@@ -429,8 +478,14 @@ fn pages_have_the_expected_headers() {
             reply.header("content-security-policy").as_deref(),
             Some("frame-ancestors 'none'")
         );
-        assert!(!reply.text().contains("content-security-policy"), "{trusted}");
-        assert_eq!(reply.header("x-content-type-options").as_deref(), Some("nosniff"));
+        assert!(
+            !reply.text().contains("content-security-policy"),
+            "{trusted}"
+        );
+        assert_eq!(
+            reply.header("x-content-type-options").as_deref(),
+            Some("nosniff")
+        );
     }
 
     let reply = server.get("/editor/");
@@ -445,7 +500,10 @@ fn pages_have_the_expected_headers() {
         reply.header("content-type").as_deref(),
         Some("application/javascript")
     );
-    assert_eq!(reply.header("cache-control").as_deref(), Some("max-age=31536000"));
+    assert_eq!(
+        reply.header("cache-control").as_deref(),
+        Some("max-age=31536000")
+    );
     assert_eq!(server.get("/_anki/sveltekit/index.html").status, 200);
     assert_eq!(server.get("/_app/immutable/missing.mjs").status, 404);
     assert_eq!(server.get("/_anki/readyz").status, 200);

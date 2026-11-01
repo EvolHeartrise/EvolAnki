@@ -36,9 +36,6 @@ fn main() -> Result<()> {
         }
     }
     out.push_str("];\n");
-    fs::write(
-        PathBuf::from(env::var("OUT_DIR")?).join("methods.rs"),
-        out,
-    )?;
+    fs::write(PathBuf::from(env::var("OUT_DIR")?).join("methods.rs"), out)?;
     Ok(())
 }

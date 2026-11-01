@@ -12,9 +12,9 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use anki::backend::Backend;
+use anki_proto::backend::backend_error::Kind;
 use anki_proto::backend::BackendError;
 use anki_proto::backend::BackendInit;
-use anki_proto::backend::backend_error::Kind;
 use anki_proto::generic;
 use anki_proto::scheduler::CongratsInfoResponse;
 use anyhow::anyhow;
@@ -106,9 +106,18 @@ pub const ALLOWED: &[&str] = &[
 /// have no meaning here yet, so they fail loudly rather than pretending to
 /// have worked.
 pub const UNSUPPORTED: &[(&str, &str)] = &[
-    ("getSchedulingStatesWithContext", "reviewer state lives in the Qt reviewer"),
-    ("setSchedulingStates", "reviewer state lives in the Qt reviewer"),
-    ("deckOptionsRequireClose", "there is no deck options dialog to close"),
+    (
+        "getSchedulingStatesWithContext",
+        "reviewer state lives in the Qt reviewer",
+    ),
+    (
+        "setSchedulingStates",
+        "reviewer state lives in the Qt reviewer",
+    ),
+    (
+        "deckOptionsRequireClose",
+        "there is no deck options dialog to close",
+    ),
     ("importDone", "there is no import dialog"),
     ("importDialogRequireClose", "there is no import dialog"),
     ("searchInBrowser", "there is no card browser yet"),
@@ -122,15 +131,24 @@ pub const UNSUPPORTED: &[(&str, &str)] = &[
     ("closeEditCurrent", "there is no edit window"),
     ("openLink", "the page should open links itself"),
     ("askUser", "the page should ask with its own UI"),
-    ("showMessageBox", "the page should show messages with its own UI"),
+    (
+        "showMessageBox",
+        "the page should show messages with its own UI",
+    ),
     ("openFieldsDialog", "there is no fields dialog"),
     ("openCardsDialog", "there is no card layout dialog"),
     ("getProfileConfigJson", "there are no profiles"),
     ("setProfileConfigJson", "there are no profiles"),
     ("getMetaJson", "there is no profile metadata"),
     ("setMetaJson", "there is no profile metadata"),
-    ("readClipboard", "the server has no access to your clipboard"),
-    ("writeClipboard", "the server has no access to your clipboard"),
+    (
+        "readClipboard",
+        "the server has no access to your clipboard",
+    ),
+    (
+        "writeClipboard",
+        "the server has no access to your clipboard",
+    ),
     ("saveCustomColours", "it reads Qt's colour dialog"),
 ];
 
@@ -222,9 +240,8 @@ pub fn run(backend: &Backend, method: &str, input: &[u8]) -> Result<Vec<u8>, Rpc
         // page call Qt bridge commands, which don't exist here.
         "congratsInfo" => {
             let output = call(backend, method, input)?;
-            let mut info = CongratsInfoResponse::decode(output.as_slice()).map_err(|err| {
-                RpcError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-            })?;
+            let mut info = CongratsInfoResponse::decode(output.as_slice())
+                .map_err(|err| RpcError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
             info.bridge_commands_supported = false;
             Ok(info.encode_to_vec())
         }
