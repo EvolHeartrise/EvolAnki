@@ -1,6 +1,5 @@
 ### Text shown on the "Deck Options" screen
 
-
 ## Top section
 
 deck-config-default-name = Default
@@ -244,7 +243,6 @@ deck-config-revert-button-tooltip = Restore this setting to its default value?
 ## These strings are shown via the Description button at the bottom of the
 ## overview screen.
 
-
 ## Warnings shown to the user
 
 deck-config-reviews-too-low =
@@ -257,7 +255,6 @@ deck-config-too-short-maximum-interval = A maximum interval less than 6 months i
 deck-config-ignore-before-info = (Approximately) { $included }/{ $totalCards } cards will be used to optimize the FSRS parameters.
 
 ## Selecting a deck
-
 
 ## Messages related to the FSRS scheduler
 

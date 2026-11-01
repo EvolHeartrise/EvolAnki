@@ -24,7 +24,6 @@
         "@sveltejs/adapter-static": "^3.0.10",
         "@sveltejs/kit": "^2.70.3",
         "@sveltejs/vite-plugin-svelte": "5.1",
-        "@types/bootstrap": "^5.2.11",
         "@types/d3": "^7.0.0",
         "@types/diff": "^5.0.0",
         "@types/lodash-es": "^4.17.4",

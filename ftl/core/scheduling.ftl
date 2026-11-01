@@ -62,5 +62,4 @@ scheduling-maximum-interval = Maximum interval
 scheduling-maximum-reviewsday = Maximum reviews/day
 scheduling-new-cards = New Cards
 scheduling-new-cardsday = New cards/day
-scheduling-reviews = Reviews
 scheduling-show-answer-timer = Show on-screen timer

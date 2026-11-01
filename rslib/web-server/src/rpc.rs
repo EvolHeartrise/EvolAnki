@@ -72,7 +72,6 @@ pub const ALLOWED: &[&str] = &[
     "encodeIriPaths",
     // ConfigService
     "getConfigBool",
-    // CardsService
 ];
 
 static INDEXES: LazyLock<HashMap<&'static str, (u32, u32)>> = LazyLock::new(|| {

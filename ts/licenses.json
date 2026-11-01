@@ -41,14 +41,6 @@
         "path": "node_modules/@mdi/svg",
         "licenseFile": "node_modules/@mdi/svg/LICENSE"
     },
-    "@popperjs/core@2.11.8": {
-        "licenses": "MIT",
-        "repository": "https://github.com/popperjs/popper-core",
-        "publisher": "Federico Zivolo",
-        "email": "federico.zivolo@gmail.com",
-        "path": "node_modules/@popperjs/core",
-        "licenseFile": "node_modules/@popperjs/core/LICENSE.md"
-    },
     "bootstrap-icons@1.13.1": {
         "licenses": "MIT",
         "repository": "https://github.com/twbs/icons",

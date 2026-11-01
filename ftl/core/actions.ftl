@@ -21,12 +21,10 @@ actions-add-deck = Add Deck
 actions-add-note = Add Note
 actions-update-tag = Update Tag
 actions-update-note = Update Note
-actions-update-card = Update Card
 actions-update-deck = Update Deck
 actions-forget-card = Reset Card
 actions-build-filtered-deck = Build Deck
 actions-add-notetype = Add Note Type
-actions-remove-notetype = Remove Note Type
 actions-update-notetype = Update Note Type
 actions-update-config = Update Config
 

@@ -1,9 +1,5 @@
-# The date a card will be ready to review
-statistics-due-date = Due
 # The count of cards waiting to be reviewed
 statistics-due-count = Due
-# Shown in the Due column of the Browse screen when the card is a new card
-statistics-due-for-new-card = New #{ $number }
 
 ## eg 16.8s (3.6 cards/minute)
 
@@ -37,11 +33,6 @@ statistics-in-time-span-months =
     { $amount ->
         [one] in { $amount } month
        *[other] in { $amount } months
-    }
-statistics-in-time-span-years =
-    { $amount ->
-        [one] in { $amount } year
-       *[other] in { $amount } years
     }
 # Shown at the bottom of the deck list, and in the statistics screen.
 # eg "Studied 3 cards in 13 seconds today (4.33s/card)."

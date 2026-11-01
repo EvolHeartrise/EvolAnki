@@ -8,9 +8,6 @@ card-template-rendering-front-side-problem = Front template has a problem:
 card-template-rendering-back-side-problem = Back template has a problem:
 card-template-rendering-browser-front-side-problem = Browser-specific front template has a problem:
 card-template-rendering-browser-back-side-problem = Browser-specific back template has a problem:
-# when the user forgot to close a field reference,
-# eg, Missing '}}' in '{{Field'
-card-template-rendering-no-closing-brackets = Missing '{ $missing }' in '{ $tag }'
 # when the user opened a conditional, but forgot to close it
 # eg, Missing '{{/Conditional}}'
 card-template-rendering-conditional-not-closed = Missing '{ $missing }'

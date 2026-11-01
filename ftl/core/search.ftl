@@ -29,8 +29,5 @@ search-invalid-answer-button = expected an answer button between 1-4 in "`{ $con
 
 ## Column labels in browse screen
 
-search-note-modified = Note Modified
-search-card-modified = Card Modified
-
 ##
 

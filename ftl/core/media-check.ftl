@@ -46,9 +46,7 @@ media-check-checked = Checked { $count }...
 
 ## Deleting unused media
 
-
 ## Rendering LaTeX
-
 
 ## Buttons
 
