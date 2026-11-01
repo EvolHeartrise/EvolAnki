@@ -139,6 +139,7 @@ statistics-true-retention-not-applicable = N/A
 ##
 
 statistics-range-all-time = all
+statistics-range-1-year-history = last 12 months
 statistics-range-all-history = all history
 statistics-range-deck = deck
 statistics-range-collection = collection

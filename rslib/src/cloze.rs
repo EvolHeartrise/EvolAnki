@@ -2,7 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::sync::LazyLock;

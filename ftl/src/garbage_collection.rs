@@ -150,7 +150,7 @@ fn extract_references_from_file(refs: &mut HashSet<String>, entry: &DirEntry) {
     static SNAKECASE_TR: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"\Wtr\s*\.([0-9a-z_]+)\W").unwrap());
     static CAMELCASE_TR: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"\Wtr2?\.([0-9A-Za-z_]+)\W").unwrap());
+        LazyLock::new(|| Regex::new(r"\Wtr2?\s*\.([0-9A-Za-z_]+)\W").unwrap());
     static DESIGNER_STYLE_TR: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"<string>([0-9a-z_]+)</string>").unwrap());
 
@@ -172,8 +172,24 @@ fn extract_references_from_file(refs: &mut HashSet<String>, entry: &DirEntry) {
 
     let source = fs::read_to_string(entry.path()).expect("file not readable");
     for caps in regex.captures_iter(&source) {
-        refs.insert(case_conversion(&caps[1]));
+        let name = case_conversion(&caps[1]);
+        // generated names run digits into the word before, as in key-2 => key2
+        refs.insert(with_numbers_split(&name));
+        refs.insert(name);
     }
+}
+
+fn with_numbers_split(name: &str) -> String {
+    let mut split = String::with_capacity(name.len() + 2);
+    let mut previous = '-';
+    for ch in name.chars() {
+        if ch.is_ascii_digit() && previous.is_ascii_alphabetic() {
+            split.push('-');
+        }
+        split.push(ch);
+        previous = ch;
+    }
+    split
 }
 
 fn snake_to_kebab_case(name: &str) -> String {
@@ -199,6 +215,8 @@ mod test {
 
     #[test]
     fn case_conversion() {
+        assert_eq!(with_numbers_split("config-tooltip2"), "config-tooltip-2");
+        assert_eq!(with_numbers_split("range1-year"), "range-1-year");
         assert_eq!(snake_to_kebab_case("foo"), "foo");
         assert_eq!(snake_to_kebab_case("foo_bar"), "foo-bar");
         assert_eq!(snake_to_kebab_case("foo_123"), "foo-123");

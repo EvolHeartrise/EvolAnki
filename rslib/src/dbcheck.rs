@@ -251,7 +251,7 @@ impl Collection {
         for (ntid, group) in &nids_by_notetype.into_iter().chunk_by(|tup| tup.0) {
             debug!("check notetype: {}", ntid);
             let mut group = group.peekable();
-            let mut nt = match self.get_notetype(ntid)? {
+            let nt = match self.get_notetype(ntid)? {
                 None => {
                     let first_note = self.storage.get_note(group.peek().unwrap().1)?.unwrap();
                     out.notetypes_recovered += 1;
@@ -259,7 +259,6 @@ impl Collection {
                 }
                 Some(nt) => nt,
             };
-
 
             let mut genctx = None;
             for (_, nid) in group {

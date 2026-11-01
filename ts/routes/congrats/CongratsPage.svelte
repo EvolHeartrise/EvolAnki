@@ -62,11 +62,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
             {#if info.deckDescription}
                 <div class="description">
-                    {#if webApp}
-                        <UntrustedHtml html={info.deckDescription} />
-                    {:else}
-                        {@html info.deckDescription}
-                    {/if}
+                    <UntrustedHtml html={info.deckDescription} />
                 </div>
             {/if}
         </div>

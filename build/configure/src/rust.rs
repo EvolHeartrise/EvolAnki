@@ -10,7 +10,6 @@ use ninja_gen::cargo::CargoFormat;
 use ninja_gen::cargo::CargoTest;
 use ninja_gen::cargo::RustOutput;
 use ninja_gen::glob;
-use ninja_gen::hash::simple_hash;
 use ninja_gen::input::BuildInput;
 use ninja_gen::inputs;
 use ninja_gen::Build;
@@ -25,10 +24,7 @@ fn prepare_translations(build: &mut Build) -> Result<()> {
     build.add_action(
         "rslib:i18n",
         CargoBuild {
-            inputs: inputs![
-                glob!["rslib/i18n/**"],
-                glob!["ftl/core/**"],
-            ],
+            inputs: inputs![glob!["rslib/i18n/**"], glob!["ftl/core/**"],],
             outputs: &[RustOutput::Data("ts", "ts/lib/generated/ftl.ts")],
             extra_args: "-p anki_i18n",
             release_override: None,

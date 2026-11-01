@@ -126,7 +126,43 @@ deck-config-bury-priority-tooltip =
 
 deck-config-ordering-title = Display Order
 deck-config-new-gather-priority = New card gather order
+deck-config-new-gather-priority-tooltip-3 =
+    `Deck`: Gathers cards from each subdeck in order, starting from the top. Cards from each subdeck are
+    gathered in ascending position. If the daily limit of the selected deck is reached, gathering
+    can stop before all subdecks have been checked. This order is fastest in large collections, and
+    allows you to prioritize subdecks that are closer to the top.
+    
+    `Deck, then random notes`: Like `Random notes`, but goes through subdecks in order,
+    as `Deck` does, picking notes at random within each subdeck and gathering all of their cards.
+    
+    `Ascending position`: Gathers cards by ascending position (due #), which is typically
+    the oldest-added first.
+    
+    `Descending position`: Gathers cards by descending position (due #), which is typically
+    the latest-added first.
+    
+    `Random notes`: Picks notes at random, then gathers all of its cards.
+    
+    `Random cards`: Gathers cards in a random order.
 deck-config-new-card-sort-order = New card sort order
+deck-config-new-card-sort-order-tooltip-2 =
+    `Card type, then order gathered`: Shows cards in order of card type number.
+    Cards of each card type number are shown in the order they were gathered. 
+    If you have sibling burying disabled, this will ensure all front→back cards are seen before any back→front cards.
+    This is useful to have all cards of the same note shown in the same session, but not
+    too close to one another.
+    
+    `Order gathered`: Shows cards exactly as they were gathered. If sibling burying is disabled,
+    this will typically result in all cards of a note being seen one after the other.
+    
+    `Card type, then random`: Shows cards in order of card type number. Cards of each card
+    type number are shown in a random order. This order is useful if you don't want sibling cards
+    to appear too close to each other, but still want the cards to appear in a random order.
+    
+    `Random note, then card type`: Picks notes at random, then shows all of its cards
+    in order.
+    
+    `Random`: Shows cards in a random order.
 deck-config-new-review-priority = New/review order
 deck-config-new-review-priority-tooltip = When to show new cards in relation to review cards.
 deck-config-interday-step-priority = Interday learning/review order
@@ -215,12 +251,16 @@ deck-config-stop-timer-on-answer-tooltip =
 ## Auto Advance section
 
 deck-config-seconds-to-show-question = Seconds to show question for
+deck-config-seconds-to-show-question-tooltip-3 = When auto advance is activated, the number of seconds to wait before applying the question action. Set to 0 to disable.
 deck-config-seconds-to-show-answer = Seconds to show answer for
+deck-config-seconds-to-show-answer-tooltip-2 = When auto advance is activated, the number of seconds to wait before applying the answer action. Set to 0 to disable.
 deck-config-question-action-show-answer = Show Answer
 deck-config-question-action-show-reminder = Show Reminder
 deck-config-question-action = Question action
 deck-config-question-action-tool-tip = The action to perform after the question is shown, and time has elapsed.
 deck-config-answer-action = Answer action
+deck-config-answer-action-tooltip-2 = The action to perform after the answer is shown, and time has elapsed.
+deck-config-wait-for-audio-tooltip-2 = Wait for audio to finish before automatically applying the question action or answer action.
 
 ## Audio section
 
@@ -355,6 +395,9 @@ deck-config-reschedule-cards-warning =
     
     Use this option sparingly, as it will add a review entry to each of your cards, and
     increase the size of your collection.
+deck-config-ignore-before-tooltip-2 =
+    If set, cards reviewed before the provided date will be ignored when optimizing FSRS parameters.
+    This can be useful if you imported someone else's scheduling data, or have changed the way you use the answer buttons.
 deck-config-compute-optimal-weights-tooltip2 =
     When you click the Optimize button, FSRS will analyze your review history, and generate parameters that are 
     optimal for your memory and the content you're studying. If your decks vary wildly in subjective difficulty, it 
@@ -376,6 +419,7 @@ deck-config-percent-of-reviews =
         [one] { $pct }% of { $reviews } review
        *[other] { $pct }% of { $reviews } reviews
     }
+deck-config-percent-input = { $pct }%
 # This message appears during FSRS parameter optimization.
 deck-config-checking-for-improvement = Checking for improvement...
 deck-config-fsrs-params-optimal = The FSRS parameters are currently optimal. This is expected once parameters are well-fitted to your review history. You can try optimizing again after doing more reviews.
