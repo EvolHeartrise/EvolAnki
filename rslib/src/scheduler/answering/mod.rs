@@ -315,7 +315,25 @@ impl Collection {
     /// Answer card, writing its new state to the database.
     /// Provided [CardAnswer] has its answer time capped to deck preset.
     pub fn answer_card(&mut self, answer: &mut CardAnswer) -> Result<OpOutput<()>> {
-        self.transact(Op::AnswerCard, |col| col.answer_card_inner(answer))
+        self.transact(Op::AnswerCard, |col| {
+            col.require_card_still_in_study(answer.card_id)?;
+            col.answer_card_inner(answer)
+        })
+    }
+
+    /// A card can be suspended or buried from elsewhere while it's on screen.
+    /// Its state is unchanged, so without this the answer would be taken, and
+    /// quietly bring the card back.
+    fn require_card_still_in_study(&mut self, card_id: CardId) -> Result<()> {
+        let card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
+        require!(
+            !matches!(
+                card.queue,
+                CardQueue::Suspended | CardQueue::SchedBuried | CardQueue::UserBuried
+            ),
+            "This card was suspended or buried while it was showing, so that answer wasn't recorded."
+        );
+        Ok(())
     }
 
     pub(crate) fn answer_card_inner(&mut self, answer: &mut CardAnswer) -> Result<()> {
