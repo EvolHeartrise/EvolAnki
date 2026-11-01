@@ -44,10 +44,7 @@ const URI_PATH_SAFE: &AsciiSet = &NON_ALPHANUMERIC
 
 /// `<target folder>/conversion`: the snapshot, and what was hashed.
 pub fn conversion_folder(target: &Path) -> PathBuf {
-    target
-        .parent()
-        .unwrap_or(Path::new("."))
-        .join("conversion")
+    target.parent().unwrap_or(Path::new(".")).join("conversion")
 }
 
 pub fn snapshot_path(target: &Path) -> PathBuf {
@@ -72,9 +69,7 @@ pub fn open_immutable(path: &Path) -> Result<Connection> {
         uri,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
     )?;
-    db.create_collation("unicase", |a, b| {
-        a.to_lowercase().cmp(&b.to_lowercase())
-    })?;
+    db.create_collation("unicase", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))?;
     Ok(db)
 }
 
@@ -123,8 +118,14 @@ pub fn hash_source(collection: &Path, media: &Path, media_db: &Path) -> Result<V
     let mut out = BTreeMap::new();
     for (key, path) in [
         ("collection", collection.to_path_buf()),
-        ("wal", PathBuf::from(format!("{}-wal", collection.display()))),
-        ("shm", PathBuf::from(format!("{}-shm", collection.display()))),
+        (
+            "wal",
+            PathBuf::from(format!("{}-wal", collection.display())),
+        ),
+        (
+            "shm",
+            PathBuf::from(format!("{}-shm", collection.display())),
+        ),
         ("media_db", media_db.to_path_buf()),
     ] {
         if path.exists() {
@@ -175,7 +176,8 @@ fn looks_like_desktop_anki(args: &[String]) -> bool {
                 .any(|arg| arg == "aqt" || base(arg) == "anki" || base(arg) == "aqt"))
 }
 
-/// Refuses if desktop Anki is running, or anything has the profile's files open.
+/// Refuses if desktop Anki is running, or anything has the profile's files
+/// open.
 fn check_nothing_is_using(profile: &Path) -> Result<()> {
     let own_pid = std::process::id().to_string();
     let profile = profile.canonicalize()?;

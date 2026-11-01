@@ -204,4 +204,3 @@ fn fsrs_is_on(collection: &Path) -> bool {
     };
     read().is_ok_and(|value| value == b"true")
 }
-

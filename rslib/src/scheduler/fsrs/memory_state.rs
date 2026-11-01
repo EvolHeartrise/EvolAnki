@@ -436,7 +436,8 @@ impl Collection {
 
     /// For a collection whose flag is already on, yet may have cards with no
     /// memory state, such as after importing scheduling from an SM-2 client.
-    /// Clears the undo queue, so check [Self::count_missing_memory_states] first.
+    /// Clears the undo queue, so check [Self::count_missing_memory_states]
+    /// first.
     pub fn add_missing_fsrs_memory_states(&mut self) -> Result<()> {
         self.transact_no_undo(|col| col.add_missing_memory_states())
     }

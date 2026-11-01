@@ -359,7 +359,12 @@ fn note_show(admin: &Admin, args: &Value) -> Result<Value> {
             ntid: note.notetype_id,
         },
     )?;
-    let fields: BTreeMap<_, _> = nt.fields.iter().map(|f| &f.name).zip(&note.fields).collect();
+    let fields: BTreeMap<_, _> = nt
+        .fields
+        .iter()
+        .map(|f| &f.name)
+        .zip(&note.fields)
+        .collect();
     let cards: CardIds = call_typed(&admin.backend, "cardsOfNote", &NoteId { nid })?;
     let cards = cards
         .cids
@@ -626,8 +631,8 @@ fn card_unbury(admin: &Admin, args: &Value) -> Result<Value> {
     restore(admin, args, "is:buried")
 }
 
-/// The backend's call does both, so first narrow the cards down to the kind asked
-/// for.
+/// The backend's call does both, so first narrow the cards down to the kind
+/// asked for.
 fn restore(admin: &Admin, args: &Value, state: &str) -> Result<Value> {
     let wanted = card_targets(admin, args)?;
     let in_state: std::collections::HashSet<i64> =
@@ -742,8 +747,7 @@ fn now_secs() -> i64 {
 
 /// Every deck, and today's counts after limits.
 pub fn deck_rows_today(backend: &Backend) -> Result<Vec<Value>> {
-    let tree: DeckTreeNode =
-        call_typed(backend, "deckTree", &DeckTreeRequest { now: now_secs() })?;
+    let tree: DeckTreeNode = call_typed(backend, "deckTree", &DeckTreeRequest { now: now_secs() })?;
     let mut rows = vec![];
     deck_rows(&tree, "", &mut rows);
     Ok(rows)
@@ -851,13 +855,8 @@ fn filtered_create(admin: &Admin, args: &Value) -> Result<Value> {
         order: order(order_name)? as i32,
     }];
     update.allow_empty = false;
-    let added: OpChangesWithId =
-        call_typed(&admin.backend, "addOrUpdateFilteredDeck", &update)?;
-    let cards = search_ids(
-        &admin.backend,
-        "searchCards",
-        &format!("did:{}", added.id),
-    )?;
+    let added: OpChangesWithId = call_typed(&admin.backend, "addOrUpdateFilteredDeck", &update)?;
+    let cards = search_ids(&admin.backend, "searchCards", &format!("did:{}", added.id))?;
     Ok(json!({"id": added.id, "cards": cards.len()}))
 }
 
@@ -1038,8 +1037,7 @@ fn check_database(admin: &Admin, _args: &Value) -> Result<Value> {
 }
 
 fn check_media(admin: &Admin, _args: &Value) -> Result<Value> {
-    let checked: CheckMediaResponse =
-        call_typed(&admin.backend, "checkMedia", &generic::Empty {})?;
+    let checked: CheckMediaResponse = call_typed(&admin.backend, "checkMedia", &generic::Empty {})?;
     Ok(json!({
         "missing": checked.missing,
         "missing_media_notes": checked.missing_media_notes,
@@ -1049,8 +1047,7 @@ fn check_media(admin: &Admin, _args: &Value) -> Result<Value> {
 }
 
 fn cards_empty(admin: &Admin, args: &Value) -> Result<Value> {
-    let report: EmptyCardsReport =
-        call_typed(&admin.backend, "getEmptyCards", &generic::Empty {})?;
+    let report: EmptyCardsReport = call_typed(&admin.backend, "getEmptyCards", &generic::Empty {})?;
     let card_ids: Vec<i64> = report
         .notes
         .iter()
@@ -1182,8 +1179,7 @@ fn stats_summary(admin: &Admin, _args: &Value) -> Result<Value> {
     let timing: SchedTimingTodayResponse =
         call_typed(&admin.backend, "schedTimingToday", &generic::Empty {})?;
     let today = timing.days_elapsed;
-    let studied: generic::String =
-        call_typed(&admin.backend, "studiedToday", &generic::Empty {})?;
+    let studied: generic::String = call_typed(&admin.backend, "studiedToday", &generic::Empty {})?;
     let mut out = admin
         .backend
         .with_collection(|col| {

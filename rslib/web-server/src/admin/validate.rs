@@ -275,7 +275,14 @@ pub fn validate(target: &Path, report_path: &Path, work_dir: &Path) -> Result<Va
 
     let work = work_dir.join(format!("evolanki-validate-{}", std::process::id()));
     fs::create_dir_all(&work)?;
-    let result = validate_with_work_dir(&target, report_path, &work, &manifest, &snapshot, &converted);
+    let result = validate_with_work_dir(
+        &target,
+        report_path,
+        &work,
+        &manifest,
+        &snapshot,
+        &converted,
+    );
     let _ = fs::remove_dir_all(&work);
     result
 }
@@ -315,7 +322,10 @@ fn validate_with_work_dir(
             (before[key] == now[key]).to_string(),
         ]);
     }
-    out.table(&["file", "sha256 before conversion", "sha256 now", "same"], &rows);
+    out.table(
+        &["file", "sha256 before conversion", "sha256 now", "same"],
+        &rows,
+    );
     if *before != now {
         problems.push("the source's files changed since conversion".to_string());
     }
@@ -328,8 +338,17 @@ fn validate_with_work_dir(
     out.head("Counts");
     let mut rows = vec![];
     for table in [
-        "notes", "cards", "revlog", "decks", "notetypes", "deck_config", "fields", "templates",
-        "tags", "config", "graves",
+        "notes",
+        "cards",
+        "revlog",
+        "decks",
+        "notetypes",
+        "deck_config",
+        "fields",
+        "templates",
+        "tags",
+        "config",
+        "graves",
     ] {
         let sql = format!("select count() from {table}");
         let (a, b) = (scalar(snapshot, &sql)?, scalar(converted, &sql)?);
@@ -382,7 +401,9 @@ fn validate_with_work_dir(
     let revlog_result = compare(
         &rows_by_id(snapshot, revlog_sql)?,
         &rows_by_id(converted, revlog_sql)?,
-        &["cid", "usn", "ease", "ivl", "lastIvl", "factor", "time", "type"],
+        &[
+            "cid", "usn", "ease", "ivl", "lastIvl", "factor", "time", "type",
+        ],
     );
     out.line(format!(
         "- Revlog, every column of every row: {}",
@@ -394,8 +415,8 @@ fn validate_with_work_dir(
     let card_sql = "select id, due, ivl, queue, type, reps, lapses, factor, left, odue, odid, \
                     flags, did, ord, nid, mod, usn, data from cards";
     let card_columns = [
-        "due", "ivl", "queue", "type", "reps", "lapses", "factor", "left", "odue", "odid",
-        "flags", "did", "ord", "nid", "mod", "usn", "data",
+        "due", "ivl", "queue", "type", "reps", "lapses", "factor", "left", "odue", "odid", "flags",
+        "did", "ord", "nid", "mod", "usn", "data",
     ];
     let cards_before = rows_by_id(snapshot, card_sql)?;
     let cards_after = rows_by_id(converted, card_sql)?;
@@ -443,8 +464,8 @@ fn validate_with_work_dir(
         );
         let has = |data: &Value| data.get("s").is_some();
         match (has(&data_before), has(&data_after)) {
-            (true, true) if data_before["s"] == data_after["s"]
-                && data_before["d"] == data_after["d"] =>
+            (true, true)
+                if data_before["s"] == data_after["s"] && data_before["d"] == data_after["d"] =>
             {
                 had += 1;
                 kept += 1;
@@ -474,7 +495,11 @@ fn validate_with_work_dir(
                 no_last_review += 1;
             }
             *retentions
-                .entry(data_after.get("dr").map_or("none".into(), |d| d.to_string()))
+                .entry(
+                    data_after
+                        .get("dr")
+                        .map_or("none".into(), |d| d.to_string()),
+                )
                 .or_default() += 1;
         }
     }
@@ -508,13 +533,28 @@ fn validate_with_work_dir(
         .windows(2)
         .map(|w| {
             vec![
-                format!("{} to {}", w[0], if w[1] == f64::MAX { "more".into() } else { w[1].to_string() }),
-                stabilities.iter().filter(|s| **s >= w[0] && **s < w[1]).count().to_string(),
+                format!(
+                    "{} to {}",
+                    w[0],
+                    if w[1] == f64::MAX {
+                        "more".into()
+                    } else {
+                        w[1].to_string()
+                    }
+                ),
+                stabilities
+                    .iter()
+                    .filter(|s| **s >= w[0] && **s < w[1])
+                    .count()
+                    .to_string(),
             ]
         })
         .collect();
     out.table(&["stability, days", "cards"], &rows);
-    let out_of_range = difficulties.iter().filter(|d| !(1.0..=10.0).contains(*d)).count();
+    let out_of_range = difficulties
+        .iter()
+        .filter(|d| !(1.0..=10.0).contains(*d))
+        .count();
     out.line(format!(
         "Difficulty out of 1-10: {out_of_range}. Stored desired retention: {retentions:?}. Without a \
          stored decay, so read as FSRS 5's 0.5 until next answered: {no_decay}. Without a stored last \
@@ -544,21 +584,29 @@ fn validate_with_work_dir(
     media_section(&mut out, &backend, target, manifest, &mut problems)?;
     settings_section(&mut out, snapshot, converted, &parts)?;
     retrievability_section(&mut out, &backend, snapshot)?;
-    let checked: CheckDatabaseResponse =
-        call_typed(&backend, "checkDatabase", &generic::Empty {})?;
+    let checked: CheckDatabaseResponse = call_typed(&backend, "checkDatabase", &generic::Empty {})?;
     out.head("Database check");
     if checked.problems.is_empty() {
         out.line("The backend's database check, on a throwaway copy, found nothing to fix.");
     } else {
-        out.line("The backend's database check, on a throwaway copy, says:");
+        out.line(
+            "The backend's database check, on a throwaway copy, would do this. Nothing has been \
+             done to the target. Adding last review times is a repair only of a cached value.",
+        );
         out.line("");
         for problem in &checked.problems {
             out.line(format!("- {problem}"));
         }
-        problems.push(format!(
-            "the database check found problems: {:?}",
-            checked.problems
-        ));
+        // A newer field that Anki's older versions never filled in. It's worked
+        // out from due and interval until then, which gives the same answer.
+        let serious: Vec<_> = checked
+            .problems
+            .iter()
+            .filter(|problem| !problem.contains("last review time"))
+            .collect();
+        if !serious.is_empty() {
+            problems.push(format!("the database check found problems: {serious:?}"));
+        }
     }
     close_collection(&backend)?;
 
@@ -597,7 +645,10 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
     for did in deck_ids {
         let deck: Deck = call_typed(backend, "getDeck", &DeckId { did })?;
         if let Some(Kind::Normal(normal)) = deck.kind {
-            decks_of.entry(normal.config_id).or_default().push(deck.name);
+            decks_of
+                .entry(normal.config_id)
+                .or_default()
+                .push(deck.name);
         }
     }
     let mut rows = vec![];
@@ -632,7 +683,13 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
 
         // what the optimizer would say, on the throwaway copy
         if decks.is_empty() {
-            optimizer_rows.push(vec![preset.name.clone(), "no decks use it".into(), "-".into(), "-".into(), "-".into()]);
+            optimizer_rows.push(vec![
+                preset.name.clone(),
+                "no decks use it".into(),
+                "-".into(),
+                "-".into(),
+                "-".into(),
+            ]);
             continue;
         }
         let search = if config.param_search.is_empty() {
@@ -653,7 +710,13 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
             },
         );
         match computed {
-            Err(err) => optimizer_rows.push(vec![preset.name.clone(), format!("failed: {err:#}"), "-".into(), "-".into(), "-".into()]),
+            Err(err) => optimizer_rows.push(vec![
+                preset.name.clone(),
+                format!("failed: {err:#}"),
+                "-".into(),
+                "-".into(),
+                "-".into(),
+            ]),
             Ok(computed) => {
                 let evaluate = |params: &[f32]| -> String {
                     let evaluated: Result<EvaluateParamsResponse> = call_typed(
@@ -666,41 +729,87 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
                         },
                     );
                     match evaluated {
-                        Ok(e) => format!("log loss {:.4}, RMSE {:.2}%", e.log_loss, e.rmse_bins * 100.0),
+                        Ok(e) => format!(
+                            "log loss {:.4}, RMSE {:.2}%",
+                            e.log_loss,
+                            e.rmse_bins * 100.0
+                        ),
                         Err(err) => format!("couldn't evaluate: {err:#}"),
                     }
                 };
                 let same = computed.params == params || computed.params.is_empty();
                 optimizer_rows.push(vec![
                     preset.name.clone(),
-                    if same { "no change".to_string() } else {
-                        format!("{:?}", computed.params.iter().map(|p| (p * 10000.0).round() / 10000.0).collect::<Vec<_>>())
+                    if same {
+                        "no change".to_string()
+                    } else {
+                        format!(
+                            "{:?}",
+                            computed
+                                .params
+                                .iter()
+                                .map(|p| (p * 10000.0).round() / 10000.0)
+                                .collect::<Vec<_>>()
+                        )
                     },
                     computed.fsrs_items.to_string(),
-                    if params.is_empty() { "default params".to_string() } else { evaluate(&params) },
-                    if same { "-".to_string() } else { evaluate(&computed.params) },
+                    if params.is_empty() {
+                        "default params".to_string()
+                    } else {
+                        evaluate(&params)
+                    },
+                    if same {
+                        "-".to_string()
+                    } else {
+                        evaluate(&computed.params)
+                    },
                 ]);
             }
         }
     }
     out.table(
-        &["preset", "decks", "stored parameters", "desired ret.", "historical ret.", "new/day", "reviews/day", "max ivl", "ignore before", "param search"],
+        &[
+            "preset",
+            "decks",
+            "stored parameters",
+            "desired ret.",
+            "historical ret.",
+            "new/day",
+            "reviews/day",
+            "max ivl",
+            "ignore before",
+            "param search",
+        ],
         &rows,
     );
     out.line("### What the optimizer would suggest");
     out.line("");
-    out.line("Run on a throwaway copy. **Nothing has been saved**; that's for the owner to decide.");
+    out.line(
+        "Run on a throwaway copy. **Nothing has been saved**; that's for the owner to decide.",
+    );
     out.line("");
     out.table(
-        &["preset", "suggested parameters", "reviews used", "current", "suggested"],
+        &[
+            "preset",
+            "suggested parameters",
+            "reviews used",
+            "current",
+            "suggested",
+        ],
         &optimizer_rows,
     );
     Ok(PresetInfo { easy_days })
 }
 
-fn due_section(out: &mut Out, backend: &Backend, snapshot: &Connection, problems: &mut Vec<String>) -> Result<()> {
+fn due_section(
+    out: &mut Out,
+    backend: &Backend,
+    snapshot: &Connection,
+    problems: &mut Vec<String>,
+) -> Result<()> {
     out.head("Due today, against a stock calculation");
-    let timing: SchedTimingTodayResponse = call_typed(backend, "schedTimingToday", &generic::Empty {})?;
+    let timing: SchedTimingTodayResponse =
+        call_typed(backend, "schedTimingToday", &generic::Empty {})?;
     let today = timing.days_elapsed as i64;
     let cutoff = timing.next_day_at;
     let crt = scalar(snapshot, "select crt from col")?;
@@ -719,7 +828,10 @@ fn due_section(out: &mut Out, backend: &Backend, snapshot: &Connection, problems
         let did = deck["id"].as_i64().context("deck id")?;
         let name = deck["name"].as_str().unwrap_or_default().to_string();
         let count = |clause: String| -> Result<i64> {
-            scalar(snapshot, &format!("select count() from cards where did = {did} and {clause}"))
+            scalar(
+                snapshot,
+                &format!("select count() from cards where did = {did} and {clause}"),
+            )
         };
         let new = count("queue = 0".into())?;
         let intraday = count(format!("queue = 1 and due < {cutoff}"))?;
@@ -728,7 +840,13 @@ fn due_section(out: &mut Out, backend: &Backend, snapshot: &Connection, problems
         let proto: Deck = call_typed(backend, "getDeck", &DeckId { did })?;
         let (new_stock, learn_stock, review_stock) = match proto.kind {
             Some(Kind::Normal(normal)) => {
-                let preset: DeckConfig = call_typed(backend, "getDeckConfig", &DeckConfigId { dcid: normal.config_id })?;
+                let preset: DeckConfig = call_typed(
+                    backend,
+                    "getDeckConfig",
+                    &DeckConfigId {
+                        dcid: normal.config_id,
+                    },
+                )?;
                 let config = preset.config.context("preset config")?;
                 let review_limit = normal.review_limit.unwrap_or(config.reviews_per_day) as i64;
                 let new_limit = normal.new_limit.unwrap_or(config.new_per_day) as i64;
@@ -736,7 +854,11 @@ fn due_section(out: &mut Out, backend: &Backend, snapshot: &Connection, problems
                 let left = review_limit - capped_interday;
                 let capped_review = review.min(left);
                 let left = left - capped_review;
-                (new.min(new_limit).min(left), intraday + capped_interday, capped_review)
+                (
+                    new.min(new_limit).min(left),
+                    intraday + capped_interday,
+                    capped_review,
+                )
             }
             _ => (new, intraday + interday, review),
         };
@@ -748,7 +870,14 @@ fn due_section(out: &mut Out, backend: &Backend, snapshot: &Connection, problems
         if (new_stock, learn_stock, review_stock) != (new_app, learn_app, review_app) {
             differ += 1;
         }
-        for (slot, value) in totals.iter_mut().zip([new_stock, learn_stock, review_stock, new_app, learn_app, review_app]) {
+        for (slot, value) in totals.iter_mut().zip([
+            new_stock,
+            learn_stock,
+            review_stock,
+            new_app,
+            learn_app,
+            review_app,
+        ]) {
             *slot += value;
         }
         table.push(vec![
@@ -764,10 +893,20 @@ fn due_section(out: &mut Out, backend: &Backend, snapshot: &Connection, problems
         format!("{} / {} / {}", totals[3], totals[4], totals[5]),
         "".into(),
     ]);
-    out.table(&["deck", "stock new / learn / review", "this app", "before limits"], &table);
+    out.table(
+        &[
+            "deck",
+            "stock new / learn / review",
+            "this app",
+            "before limits",
+        ],
+        &table,
+    );
     out.line(format!("Decks where they differ: {differ}."));
     if differ > 0 {
-        problems.push(format!("due counts differ from the stock calculation in {differ} decks"));
+        problems.push(format!(
+            "due counts differ from the stock calculation in {differ} decks"
+        ));
     }
     Ok(())
 }
@@ -838,7 +977,15 @@ fn rendering_section(
     }
     let rows: Vec<Vec<String>> = per_type
         .iter()
-        .map(|(name, c)| vec![name.clone(), c[0].to_string(), c[1].to_string(), c[2].to_string(), c[3].to_string()])
+        .map(|(name, c)| {
+            vec![
+                name.clone(),
+                c[0].to_string(),
+                c[1].to_string(),
+                c[2].to_string(),
+                c[3].to_string(),
+            ]
+        })
         .collect();
     out.line(format!(
         "All {} cards rendered through `renderExistingCard`, question and answer. Errors: {}.",
@@ -846,7 +993,16 @@ fn rendering_section(
         failures.len()
     ));
     out.line("");
-    out.table(&["note type", "cards", "errors", "blank front", "contain <script>, which won't run"], &rows);
+    out.table(
+        &[
+            "note type",
+            "cards",
+            "errors",
+            "blank front",
+            "contain <script>, which won't run",
+        ],
+        &rows,
+    );
     if !failures.is_empty() {
         problems.push(format!("{} cards fail to render", failures.len()));
         out.line(format!("Failures: {}", sample(&failures, 20)));
@@ -866,9 +1022,16 @@ fn rendering_section(
     };
     let mut rows = vec![];
     for (ntid, name, notes) in &notetypes {
-        let nt: anki_proto::notetypes::Notetype =
-            call_typed(backend, "getNotetype", &anki_proto::notetypes::NotetypeId { ntid: *ntid })?;
-        let css = nt.config.as_ref().map(|c| c.css.clone()).unwrap_or_default();
+        let nt: anki_proto::notetypes::Notetype = call_typed(
+            backend,
+            "getNotetype",
+            &anki_proto::notetypes::NotetypeId { ntid: *ntid },
+        )?;
+        let css = nt
+            .config
+            .as_ref()
+            .map(|c| c.css.clone())
+            .unwrap_or_default();
         let fields: BTreeSet<&str> = nt.fields.iter().map(|f| f.name.as_str()).collect();
         let mut texts = String::new();
         let mut missing = BTreeSet::new();
@@ -880,14 +1043,24 @@ fn rendering_section(
                     let inner = caps[1].trim();
                     let inner = inner.trim_start_matches(['#', '^', '/']);
                     let field = inner.rsplit(':').next().unwrap_or(inner).trim();
-                    if !fields.contains(field) && field != "FrontSide" && !matches!(field, "Tags" | "Type" | "Deck" | "Subdeck" | "CardFlag" | "Card") {
+                    if !fields.contains(field)
+                        && field != "FrontSide"
+                        && !matches!(
+                            field,
+                            "Tags" | "Type" | "Deck" | "Subdeck" | "CardFlag" | "Card"
+                        )
+                    {
                         missing.insert(field.to_string());
                     }
                 }
             }
         }
         let all = format!("{texts}\n{css}");
-        let mut remote_refs: BTreeSet<String> = refs.remote.find_iter(&all).map(|m| m.as_str().to_string()).collect();
+        let mut remote_refs: BTreeSet<String> = refs
+            .remote
+            .find_iter(&all)
+            .map(|m| m.as_str().to_string())
+            .collect();
         for caps in refs.css_url.captures_iter(&css) {
             if caps[1].contains("//") {
                 remote_refs.insert(caps[1].to_string());
@@ -908,7 +1081,19 @@ fn rendering_section(
             (all.contains("{{type:") || all.contains("{{tts")).to_string(),
         ]);
     }
-    out.table(&["note type", "notes", "templates", "`<script>`", "inline handlers", "remote assets", "fields or css files missing", "type-in or tts"], &rows);
+    out.table(
+        &[
+            "note type",
+            "notes",
+            "templates",
+            "`<script>`",
+            "inline handlers",
+            "remote assets",
+            "fields or css files missing",
+            "type-in or tts",
+        ],
+        &rows,
+    );
 
     // field content
     let (mut with_script, mut with_handler, mut with_remote) = (vec![], vec![], vec![]);
@@ -926,7 +1111,11 @@ fn rendering_section(
             if refs.handler.is_match(&fields) {
                 with_handler.push(id);
             }
-            if refs.remote.find_iter(&fields).any(|m| !remote_link.is_match(m.as_str())) {
+            if refs
+                .remote
+                .find_iter(&fields)
+                .any(|m| !remote_link.is_match(m.as_str()))
+            {
                 with_remote.push(id);
             }
             if remote_link.is_match(&fields) {
@@ -961,7 +1150,10 @@ fn rendering_section(
     if !missing.is_empty() {
         out.line("");
         out.line(format!("Missing: {}", sample(&missing, 60)));
-        problems.push(format!("{} referenced media files are missing", missing.len()));
+        problems.push(format!(
+            "{} referenced media files are missing",
+            missing.len()
+        ));
     }
     if !remote.is_empty() {
         out.line("");
@@ -977,8 +1169,16 @@ fn rendering_section(
     let rows: Vec<Vec<String>> = extensions
         .iter()
         .map(|(ext, (distinct, uses))| {
-            let risk = RISKY_FORMATS.iter().find(|(e, _)| e == ext).map_or("", |r| r.1);
-            vec![format!("`{ext}`"), distinct.to_string(), uses.to_string(), risk.to_string()]
+            let risk = RISKY_FORMATS
+                .iter()
+                .find(|(e, _)| e == ext)
+                .map_or("", |r| r.1);
+            vec![
+                format!("`{ext}`"),
+                distinct.to_string(),
+                uses.to_string(),
+                risk.to_string(),
+            ]
         })
         .collect();
     out.table(&["format", "files", "cards using them", "risk"], &rows);
@@ -1001,7 +1201,11 @@ fn media_section(
         copied["files"],
         copied["bytes"],
         copied["sha256"].as_str().unwrap_or_default(),
-        if copied == *source { "identical" } else { "**differs**, which is expected only if media has been added since" },
+        if copied == *source {
+            "identical"
+        } else {
+            "**differs**, which is expected only if media has been added since"
+        },
     ));
     let source_db = super::convert::conversion_folder(target).join("source-media.db2");
     if source_db.exists() {
@@ -1042,20 +1246,34 @@ fn media_section(
         checked.unused.len()
     ));
     if !checked.missing.is_empty() {
-        out.line(format!("- Missing per the media check: {}", sample(&checked.missing, 60)));
-        out.line(format!("- In notes: {}", sample(&checked.missing_media_notes, 60)));
+        out.line(format!(
+            "- Missing per the media check: {}",
+            sample(&checked.missing, 60)
+        ));
+        out.line(format!(
+            "- In notes: {}",
+            sample(&checked.missing_media_notes, 60)
+        ));
         problems.push(format!(
             "the media check says {} files are missing",
             checked.missing.len()
         ));
     }
     if !checked.unused.is_empty() {
-        out.line(format!("- Unused, for example: {}", sample(&checked.unused, 15)));
+        out.line(format!(
+            "- Unused, for example: {}",
+            sample(&checked.unused, 15)
+        ));
     }
     Ok(())
 }
 
-fn settings_section(out: &mut Out, snapshot: &Connection, converted: &Connection, presets: &PresetInfo) -> Result<()> {
+fn settings_section(
+    out: &mut Out,
+    snapshot: &Connection,
+    converted: &Connection,
+    presets: &PresetInfo,
+) -> Result<()> {
     out.head("Stored settings");
     let config = |db: &Connection| -> Result<BTreeMap<String, Vec<u8>>> {
         let mut statement = db.prepare("select key, val from config")?;
@@ -1067,61 +1285,126 @@ fn settings_section(out: &mut Out, snapshot: &Connection, converted: &Connection
     let text = |map: &BTreeMap<String, Vec<u8>>, key: &str| {
         map.get(key).map_or("(unset)".to_string(), |v| {
             let value = String::from_utf8_lossy(v).into_owned();
-            if value.len() > 120 { format!("{} bytes", value.len()) } else { value }
+            if value.len() > 120 {
+                format!("{} bytes", value.len())
+            } else {
+                value
+            }
         })
     };
     let rows: Vec<Vec<String>> = [
-        ("fsrs", "Ignored: FSRS is always on. It was already true, so opening didn't migrate anything."),
-        ("cardStateCustomizer", "Ignored: scripts don't run, so nor does custom scheduling."),
-        ("loadBalancerEnabled", "Used, when intervals are fuzzed on answering. There's no control for it."),
-        ("fsrsShortTermWithStepsEnabled", "Used by the scheduler. There's no control for it."),
+        (
+            "fsrs",
+            "Ignored: FSRS is always on. It was already true, so opening didn't migrate anything.",
+        ),
+        (
+            "cardStateCustomizer",
+            "Ignored: scripts don't run, so nor does custom scheduling.",
+        ),
+        (
+            "loadBalancerEnabled",
+            "Used, when intervals are fuzzed on answering. There's no control for it.",
+        ),
+        (
+            "fsrsShortTermWithStepsEnabled",
+            "Used by the scheduler. There's no control for it.",
+        ),
         ("rollover", "Used. The hour that a new day starts."),
         ("creationOffset", "Used, with crt, for day numbers."),
-        ("localOffset", "Ignored outside a sync server: day boundaries use this machine's time zone."),
-        ("schedVer", "Ignored apart from being read as the v3 scheduler."),
-        ("sched2021", "Ignored apart from being read as the v3 scheduler."),
+        (
+            "localOffset",
+            "Ignored outside a sync server: day boundaries use this machine's time zone.",
+        ),
+        (
+            "schedVer",
+            "Ignored apart from being read as the v3 scheduler.",
+        ),
+        (
+            "sched2021",
+            "Ignored apart from being read as the v3 scheduler.",
+        ),
         ("newCardsIgnoreReviewLimit", "Used for counts."),
         ("applyAllParentLimits", "Used for counts."),
-        ("dayLearnFirst", "Ignored: each preset's learning mix decides the order."),
+        (
+            "dayLearnFirst",
+            "Ignored: each preset's learning mix decides the order.",
+        ),
         ("estTimes", "Ignored: answer buttons always show intervals."),
         ("dueCounts", "Ignored: the reviewer always shows counts."),
         ("hideAudioPlayButtons", "Used by the reviewer."),
         ("interruptAudioWhenAnswering", "Ignored: nothing reads it."),
         ("renderLatex", "Ignored: `[latex]` isn't rendered."),
         ("timeLim", "Ignored: no timeboxing."),
-        ("collapseTime", "Used: learning cards due within this show early."),
+        (
+            "collapseTime",
+            "Used: learning cards due within this show early.",
+        ),
         ("pasteImagesAsPng", "Ignored: no editor."),
         ("pasteStripsFormatting", "Ignored: no editor."),
         ("backups", "Ignored: this app has its own backup schedule."),
         ("activeDecks", "Ignored."),
-        ("lastFsrsOptimize", "Ignored: the owner runs the optimizer when they choose to."),
+        (
+            "lastFsrsOptimize",
+            "Ignored: the owner runs the optimizer when they choose to.",
+        ),
     ]
     .iter()
-    .map(|(key, note)| vec![format!("`{key}`"), format!("`{}`", text(&before, key).replace('|', "\\|")), note.to_string()])
+    .map(|(key, note)| {
+        vec![
+            format!("`{key}`"),
+            format!("`{}`", text(&before, key).replace('|', "\\|")),
+            note.to_string(),
+        ]
+    })
     .collect();
     out.table(&["key", "stored value", "in this app"], &rows);
     let mut changed: Vec<String> = vec![];
     for key in before.keys().chain(after.keys()).collect::<BTreeSet<_>>() {
         if before.get(key) != after.get(key) {
-            changed.push(format!("{key}: {} -> {}", text(&before, key), text(&after, key)));
+            changed.push(format!(
+                "{key}: {} -> {}",
+                text(&before, key),
+                text(&after, key)
+            ));
         }
     }
-    out.line(format!("Config values changed since the snapshot: {}.", if changed.is_empty() { "none".to_string() } else { sample(&changed, 20) }));
+    out.line(format!(
+        "Config values changed since the snapshot: {}.",
+        if changed.is_empty() {
+            "none".to_string()
+        } else {
+            sample(&changed, 20)
+        }
+    ));
     out.line("");
     let col = |db: &Connection| -> Result<String> {
-        Ok(db.query_row("select ver, scm, crt, mod, usn, ls from col", [], |row| {
-            Ok(format!(
-                "ver {} scm {} crt {} mod {} usn {} ls {}",
-                row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?,
-                row.get::<_, i64>(3)?, row.get::<_, i64>(4)?, row.get::<_, i64>(5)?,
-            ))
-        })?)
+        Ok(
+            db.query_row("select ver, scm, crt, mod, usn, ls from col", [], |row| {
+                Ok(format!(
+                    "ver {} scm {} crt {} mod {} usn {} ls {}",
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                ))
+            })?,
+        )
     };
-    out.line(format!("The `col` row, before: {}; after: {}.", col(snapshot)?, col(converted)?));
+    out.line(format!(
+        "The `col` row, before: {}; after: {}.",
+        col(snapshot)?,
+        col(converted)?
+    ));
     out.line("");
     out.line("Easy days per preset, Monday first; empty means every day is normal. These are used as stored, with no control in the pages:");
     out.line("");
-    let rows: Vec<Vec<String>> = presets.easy_days.iter().map(|(name, days)| vec![name.clone(), format!("{days:?}")]).collect();
+    let rows: Vec<Vec<String>> = presets
+        .easy_days
+        .iter()
+        .map(|(name, days)| vec![name.clone(), format!("{days:?}")])
+        .collect();
     out.table(&["preset", "easy days"], &rows);
     Ok(())
 }
@@ -1145,12 +1428,16 @@ fn retrievability_section(out: &mut Out, backend: &Backend, snapshot: &Connectio
         row.extend(distribution(&mut values));
         row
     };
-    out.table(&["", "min", "5%", "25%", "50%", "75%", "95%", "max"], &[row]);
+    out.table(
+        &["", "min", "5%", "25%", "50%", "75%", "95%", "max"],
+        &[row],
+    );
     let newest = scalar(snapshot, "select max(id) / 1000 from revlog")?;
     out.line(format!(
         "{} review cards. The latest review in the revlog is from {}, which is why so much is due.",
         values.len(),
-        chrono::DateTime::from_timestamp(newest, 0).map_or("?".to_string(), |t| t.format("%Y-%m-%d").to_string())
+        chrono::DateTime::from_timestamp(newest, 0)
+            .map_or("?".to_string(), |t| t.format("%Y-%m-%d").to_string())
     ));
     Ok(())
 }
