@@ -451,6 +451,15 @@ fn fsrs_review_proto_to_fsrs(review: anki_proto::scheduler::FsrsReview) -> FSRSR
     }
 }
 
+impl From<crate::scheduler::timing::SchedTimingToday> for scheduler::SchedTimingTodayResponse {
+    fn from(t: crate::scheduler::timing::SchedTimingToday) -> Self {
+        scheduler::SchedTimingTodayResponse {
+            days_elapsed: t.days_elapsed,
+            next_day_at: t.next_day_at.0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anki_proto::scheduler::card_answer::Rating;
@@ -1754,14 +1763,5 @@ mod tests {
             defaults.available_new, 1,
             "the new card is available to study"
         );
-    }
-}
-
-impl From<crate::scheduler::timing::SchedTimingToday> for scheduler::SchedTimingTodayResponse {
-    fn from(t: crate::scheduler::timing::SchedTimingToday) -> Self {
-        scheduler::SchedTimingTodayResponse {
-            days_elapsed: t.days_elapsed,
-            next_day_at: t.next_day_at.0,
-        }
     }
 }

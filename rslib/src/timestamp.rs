@@ -100,7 +100,14 @@ impl TimestampMillis {
 }
 
 fn elapsed() -> time::Duration {
-    time::SystemTime::now()
+    let elapsed = time::SystemTime::now()
         .duration_since(time::SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .unwrap();
+    if cfg!(test) && (2..4).contains(&Local::now().hour()) {
+        // shift clock away from the 4am rollover, as tests that expect a learning
+        // card to be due later today would otherwise fail in the two hours before it
+        elapsed - time::Duration::from_secs(60 * 60 * 2)
+    } else {
+        elapsed
+    }
 }

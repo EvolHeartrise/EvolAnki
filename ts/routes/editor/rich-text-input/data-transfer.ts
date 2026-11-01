@@ -354,15 +354,8 @@ async function runPreFilter(html: string, internal = false): Promise<string> {
             if (match) {
                 src = match[1];
             }
-        } else {
-            if (isURL(src)) {
-                const filename = await retrieveUrl(src);
-                if (filename) {
-                    src = filename;
-                }
-            } else if (src.startsWith("data:image/")) {
-                src = await inlinedImageToFilename(src);
-            }
+        } else if (src.startsWith("data:image/")) {
+            src = await inlinedImageToFilename(src);
         }
         img.src = src;
     }
