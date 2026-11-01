@@ -40,7 +40,6 @@ const TRUSTED_PAGE_CSP: &str = "frame-ancestors 'none'";
 const SVELTEKIT_ROUTES: &[&str] = &[
     "graphs",
     "congrats",
-    "card-info",
     "deck-options",
     "overview",
     "review",

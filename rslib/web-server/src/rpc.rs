@@ -43,7 +43,6 @@ pub const ALLOWED: &[&str] = &[
     // NotetypesService
     "getNotetype",
     // StatsService
-    "cardStats",
     "graphs",
     "getGraphPreferences",
     "setGraphPreferences",

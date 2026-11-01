@@ -500,7 +500,7 @@ fn pages_have_the_expected_headers() {
     let fixture = Fixture::new();
     let server = fixture.start();
 
-    for trusted in ["/deck-options/1", "/graphs", "/card-info/5"] {
+    for trusted in ["/deck-options/1", "/graphs"] {
         let reply = server.get(trusted);
         assert_eq!(reply.status, 200, "{trusted}");
         assert_eq!(reply.header("content-type").as_deref(), Some("text/html"));

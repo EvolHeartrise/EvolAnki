@@ -8,7 +8,6 @@ import { dirname, join } from "node:path";
 
 import { chromium, expect, type Page, test } from "@playwright/test";
 
-import { GetQueuedCardsRequest, QueuedCards } from "../../../out/ts/lib/generated/anki/scheduler_pb";
 import { lanAddress, rawRequest, Server, tempCollection } from "./server";
 
 const NEW_CARDS_LABEL = "New cards/day";
@@ -159,22 +158,6 @@ test("graphs renders with data", async ({ page }) => {
     // 5 demo reviews were answered today
     await expect(page.getByText(/Studied \P{L}*5\P{L}* cards/u)).toBeVisible();
     await expect(page.locator("svg").first()).toBeVisible();
-    expect(problems).toEqual([]);
-});
-
-test("card info renders", async ({ page, request }) => {
-    const problems = failOnPageProblems(page);
-    const response = await request.post(`${server.url}/_anki/getQueuedCards`, {
-        headers: { "Content-Type": "application/binary" },
-        data: Buffer.from(new GetQueuedCardsRequest({ fetchLimit: 1 }).toBinary()),
-    });
-    expect(response.status()).toBe(200);
-    const queued = QueuedCards.fromBinary(await response.body());
-    const cardId = queued.cards[0].card!.id;
-
-    await page.goto(`${server.url}/card-info/${cardId}`);
-    await expect(page.getByText("Card ID")).toBeVisible();
-    await expect(page.getByRole("cell", { name: String(cardId) }).first()).toBeVisible();
     expect(problems).toEqual([]);
 });
 
