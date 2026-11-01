@@ -4,7 +4,6 @@
 use strum::IntoStaticStr;
 
 use super::ConfigKey;
-use crate::notetype::NotetypeKind;
 use crate::prelude::*;
 
 /// Notetype config packed into a collection config key. This may change
@@ -18,23 +17,6 @@ enum NotetypeConfigKey {
 }
 
 impl Collection {
-    pub fn get_aux_template_config_key(
-        &mut self,
-        ntid: NotetypeId,
-        card_ordinal: usize,
-        key: &str,
-    ) -> Result<String> {
-        let nt = self.get_notetype(ntid)?.or_not_found(ntid)?;
-        let ordinal = if matches!(nt.config.kind(), NotetypeKind::Cloze) {
-            0
-        } else {
-            card_ordinal
-        };
-        Ok(get_aux_notetype_config_key(
-            ntid,
-            &format!("{key}_{ordinal}"),
-        ))
-    }
 }
 
 impl NotetypeConfigKey {

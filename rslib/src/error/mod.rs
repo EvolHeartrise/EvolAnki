@@ -201,7 +201,6 @@ impl AnkiError {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TemplateError {
-    NoClosingBrackets(String),
     ConditionalNotClosed(String),
     ConditionalNotOpen {
         closed: String,

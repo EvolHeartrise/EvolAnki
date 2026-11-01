@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use anki_i18n::I18n;
+#[cfg(test)]
 use anki_io::create_dir_all;
 
 use crate::decks::Deck;
@@ -26,7 +27,6 @@ use crate::scheduler::queue::CardQueues;
 use crate::scheduler::SchedulerInfo;
 use crate::storage::SchemaVersion;
 use crate::storage::SqliteStorage;
-use crate::timestamp::TimestampMillis;
 use crate::types::Usn;
 use crate::undo::UndoManager;
 
@@ -87,6 +87,7 @@ impl CollectionBuilder {
         self
     }
 
+    #[cfg(test)]
     /// For a `foo.anki2` file, use `foo.media` and `foo.mdb`. Mobile clients
     /// use different paths, so the backend must continue to use
     /// [set_media_paths].
@@ -108,11 +109,6 @@ impl CollectionBuilder {
         self
     }
 
-    pub fn set_check_integrity(&mut self, check_integrity: bool) -> &mut Self {
-        self.check_integrity = check_integrity;
-        self
-    }
-
     /// If provided, progress info will be written to the provided mutex, and
     /// can be tracked on a separate thread.
     pub fn set_shared_progress_state(&mut self, state: Arc<Mutex<ProgressState>>) -> &mut Self {
@@ -130,7 +126,6 @@ pub struct CollectionState {
     pub(crate) card_queues: Option<CardQueues>,
     /// The modification time at the last backup, so we don't create multiple
     /// identical backups.
-    pub(crate) last_backup_modified: Option<TimestampMillis>,
     pub(crate) progress: Arc<Mutex<ProgressState>>,
 }
 
@@ -153,24 +148,6 @@ impl Debug for Collection {
 }
 
 impl Collection {
-    pub fn as_builder(&self) -> CollectionBuilder {
-        let mut builder = CollectionBuilder::new(&self.col_path);
-        builder
-            .set_media_paths(self.media_folder.clone(), self.media_db.clone())
-            .set_server(self.server)
-            .set_tr(self.tr.clone())
-            .set_shared_progress_state(self.state.progress.clone());
-        builder
-    }
-
-    // A count of all changed rows since the collection was opened, which can be
-    // used to detect if the collection was modified or not.
-    pub fn changes_since_open(&self) -> Result<u64> {
-        self.storage
-            .db
-            .query_row("select total_changes()", [], |row| row.get(0))
-            .map_err(Into::into)
-    }
 
     pub fn close(self, desired_version: Option<SchemaVersion>) -> Result<()> {
         self.storage.close(desired_version)
@@ -202,7 +179,4 @@ impl Collection {
         self.storage.optimize()
     }
 
-    pub fn tr(&self) -> &I18n {
-        &self.tr
-    }
 }

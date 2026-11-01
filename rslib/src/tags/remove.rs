@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use unicase::UniCase;
 
 use super::matcher::TagMatcher;
 use crate::prelude::*;
@@ -42,19 +41,4 @@ impl Collection {
         Ok(match_count)
     }
 
-    fn clear_unused_tags_inner(&mut self) -> Result<usize> {
-        let mut count = 0;
-        let in_notes = self.storage.all_tags_in_notes()?;
-        let need_remove = self
-            .storage
-            .all_tags()?
-            .into_iter()
-            .filter(|tag| !in_notes.contains(&UniCase::new(tag.name.clone())));
-        for tag in need_remove {
-            self.remove_single_tag_undoable(tag)?;
-            count += 1;
-        }
-
-        Ok(count)
-    }
 }

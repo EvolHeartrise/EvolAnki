@@ -34,7 +34,6 @@ pub enum ExportProgress {
     File,
     Gathering,
     Notes(usize),
-    Cards(usize),
     Media(usize),
 }
 

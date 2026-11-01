@@ -43,12 +43,6 @@ pub enum BoolKey {
     FsrsShortTermWithStepsEnabled,
     #[strum(to_string = "normalize_note_text")]
     NormalizeNoteText,
-    #[strum(to_string = "dayLearnFirst")]
-    ShowDayLearningCardsFirst,
-    #[strum(to_string = "estTimes")]
-    ShowIntervalsAboveAnswerButtons,
-    #[strum(to_string = "dueCounts")]
-    ShowRemainingDueCountsInStudy,
     #[strum(to_string = "addToCur")]
     AddingDefaultsToCurrentDeck,
 }
@@ -62,10 +56,8 @@ impl Collection {
 
             // some keys default to true
             BoolKey::InterruptAudioWhenAnswering
-            | BoolKey::ShowIntervalsAboveAnswerButtons
             | BoolKey::AddingDefaultsToCurrentDeck
             | BoolKey::FutureDueShowBacklog
-            | BoolKey::ShowRemainingDueCountsInStudy
             | BoolKey::CardCountsSeparateInactive
             | BoolKey::RestorePositionBrowser
             | BoolKey::RestorePositionReviewer

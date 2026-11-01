@@ -165,30 +165,6 @@ mod test {
     use crate::services::CardRenderingService;
     use crate::tests::NoteAdder;
 
-    /// Build a `RenderUncommittedCardRequest` for a Basic note whose fields are
-    /// set to `fields`, optionally overriding the question format of the first
-    /// template.
-    fn basic_request(
-        col: &Collection,
-        fields: &[&str],
-        q_format: Option<&str>,
-        partial_render: bool,
-    ) -> RenderUncommittedCardRequest {
-        let nt = col.basic_notetype();
-        let note = NoteAdder::new(&nt).fields(fields).note();
-        let mut template = nt.templates[0].clone();
-        if let Some(q_format) = q_format {
-            template.config.q_format = q_format.into();
-        }
-        RenderUncommittedCardRequest {
-            note: Some(note.into()),
-            card_ord: 0,
-            template: Some(template.into()),
-            fill_empty: false,
-            partial_render,
-        }
-    }
-
     /// The text of a node list that rendered to a single text node, or `None`
     /// otherwise (an empty list, multiple nodes, or a replacement node — i.e.
     /// partially rendered output).

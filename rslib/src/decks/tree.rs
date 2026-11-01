@@ -193,31 +193,6 @@ fn hide_default_deck(node: &mut DeckTreeNode) {
     }
 }
 
-/// Locate provided deck in tree, and return it.
-pub fn get_deck_in_tree(tree: DeckTreeNode, deck_id: DeckId) -> Option<DeckTreeNode> {
-    if tree.deck_id == deck_id.0 {
-        return Some(tree);
-    }
-    for child in tree.children {
-        if let Some(node) = get_deck_in_tree(child, deck_id) {
-            return Some(node);
-        }
-    }
-
-    None
-}
-
-pub(crate) fn sum_deck_tree_node<T: AddAssign>(
-    node: &DeckTreeNode,
-    map: fn(&DeckTreeNode) -> T,
-) -> T {
-    let mut output = map(node);
-    for child in &node.children {
-        output += sum_deck_tree_node(child, map)
-    }
-    output
-}
-
 impl Collection {
     /// Get the deck tree.
     /// If `timestamp` is provided, due counts for the provided timestamp will
@@ -255,12 +230,6 @@ impl Collection {
         }
 
         Ok(tree)
-    }
-
-    pub fn current_deck_tree(&mut self) -> Result<Option<DeckTreeNode>> {
-        let target = self.get_current_deck_id();
-        let tree = self.deck_tree(Some(TimestampSecs::now()))?;
-        Ok(get_deck_in_tree(tree, target))
     }
 
     pub fn set_deck_collapsed(

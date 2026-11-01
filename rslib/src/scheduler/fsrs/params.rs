@@ -1,16 +1,10 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
-use std::collections::HashMap;
 use std::iter;
-use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
-use anki_io::write_file;
 use anki_proto::scheduler::ComputeFsrsParamsResponse;
-use anki_proto::stats::revlog_entry;
-use anki_proto::stats::Dataset;
-use anki_proto::stats::DeckEntry;
 use chrono::NaiveDate;
 use chrono::NaiveTime;
 use fsrs::CombinedProgressState;
@@ -22,9 +16,7 @@ use fsrs::ModelEvaluation;
 use fsrs::TrainingConfig;
 use fsrs::FSRS;
 use itertools::Itertools;
-use prost::Message;
 
-use crate::decks::immediate_parent_name;
 use crate::prelude::*;
 use crate::revlog::RevlogEntry;
 use crate::revlog::RevlogReviewKind;
@@ -227,56 +219,6 @@ impl Collection {
             .col
             .storage
             .get_revlog_entries_for_searched_cards_in_card_order()
-    }
-
-    /// Used for exporting revlogs for algorithm research.
-    pub fn export_dataset(&mut self, min_entries: usize, target_path: &Path) -> Result<()> {
-        let revlog_entries = self.storage.get_revlog_entries_for_export_dataset()?;
-        if revlog_entries.len() < min_entries {
-            return Err(AnkiError::FsrsInsufficientData);
-        }
-        let revlogs = revlog_entries
-            .into_iter()
-            .map(revlog_entry_to_proto)
-            .collect_vec();
-        let cards = self.storage.get_all_card_entries()?;
-
-        let decks_map = self.storage.get_decks_map()?;
-        let deck_name_to_id: HashMap<String, DeckId> = decks_map
-            .into_iter()
-            .map(|(id, deck)| (deck.name.to_string(), id))
-            .collect();
-
-        let decks = self
-            .storage
-            .get_all_decks()?
-            .into_iter()
-            .filter_map(|deck| {
-                if let Some(config_id) = deck.config_id().map(|id| id.0) {
-                    let parent_id = immediate_parent_name(&deck.name.to_string())
-                        .and_then(|parent_name| deck_name_to_id.get(parent_name))
-                        .map(|id| id.0)
-                        .unwrap_or(0);
-                    Some(DeckEntry {
-                        id: deck.id.0,
-                        parent_id,
-                        config_id,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect_vec();
-        let next_day_at = self.timing_today()?.next_day_at.0;
-        let dataset = Dataset {
-            revlogs,
-            cards,
-            decks,
-            next_day_at,
-        };
-        let data = dataset.encode_to_vec();
-        write_file(target_path, data)?;
-        Ok(())
     }
 
     pub fn evaluate_params(
@@ -546,27 +488,6 @@ pub(crate) fn reviews_for_fsrs(
 impl RevlogEntry {
     fn days_elapsed(&self, next_day_at: TimestampSecs) -> u32 {
         (next_day_at.elapsed_secs_since(self.id.as_secs()) / 86_400).max(0) as u32
-    }
-}
-
-fn revlog_entry_to_proto(e: RevlogEntry) -> anki_proto::stats::RevlogEntry {
-    anki_proto::stats::RevlogEntry {
-        id: e.id.0,
-        cid: e.cid.0,
-        usn: 0,
-        button_chosen: e.button_chosen as u32,
-        interval: e.interval,
-        last_interval: e.last_interval,
-        ease_factor: e.ease_factor,
-        taken_millis: e.taken_millis,
-        review_kind: match e.review_kind {
-            RevlogReviewKind::Learning => revlog_entry::ReviewKind::Learning,
-            RevlogReviewKind::Review => revlog_entry::ReviewKind::Review,
-            RevlogReviewKind::Relearning => revlog_entry::ReviewKind::Relearning,
-            RevlogReviewKind::Filtered => revlog_entry::ReviewKind::Filtered,
-            RevlogReviewKind::Manual => revlog_entry::ReviewKind::Manual,
-            RevlogReviewKind::Rescheduled => revlog_entry::ReviewKind::Rescheduled,
-        } as i32,
     }
 }
 

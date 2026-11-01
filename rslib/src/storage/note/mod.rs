@@ -6,12 +6,10 @@ use std::collections::HashSet;
 
 use rusqlite::params;
 use rusqlite::Row;
-use unicase::UniCase;
 
 use crate::import_export::package::NoteMeta;
 use crate::notes::NoteTags;
 use crate::prelude::*;
-use crate::tags::immediate_parent_name_unicase;
 use crate::tags::join_tags;
 use crate::tags::split_tags;
 
@@ -27,17 +25,6 @@ impl super::SqliteStorage {
     pub fn get_note(&self, nid: NoteId) -> Result<Option<Note>> {
         self.db
             .prepare_cached(concat!(include_str!("get.sql"), " where id = ?"))?
-            .query_and_then(params![nid], row_to_note)?
-            .next()
-            .transpose()
-    }
-
-    pub fn get_note_without_fields(&self, nid: NoteId) -> Result<Option<Note>> {
-        self.db
-            .prepare_cached(concat!(
-                include_str!("get_without_fields.sql"),
-                " where id = ?"
-            ))?
             .query_and_then(params![nid], row_to_note)?
             .next()
             .transpose()
@@ -220,26 +207,6 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
-    /// All tags referenced by notes, and any parent tags as well.
-    pub(crate) fn all_tags_in_notes(&self) -> Result<HashSet<UniCase<String>>> {
-        let mut stmt = self
-            .db
-            .prepare_cached("select tags from notes where tags != ''")?;
-        let mut query = stmt.query([])?;
-        let mut seen: HashSet<UniCase<String>> = HashSet::new();
-        while let Some(rows) = query.next()? {
-            for tag in split_tags(rows.get_ref_unwrap(0).as_str()?) {
-                seen.insert(UniCase::new(tag.to_string()));
-                let mut tag_unicase = UniCase::new(tag);
-                while let Some(parent_name) = immediate_parent_name_unicase(tag_unicase) {
-                    seen.insert(UniCase::new(parent_name.to_string()));
-                    tag_unicase = UniCase::new(&parent_name);
-                }
-            }
-        }
-        Ok(seen)
-    }
-
     pub(crate) fn get_note_tags_by_id(&mut self, note_id: NoteId) -> Result<Option<NoteTags>> {
         self.db
             .prepare_cached(&format!("{} where id = ?", include_str!("get_tags.sql")))?
@@ -258,21 +225,6 @@ impl super::SqliteStorage {
                 .query_and_then([], row_to_note_tags)?
                 .collect()
         })
-    }
-
-    pub(crate) fn for_each_note_tag_in_searched_notes<F>(&self, mut func: F) -> Result<()>
-    where
-        F: FnMut(&str),
-    {
-        let mut stmt = self
-            .db
-            .prepare_cached("select tags from notes where id in (select nid from search_nids)")?;
-        let mut rows = stmt.query(params![])?;
-        while let Some(row) = rows.next()? {
-            func(row.get_ref(0)?.as_str()?);
-        }
-
-        Ok(())
     }
 
     pub(crate) fn all_searched_notes(&self) -> Result<Vec<Note>> {
@@ -336,24 +288,6 @@ impl super::SqliteStorage {
         let result = func();
         self.clear_searched_notes_table()?;
         result
-    }
-
-    /// Cards will arrive in card id order, not search order.
-    pub(crate) fn for_each_note_in_search(
-        &self,
-        mut func: impl FnMut(Note) -> Result<()>,
-    ) -> Result<()> {
-        let mut stmt = self.db.prepare_cached(concat!(
-            include_str!("get.sql"),
-            " WHERE id IN (SELECT nid FROM search_nids)"
-        ))?;
-        let mut rows = stmt.query([])?;
-        while let Some(row) = rows.next()? {
-            let note = row_to_note(row)?;
-            func(note)?
-        }
-
-        Ok(())
     }
 
     pub(crate) fn note_guid_map(&mut self) -> Result<HashMap<String, NoteMeta>> {

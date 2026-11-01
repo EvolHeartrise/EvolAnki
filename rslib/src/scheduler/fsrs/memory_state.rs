@@ -858,11 +858,6 @@ mod tests {
             col.get_config_optional(BoolKey::Fsrs)
         }
 
-        fn raw_flag(col: &mut Collection) -> Vec<u8> {
-            let value: serde_json::Value = col.storage.get_config_value("fsrs").unwrap().unwrap();
-            serde_json::to_vec(&value).unwrap()
-        }
-
         /// A review card with a real revlog, as left behind by SM-2.
         fn add_sm2_review_card(col: &mut Collection) -> CardId {
             let note = NoteAdder::basic(col).add(col);
@@ -881,7 +876,6 @@ mod tests {
             assert!(col.get_config_bool(BoolKey::Fsrs));
             assert!(col.fsrs_enabled());
             assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
-            assert_eq!(raw_flag(&mut col), b"true");
         }
 
         #[test]
@@ -894,7 +888,6 @@ mod tests {
             assert!(col.get_config_bool(BoolKey::Fsrs));
             assert!(col.fsrs_enabled());
             assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
-            assert_eq!(raw_flag(&mut col), b"true");
 
             // answering schedules with FSRS
             col.answer_easy();

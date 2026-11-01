@@ -31,7 +31,6 @@ use super::meta::MetaExt;
 use super::MediaEntries;
 use super::MediaEntry;
 use super::Meta;
-use crate::error::InvalidInputError;
 use crate::import_export::package::colpkg::export::MaybeEncodedWriter;
 use crate::import_export::ImportError;
 use crate::media::files::filename_if_normalized;
@@ -206,9 +205,6 @@ pub enum MediaIterError {
         filename: String,
         source: io::Error,
     },
-    Other {
-        source: Box<dyn std::error::Error + Send + Sync>,
-    },
 }
 
 impl TryFrom<&Path> for MediaIterEntry {
@@ -242,12 +238,6 @@ impl From<MediaIterError> for AnkiError {
                 path: filename.into(),
                 op: FileOp::Read,
                 source,
-            }
-            .into(),
-            MediaIterError::Other { source } => InvalidInputError {
-                message: "".to_string(),
-                source: Some(source),
-                backtrace: None,
             }
             .into(),
         }

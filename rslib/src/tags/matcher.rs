@@ -79,37 +79,6 @@ impl TagMatcher {
         join_tags(tags.as_slice())
     }
 
-    /// The `replacement` function should return the text to use as a
-    /// replacement.
-    pub fn replace_with_fn<F>(&mut self, space_separated_tags: &str, replacer: F) -> String
-    where
-        F: Fn(&str) -> String,
-    {
-        let tags: Vec<_> = split_tags(space_separated_tags)
-            .map(|tag| {
-                let out = self.regex.replace(tag, |caps: &Captures| {
-                    let replacement = replacer(caps.get(1).unwrap().as_str());
-                    // if we captured the child separator, add it to the replacement
-                    if caps.get(2).is_some() {
-                        format!("{replacement}::")
-                    } else {
-                        replacement
-                    }
-                });
-                if let Cow::Owned(out) = out {
-                    if !self.new_tags.contains(&out) {
-                        self.new_tags.insert(out.clone());
-                    }
-                    out
-                } else {
-                    out.to_string()
-                }
-            })
-            .collect();
-
-        join_tags(tags.as_slice())
-    }
-
     /// Remove any matching tags. Does not update seen_tags.
     pub fn remove(&mut self, space_separated_tags: &str) -> String {
         let tags: Vec<_> = split_tags(space_separated_tags)

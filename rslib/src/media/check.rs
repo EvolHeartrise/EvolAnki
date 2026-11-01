@@ -5,7 +5,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io;
 use std::sync::LazyLock;
 
 use anki_i18n::without_unicode_isolation;
@@ -379,52 +378,6 @@ impl MediaChecker<'_> {
         Ok((total_files, total_bytes))
     }
 
-    pub fn empty_trash(&mut self) -> Result<()> {
-        let trash = trash_folder(&self.media.media_folder)?;
-
-        for dentry in trash.read_dir()? {
-            let dentry = dentry?;
-
-            self.increment_progress()?;
-
-            fs::remove_file(dentry.path())?;
-        }
-
-        Ok(())
-    }
-
-    pub fn restore_trash(&mut self) -> Result<()> {
-        let trash = trash_folder(&self.media.media_folder)?;
-
-        for dentry in trash.read_dir()? {
-            let dentry = dentry?;
-
-            self.increment_progress()?;
-
-            let orig_path = self.media.media_folder.join(dentry.file_name());
-            // if the original filename doesn't exist, we can just rename
-            if let Err(e) = fs::metadata(&orig_path) {
-                if e.kind() == io::ErrorKind::NotFound {
-                    fs::rename(dentry.path(), &orig_path)?;
-                } else {
-                    return Err(e.into());
-                }
-            } else {
-                // ensure we don't overwrite different data
-                let fname_os = dentry.file_name();
-                let fname = fname_os.to_string_lossy();
-                if let Some(data) = data_for_file(&trash, fname.as_ref())? {
-                    let _new_fname = self.media.add_file(fname.as_ref(), &data)?;
-                } else {
-                    debug!(?fname, "file disappeared while restoring trash");
-                }
-                fs::remove_file(dentry.path())?;
-            }
-        }
-
-        Ok(())
-    }
-
     /// Find all media references in notes, fixing as necessary.
     fn check_media_references(&mut self, renamed: &HashMap<String, String>) -> Result<References> {
         let is_case_sensitive = anki_io::is_case_sensitive(&self.media.media_folder);
@@ -708,66 +661,6 @@ Missing: ぱぱ.jpg
 The following files were found in the media folder, but do not appear to be used on any cards:
 Unused: unused.jpg
 "
-        );
-
-        Ok(())
-    }
-
-    fn files_in_dir(dir: &Path) -> Vec<String> {
-        let mut files = fs::read_dir(dir)
-            .unwrap()
-            .map(|dentry| {
-                let dentry = dentry.unwrap();
-                Ok(dentry.file_name().to_string_lossy().to_string())
-            })
-            .collect::<io::Result<Vec<_>>>()
-            .unwrap();
-        files.sort();
-        files
-    }
-
-    #[test]
-    fn trash_handling() -> Result<()> {
-        let (_dir, mgr, mut col) = common_setup()?;
-        let trash_folder = trash_folder(&mgr.media_folder)?;
-        write_file(trash_folder.join("test.jpg"), "test")?;
-
-        let mut checker = col.media_checker()?;
-        checker.restore_trash()?;
-
-        // file should have been moved to media folder
-        assert_eq!(files_in_dir(&trash_folder), Vec::<String>::new());
-        assert_eq!(
-            files_in_dir(&mgr.media_folder),
-            vec!["test.jpg".to_string()]
-        );
-
-        // if we repeat the process, restoring should do the same thing if the contents
-        // are equal
-        write_file(trash_folder.join("test.jpg"), "test")?;
-
-        let mut checker = col.media_checker()?;
-        checker.restore_trash()?;
-
-        assert_eq!(files_in_dir(&trash_folder), Vec::<String>::new());
-        assert_eq!(
-            files_in_dir(&mgr.media_folder),
-            vec!["test.jpg".to_string()]
-        );
-
-        // but rename if required
-        write_file(trash_folder.join("test.jpg"), "test2")?;
-
-        let mut checker = col.media_checker()?;
-        checker.restore_trash()?;
-
-        assert_eq!(files_in_dir(&trash_folder), Vec::<String>::new());
-        assert_eq!(
-            files_in_dir(&mgr.media_folder),
-            vec![
-                "test-109f4b3c50d7b0df729d299bc6f8e9ef9066971f.jpg".to_string(),
-                "test.jpg".into()
-            ]
         );
 
         Ok(())

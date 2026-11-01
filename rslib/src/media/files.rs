@@ -3,7 +3,6 @@
 
 use std::borrow::Cow;
 use std::fs;
-use std::fs::FileTimes;
 use std::io;
 use std::io::Read;
 use std::path::Path;
@@ -13,7 +12,6 @@ use std::time;
 
 use anki_io::create_dir;
 use anki_io::open_file;
-use anki_io::set_file_times;
 use anki_io::write_file;
 use anki_io::FileIoError;
 use anki_io::FileIoSnafu;
@@ -337,47 +335,6 @@ pub(crate) fn mtime_as_i64<P: AsRef<Path>>(path: P) -> io::Result<i64> {
         .as_millis() as i64)
 }
 
-pub fn remove_files<S>(media_folder: &Path, files: &[S]) -> Result<()>
-where
-    S: AsRef<str> + std::fmt::Debug,
-{
-    if files.is_empty() {
-        return Ok(());
-    }
-
-    let trash_folder = trash_folder(media_folder)?;
-
-    for file in files {
-        let src_path = media_folder.join(file.as_ref());
-        let dst_path = trash_folder.join(file.as_ref());
-
-        // if the file doesn't exist, nothing to do
-        if let Err(e) = fs::metadata(&src_path) {
-            if e.kind() == io::ErrorKind::NotFound {
-                return Ok(());
-            } else {
-                return Err(e.into());
-            }
-        }
-
-        // move file to trash, clobbering any existing file with the same name
-        fs::rename(&src_path, &dst_path)?;
-
-        // mark it as modified, so we can expire it in the future
-        let secs = time::SystemTime::now();
-        let times = FileTimes::new().set_accessed(secs).set_modified(secs);
-        if let Err(err) = set_file_times(&dst_path, times) {
-            // The libc utimes() call fails on (some? all?) Android devices. Since we don't
-            // do automatic expiry yet, we can safely ignore the error.
-            if !cfg!(target_os = "android") {
-                return Err(err.into());
-            }
-        }
-    }
-
-    Ok(())
-}
-
 pub(super) fn trash_folder(media_folder: &Path) -> Result<PathBuf> {
     let trash_folder = media_folder.with_file_name("media.trash");
     match create_dir(&trash_folder) {
@@ -406,12 +363,11 @@ pub(crate) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<V
 mod test {
     use std::borrow::Cow;
 
-    use tempfile::tempdir;
+    
 
-    use crate::media::files::add_data_to_folder_uniquely;
+    
     use crate::media::files::add_hash_suffix_to_file_stem;
     use crate::media::files::normalize_filename;
-    use crate::media::files::remove_files;
     use crate::media::files::sha1_of_data;
     use crate::media::files::truncate_filename;
     use crate::media::MAX_MEDIA_FILENAME_LENGTH;
@@ -444,87 +400,6 @@ mod test {
             add_hash_suffix_to_file_stem("test.jpg", &hash).as_str(),
             "test-aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d.jpg"
         );
-    }
-
-    #[test]
-    fn adding_removing() {
-        let dir = tempdir().unwrap();
-        let dpath = dir.path();
-
-        // no existing file case
-        let h1 = sha1_of_data(b"hello");
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "test.mp3", b"hello", h1).unwrap(),
-            "test.mp3"
-        );
-
-        // same contents case
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "test.mp3", b"hello", h1).unwrap(),
-            "test.mp3"
-        );
-
-        // same contents, filenames differ only by case
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "Test.mp3", b"hello", h1).unwrap(),
-            "test.mp3"
-        );
-
-        // different contents, filenames differ only by case
-        let h2 = sha1_of_data(b"hello1");
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "Test.mp3", b"hello1", h2).unwrap(),
-            "test-88fdd585121a4ccb3d1540527aee53a77c77abb8.mp3"
-        );
-
-        // same contents, filenames differ only by case
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "test.mp3", b"hello1", h2).unwrap(),
-            "test-88fdd585121a4ccb3d1540527aee53a77c77abb8.mp3"
-        );
-
-        // filename normalisation
-        assert_eq!(normalize_filename("cafe\u{301}.mp3"), "caf\u{e9}.mp3");
-
-        let h3 = sha1_of_data(b"hello3");
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "caf\u{e9}.mp3", b"hello3", h3).unwrap(),
-            "caf\u{e9}.mp3"
-        );
-
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "cafe\u{301}.mp3", b"hello3", h3).unwrap(),
-            "caf\u{e9}.mp3"
-        );
-
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "Cafe\u{301}.mp3", b"hello3", h3).unwrap(),
-            "caf\u{e9}.mp3"
-        );
-
-        let h4 = sha1_of_data(b"hello4");
-        assert_eq!(
-            add_data_to_folder_uniquely(dpath, "Cafe\u{301}.mp3", b"hello4", h4).unwrap(),
-            "caf\u{e9}-8f0bc65da355c6cb184de9d17bfe1baaeefbd443.mp3"
-        );
-
-        let mut written_files = std::fs::read_dir(dpath)
-            .unwrap()
-            .map(|d| d.unwrap().file_name().to_string_lossy().into_owned())
-            .collect::<Vec<_>>();
-        written_files.sort();
-        assert_eq!(
-            written_files,
-            vec![
-                "caf\u{e9}-8f0bc65da355c6cb184de9d17bfe1baaeefbd443.mp3",
-                "caf\u{e9}.mp3",
-                "test-88fdd585121a4ccb3d1540527aee53a77c77abb8.mp3",
-                "test.mp3",
-            ]
-        );
-
-        // remove
-        remove_files(dpath, written_files.as_slice()).unwrap();
     }
 
     #[test]

@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::collections::HashSet;
 
 use anki_proto::scheduler::custom_study_request::cram::CramKind;
 use anki_proto::scheduler::custom_study_request::Cram;
@@ -9,8 +8,6 @@ use anki_proto::scheduler::custom_study_request::Value as CustomStudyValue;
 
 use super::FilteredDeckForUpdate;
 use crate::config::DeckConfigKey;
-use crate::decks::tree::get_deck_in_tree;
-use crate::decks::tree::sum_deck_tree_node;
 use crate::decks::FilteredDeck;
 use crate::decks::FilteredSearchOrder;
 use crate::decks::FilteredSearchTerm;
@@ -32,68 +29,6 @@ impl Collection {
         self.transact(Op::CreateCustomStudy, |col| col.custom_study_inner(input))
     }
 
-    pub fn custom_study_defaults(
-        &mut self,
-        deck_id: DeckId,
-    ) -> Result<anki_proto::scheduler::CustomStudyDefaultsResponse> {
-        // daily counts
-        let deck = self.get_deck(deck_id)?.or_not_found(deck_id)?;
-        let normal = deck.normal()?;
-        let extend_new = normal.extend_new;
-        let extend_review = normal.extend_review;
-
-        let subtree = get_deck_in_tree(self.deck_tree(Some(TimestampSecs::now()))?, deck_id)
-            .or_not_found(deck_id)?;
-        let available_new_including_children =
-            sum_deck_tree_node(&subtree, |node| node.new_uncapped);
-        let available_review_including_children =
-            sum_deck_tree_node(&subtree, |node| node.review_uncapped);
-        let (
-            available_new,
-            available_new_in_children,
-            available_review,
-            available_review_in_children,
-        ) = (
-            subtree.new_uncapped,
-            available_new_including_children - subtree.new_uncapped,
-            subtree.review_uncapped,
-            available_review_including_children - subtree.review_uncapped,
-        );
-        // tags
-        let include_tags: HashSet<String> = self.get_config_default(
-            DeckConfigKey::CustomStudyIncludeTags
-                .for_deck(deck_id)
-                .as_str(),
-        );
-        let exclude_tags: HashSet<String> = self.get_config_default(
-            DeckConfigKey::CustomStudyExcludeTags
-                .for_deck(deck_id)
-                .as_str(),
-        );
-        let mut all_tags: Vec<_> = self.all_tags_in_deck(deck_id)?.into_iter().collect();
-        all_tags.sort_unstable();
-        let tags: Vec<anki_proto::scheduler::custom_study_defaults_response::Tag> = all_tags
-            .into_iter()
-            .map(|tag| {
-                let tag = tag.into_inner();
-                anki_proto::scheduler::custom_study_defaults_response::Tag {
-                    include: include_tags.contains(&tag),
-                    exclude: exclude_tags.contains(&tag),
-                    name: tag,
-                }
-            })
-            .collect();
-
-        Ok(anki_proto::scheduler::CustomStudyDefaultsResponse {
-            tags,
-            extend_new,
-            extend_review,
-            available_new,
-            available_review,
-            available_new_in_children,
-            available_review_in_children,
-        })
-    }
 }
 
 impl Collection {
@@ -293,95 +228,12 @@ fn tags_to_nodes(tags_to_include: &[String], tags_to_exclude: &[String]) -> Sear
 
 #[cfg(test)]
 mod test {
-    use anki_proto::scheduler::custom_study_request::cram::CramKind;
+    
     use anki_proto::scheduler::custom_study_request::Cram;
-    use anki_proto::scheduler::custom_study_request::Value;
-    use anki_proto::scheduler::CustomStudyRequest;
+    
+    
 
     use super::*;
-
-    #[test]
-    fn tag_remembering() -> Result<()> {
-        let mut col = Collection::new();
-
-        let nt = col.get_notetype_by_name("Basic")?.unwrap();
-        let mut note = nt.new_note();
-        note.tags
-            .extend_from_slice(&["3".to_string(), "1".to_string(), "2::two".to_string()]);
-        col.add_note(&mut note, DeckId(1))?;
-        let mut note = nt.new_note();
-        note.tags
-            .extend_from_slice(&["1".to_string(), "2::two".to_string()]);
-        col.add_note(&mut note, DeckId(1))?;
-
-        fn get_defaults(col: &mut Collection) -> Result<Vec<(&'static str, bool, bool)>> {
-            Ok(col
-                .custom_study_defaults(DeckId(1))?
-                .tags
-                .into_iter()
-                .map(|tag| {
-                    (
-                        // cheekily leak the string so we have a static ref for comparison
-                        &*Box::leak(tag.name.into_boxed_str()),
-                        tag.include,
-                        tag.exclude,
-                    )
-                })
-                .collect())
-        }
-
-        // nothing should be included/excluded by default
-        assert_eq!(
-            &get_defaults(&mut col)?,
-            &[
-                ("1", false, false),
-                ("2::two", false, false),
-                ("3", false, false)
-            ]
-        );
-
-        // if filtered deck creation fails, inclusions/exclusions don't change
-        let mut cram = Cram {
-            kind: CramKind::All as i32,
-            card_limit: 0,
-            tags_to_include: vec!["2::two".to_string()],
-            tags_to_exclude: vec!["3".to_string()],
-        };
-        assert_eq!(
-            col.custom_study(CustomStudyRequest {
-                deck_id: 1,
-                value: Some(Value::Cram(cram.clone())),
-            }),
-            Err(AnkiError::CustomStudyError {
-                source: CustomStudyError::NoMatchingCards
-            })
-        );
-        assert_eq!(
-            &get_defaults(&mut col)?,
-            &[
-                ("1", false, false),
-                ("2::two", false, false),
-                ("3", false, false)
-            ]
-        );
-
-        // a successful build should update tags
-        cram.card_limit = 100;
-        col.custom_study(CustomStudyRequest {
-            deck_id: 1,
-            value: Some(Value::Cram(cram)),
-        })?;
-        assert_eq!(
-            &get_defaults(&mut col)?,
-            &[
-                ("1", false, false),
-                ("2::two", true, false),
-                ("3", false, true)
-            ]
-        );
-
-        Ok(())
-    }
 
     #[test]
     fn sql_grouping() -> Result<()> {

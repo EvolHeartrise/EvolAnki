@@ -25,22 +25,6 @@ impl Collection {
             .unwrap_or_else(|| default.to_string())
     }
 
-    pub fn set_config_string(
-        &mut self,
-        key: StringKey,
-        val: &str,
-        undoable: bool,
-    ) -> Result<OpOutput<()>> {
-        let op = if undoable {
-            Op::UpdateConfig
-        } else {
-            Op::SkipUndo
-        };
-        self.transact(op, |col| {
-            col.set_config_string_inner(key, val)?;
-            Ok(())
-        })
-    }
 }
 
 impl Collection {

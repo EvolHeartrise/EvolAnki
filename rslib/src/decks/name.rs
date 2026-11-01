@@ -59,27 +59,6 @@ impl NativeDeckName {
         needs_normalization
     }
 
-    /// Determine name to rename a deck to, when `self` is dropped on `target`.
-    /// `target` being unset represents a drop at the top or bottom of the deck
-    /// list. The returned name should be used to replace `self`.
-    pub(crate) fn reparented_name(&self, target: Option<&NativeDeckName>) -> Option<Self> {
-        let dragged_base = self.0.rsplit('\x1f').next().unwrap();
-        let dragged_root = self.components().next().unwrap();
-        if let Some(target) = target {
-            let target_root = target.components().next().unwrap();
-            if target.0.starts_with(&self.0) && target_root == dragged_root {
-                // foo onto foo::bar, or foo onto itself -> no-op
-                None
-            } else {
-                // foo::bar onto baz -> baz::bar
-                Some(NativeDeckName(format!("{}\x1f{}", target.0, dragged_base)))
-            }
-        } else {
-            // foo::bar onto top level -> bar
-            Some(NativeDeckName(dragged_base.into()))
-        }
-    }
-
     /// Replace the old parent's name with the new parent's name in self's name,
     /// where the old parent's name is expected to be a prefix.
     fn reparent(&mut self, old_parent: &NativeDeckName, new_parent: &NativeDeckName) {
@@ -177,14 +156,6 @@ impl Collection {
         }
     }
 
-    pub fn get_deck_and_child_names(&self, did: DeckId) -> Result<Vec<(DeckId, String)>> {
-        Ok(self
-            .storage
-            .deck_with_children(did)?
-            .iter()
-            .map(|deck| (deck.id, deck.name.human_name()))
-            .collect())
-    }
 }
 
 fn invalid_char_for_deck_component(c: char) -> bool {
@@ -255,42 +226,4 @@ mod test {
         assert_eq!(normalize_res("fo\u{a}obar"), (true, "foobar".into()));
     }
 
-    #[test]
-    fn drag_drop() {
-        // use custom separator to make the tests easier to read
-        fn n(s: &str) -> NativeDeckName {
-            NativeDeckName(s.replace(':', "\x1f"))
-        }
-
-        #[allow(clippy::unnecessary_wraps)]
-        fn n_opt(s: &str) -> Option<NativeDeckName> {
-            Some(n(s))
-        }
-
-        fn reparented_name(drag: &str, drop: Option<&str>) -> Option<NativeDeckName> {
-            n(drag).reparented_name(drop.map(n).as_ref())
-        }
-
-        assert_eq!(reparented_name("drag", Some("drop")), n_opt("drop:drag"));
-        assert_eq!(reparented_name("drag", None), n_opt("drag"));
-        assert_eq!(reparented_name("drag:child", None), n_opt("child"));
-        assert_eq!(
-            reparented_name("drag:child", Some("drop:deck")),
-            n_opt("drop:deck:child")
-        );
-        assert_eq!(
-            reparented_name("drag:child", Some("drag")),
-            n_opt("drag:child")
-        );
-        assert_eq!(
-            reparented_name("drag:child:grandchild", Some("drag")),
-            n_opt("drag:grandchild")
-        );
-        // drops to child not supported
-        assert_eq!(reparented_name("drag", Some("drag:child:grandchild")), None);
-        // name doesn't change when deck dropped on itself
-        assert_eq!(reparented_name("foo:bar", Some("foo:bar")), None);
-        // names that are prefixes of the target are handled correctly
-        assert_eq!(reparented_name("a", Some("ab")), n_opt("ab:a"));
-    }
 }

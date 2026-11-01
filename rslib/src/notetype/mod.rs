@@ -47,10 +47,6 @@ use crate::error::CardTypeErrorDetails;
 use crate::error::CardTypeSnafu;
 use crate::error::MissingClozeSnafu;
 use crate::prelude::*;
-use crate::search::JoinSearches;
-use crate::search::Node;
-use crate::search::SearchNode;
-use crate::storage::comma_separated_ids;
 use crate::template::FieldRequirements;
 use crate::template::ParsedTemplate;
 use crate::text::ensure_string_in_nfc;
@@ -178,20 +174,6 @@ impl Collection {
         })
     }
 
-    /// Used to support the current importing code; does not mark notetype as
-    /// modified, and does not support undo.
-    pub fn add_or_update_notetype_with_existing_id(
-        &mut self,
-        notetype: &mut Notetype,
-        skip_checks: bool,
-    ) -> Result<()> {
-        self.transact_no_undo(|col| {
-            let usn = col.usn()?;
-            let existing = col.storage.get_notetype(notetype.id)?;
-            col.add_or_update_notetype_with_existing_id_inner(notetype, existing, usn, skip_checks)
-        })
-    }
-
     pub fn get_notetype_by_name(&mut self, name: &str) -> Result<Option<Arc<Notetype>>> {
         if let Some(ntid) = self.storage.get_notetype_id(name)? {
             self.get_notetype(ntid)
@@ -221,46 +203,6 @@ impl Collection {
             .collect()
     }
 
-    pub fn get_all_notetypes_of_search_notes(
-        &mut self,
-    ) -> Result<HashMap<NotetypeId, Arc<Notetype>>> {
-        self.storage
-            .all_notetypes_of_search_notes()?
-            .into_iter()
-            .map(|ntid| {
-                self.get_notetype(ntid)
-                    .transpose()
-                    .unwrap()
-                    .map(|nt| (ntid, nt))
-            })
-            .collect()
-    }
-
-    pub fn remove_notetype(&mut self, ntid: NotetypeId) -> Result<OpOutput<()>> {
-        self.transact(Op::RemoveNotetype, |col| col.remove_notetype_inner(ntid))
-    }
-
-    /// Return the notetype used by `note_ids`, or an error if not exactly 1
-    /// notetype is in use.
-    pub fn get_single_notetype_of_notes(&mut self, note_ids: &[NoteId]) -> Result<NotetypeId> {
-        require!(!note_ids.is_empty(), "no note id provided");
-
-        let nids_node: Node = SearchNode::NoteIds(comma_separated_ids(note_ids)).into();
-        let note1 = self
-            .storage
-            .get_note(*note_ids.first().unwrap())?
-            .or_not_found(note_ids[0])?;
-
-        if self
-            .search_notes_unordered(note1.notetype_id.and(nids_node))?
-            .len()
-            != note_ids.len()
-        {
-            Err(AnkiError::MultipleNotetypesSelected)
-        } else {
-            Ok(note1.notetype_id)
-        }
-    }
 }
 
 impl Notetype {

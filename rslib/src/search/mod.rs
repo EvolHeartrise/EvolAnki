@@ -122,7 +122,6 @@ impl Drop for CardTableGuard<'_> {
 
 pub struct NoteTableGuard<'a> {
     pub col: &'a mut Collection,
-    pub notes: usize,
 }
 
 impl Drop for NoteTableGuard<'_> {
@@ -272,13 +271,12 @@ impl Collection {
         self.storage.setup_searched_notes_table()?;
         let sql = format!("insert into search_nids {sql}");
 
-        let notes = self
-            .storage
+        self.storage
             .db
             .prepare(&sql)?
             .execute(params_from_iter(args))?;
 
-        Ok(NoteTableGuard { notes, col: self })
+        Ok(NoteTableGuard { col: self })
     }
 
     /// Place the ids of cards with notes in 'search_nids' into 'search_cids'.

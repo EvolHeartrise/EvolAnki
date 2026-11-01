@@ -89,9 +89,6 @@ pub enum FieldRequirementKindSchema11 {
 }
 
 impl NotetypeSchema11 {
-    pub fn latex_uses_svg(&self) -> bool {
-        self.latexsvg
-    }
 }
 
 impl From<NotetypeSchema11> for Notetype {

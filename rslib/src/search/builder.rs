@@ -155,13 +155,6 @@ impl SearchNode {
         Self::Notetype(escape_anki_wildcards_for_search_node(name))
     }
 
-    /// Construct [SearchNode] from an unescaped template name.
-    pub fn from_template_name(name: &str) -> Self {
-        Self::CardTemplate(TemplateKind::Name(escape_anki_wildcards_for_search_node(
-            name,
-        )))
-    }
-
     pub fn from_note_ids<I: IntoIterator<Item = N>, N: Into<NoteId>>(ids: I) -> Self {
         Self::NoteIds(ids.into_iter().map(Into::into).join(","))
     }

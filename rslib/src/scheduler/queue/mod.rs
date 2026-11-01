@@ -73,6 +73,7 @@ pub struct QueuedCards {
 }
 
 impl Collection {
+    #[cfg(test)]
     pub fn get_next_card(&mut self) -> Result<Option<QueuedCard>> {
         self.get_queued_cards(1, false)
             .map(|queued| queued.cards.first().cloned())

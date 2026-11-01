@@ -10,7 +10,6 @@ mod rename;
 mod service;
 pub(crate) mod undo;
 
-use unicase::UniCase;
 
 use crate::prelude::*;
 
@@ -30,9 +29,6 @@ impl Tag {
         }
     }
 
-    pub(crate) fn set_modified(&mut self, usn: Usn) {
-        self.usn = usn;
-    }
 }
 
 pub(crate) fn split_tags(tags: &str) -> impl Iterator<Item = &str> {
@@ -49,10 +45,6 @@ pub(crate) fn join_tags(tags: &[String]) -> String {
 
 fn is_tag_separator(c: char) -> bool {
     c == ' ' || c == '\u{3000}'
-}
-
-pub(crate) fn immediate_parent_name_unicase(tag_name: UniCase<&str>) -> Option<UniCase<&str>> {
-    tag_name.rsplit_once("::").map(|t| t.0).map(UniCase::new)
 }
 
 fn immediate_parent_name_str(tag_name: &str) -> Option<&str> {

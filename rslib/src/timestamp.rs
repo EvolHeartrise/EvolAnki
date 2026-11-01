@@ -16,10 +16,6 @@ impl TimestampSecs {
         Self(elapsed().as_secs() as i64)
     }
 
-    pub fn zero() -> Self {
-        Self(0)
-    }
-
     pub fn elapsed_secs_since(self, other: TimestampSecs) -> i64 {
         self.0 - other.0
     }
@@ -78,10 +74,6 @@ impl TimestampMillis {
         Self(elapsed().as_millis() as i64)
     }
 
-    pub fn zero() -> Self {
-        Self(0)
-    }
-
     pub fn as_secs(self) -> TimestampSecs {
         TimestampSecs(self.0 / 1000)
     }
@@ -90,9 +82,6 @@ impl TimestampMillis {
         Self(self.0 + secs * 1000)
     }
 
-    pub fn elapsed_millis(self) -> u64 {
-        (Self::now().0 - self.0).max(0) as u64
-    }
 }
 
 fn elapsed() -> time::Duration {

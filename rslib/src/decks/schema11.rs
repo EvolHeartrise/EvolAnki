@@ -213,10 +213,6 @@ impl DeckSchema11 {
         }
     }
 
-    pub fn id(&self) -> DeckId {
-        self.common().id
-    }
-
     pub fn name(&self) -> &str {
         &self.common().name
     }

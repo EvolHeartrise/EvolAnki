@@ -19,7 +19,6 @@ use crate::storage::comma_separated_ids;
 pub struct ChangeNotetypeInput {
     pub current_schema: TimestampMillis,
     pub note_ids: Vec<NoteId>,
-    pub old_notetype_name: String,
     pub old_notetype_id: NotetypeId,
     pub new_notetype_id: NotetypeId,
     pub new_fields: Vec<Option<usize>>,
@@ -348,7 +347,6 @@ impl Collection {
             input: ChangeNotetypeInput {
                 current_schema,
                 note_ids: vec![],
-                old_notetype_name: old_notetype_name.clone(),
                 old_notetype_id,
                 new_notetype_id,
                 new_fields,
@@ -371,7 +369,7 @@ impl Collection {
     }
 
     pub fn change_notetype_of_notes(&mut self, input: ChangeNotetypeInput) -> Result<OpOutput<()>> {
-        self.transact(Op::ChangeNotetype, |col| {
+        self.transact(Op::UpdateNotetype, |col| {
             col.change_notetype_of_notes_inner(input)
         })
     }

@@ -184,7 +184,6 @@ mod test {
             stored.config.original_stock_kind(),
             OriginalStockKind::Unknown
         );
-        col.remove_notetype(nt.id)?;
         Ok(())
     }
 

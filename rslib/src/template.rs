@@ -273,9 +273,6 @@ fn template_error_to_anki_error(
 
 fn localized_template_error(tr: &I18n, err: TemplateError) -> String {
     match err {
-        TemplateError::NoClosingBrackets(tag) => tr
-            .card_template_rendering_no_closing_brackets("}}", tag)
-            .into(),
         TemplateError::ConditionalNotClosed(tag) => tr
             .card_template_rendering_conditional_not_closed(format!("{{{{/{tag}}}}}"))
             .into(),

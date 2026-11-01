@@ -9,7 +9,6 @@ pub(crate) mod schema11;
 mod string;
 pub(crate) mod undo;
 
-use anki_proto::config::preferences::BackupLimits;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_repr::Deserialize_repr;
@@ -49,20 +48,15 @@ pub(crate) enum ConfigKey {
     FirstDayOfWeek,
     LocalOffset,
     Rollover,
-    Backups,
     UpdateNotes,
     UpdateNotetypes,
 
-    #[strum(to_string = "timeLim")]
-    AnswerTimeLimitSecs,
     #[strum(to_string = "curDeck")]
     CurrentDeckId,
     #[strum(to_string = "curModel")]
     CurrentNotetypeId,
     #[strum(to_string = "collapseTime")]
     LearnAheadSecs,
-    #[strum(to_string = "newSpread")]
-    NewReviewMix,
     #[strum(to_string = "nextPos")]
     NextNewCardPosition,
     #[strum(to_string = "schedVer")]
@@ -77,26 +71,7 @@ pub enum SchedulerVersion {
 }
 
 impl Collection {
-    pub fn set_config_json<T: Serialize>(
-        &mut self,
-        key: &str,
-        val: &T,
-        undoable: bool,
-    ) -> Result<OpOutput<()>> {
-        let op = if undoable {
-            Op::UpdateConfig
-        } else {
-            Op::SkipUndo
-        };
-        self.transact(op, |col| {
-            col.set_config(key, val)?;
-            Ok(())
-        })
-    }
 
-    pub fn remove_config(&mut self, key: &str) -> Result<OpOutput<()>> {
-        self.transact(Op::UpdateConfig, |col| col.remove_config_inner(key))
-    }
 }
 
 impl Collection {
@@ -210,14 +185,6 @@ impl Collection {
             .unwrap_or(SchedulerVersion::V1)
     }
 
-    pub fn v2_enabled(&self) -> bool {
-        self.scheduler_version() == SchedulerVersion::V2
-    }
-
-    pub fn v3_enabled(&self) -> bool {
-        self.scheduler_version() == SchedulerVersion::V2 && self.get_config_bool(BoolKey::Sched2021)
-    }
-
     /// Caution: this only updates the config setting.
     pub(crate) fn set_scheduler_version_config_key(&mut self, ver: SchedulerVersion) -> Result<()> {
         self.state.scheduler_info = None;
@@ -238,32 +205,6 @@ impl Collection {
     pub(crate) fn set_first_day_of_week(&mut self, weekday: Weekday) -> Result<()> {
         self.set_config(ConfigKey::FirstDayOfWeek, &weekday)
             .map(|_| ())
-    }
-
-    pub(crate) fn get_answer_time_limit_secs(&self) -> u32 {
-        self.get_config_optional(ConfigKey::AnswerTimeLimitSecs)
-            .unwrap_or_default()
-    }
-
-    pub(crate) fn set_answer_time_limit_secs(&mut self, secs: u32) -> Result<()> {
-        self.set_config(ConfigKey::AnswerTimeLimitSecs, &secs)
-            .map(|_| ())
-    }
-
-    pub(crate) fn get_backup_limits(&self) -> BackupLimits {
-        self.get_config_optional(ConfigKey::Backups).unwrap_or(
-            // 2d + 12d + 10w + 9m ≈ 1y
-            BackupLimits {
-                daily: 12,
-                weekly: 10,
-                monthly: 9,
-                minimum_interval_mins: 30,
-            },
-        )
-    }
-
-    pub(crate) fn set_backup_limits(&mut self, limits: BackupLimits) -> Result<()> {
-        self.set_config(ConfigKey::Backups, &limits).map(|_| ())
     }
 
 }

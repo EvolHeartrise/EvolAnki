@@ -18,7 +18,6 @@ use crate::media::database::MediaDatabase;
 use crate::media::database::MediaEntry;
 use crate::media::files::add_data_to_folder_uniquely;
 use crate::media::files::mtime_as_i64;
-use crate::media::files::remove_files;
 use crate::media::files::sha1_of_data;
 use crate::prelude::*;
 
@@ -91,24 +90,6 @@ impl MediaManager {
             }
 
             Ok(chosen_fname)
-        })
-    }
-
-    pub fn remove_files<S>(&self, filenames: &[S]) -> Result<()>
-    where
-        S: AsRef<str> + std::fmt::Debug,
-    {
-        self.transact(|db| {
-            remove_files(&self.media_folder, filenames)?;
-            for fname in filenames {
-                if let Some(mut entry) = db.get_entry(fname.as_ref())? {
-                    entry.sha1 = None;
-                    entry.mtime = 0;
-                    entry.sync_required = true;
-                    db.set_entry(&entry)?;
-                }
-            }
-            Ok(())
         })
     }
 

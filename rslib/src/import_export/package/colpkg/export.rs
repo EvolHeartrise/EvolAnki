@@ -103,25 +103,6 @@ fn export_collection_file(
     export_collection(meta, out_path, &mut col_file, col_size, media, tr, progress)
 }
 
-/// Write copied collection data without any media.
-pub(crate) fn export_colpkg_from_data(
-    out_path: impl AsRef<Path>,
-    mut col_data: &[u8],
-    tr: &I18n,
-) -> Result<()> {
-    let col_size = col_data.len();
-    let mut progress = ThrottlingProgressHandler::new(Default::default());
-    export_collection(
-        Meta::new(),
-        out_path,
-        &mut col_data,
-        col_size,
-        MediaIter::empty(),
-        tr,
-        &mut progress,
-    )
-}
-
 pub(crate) fn export_collection(
     meta: Meta,
     out_path: impl AsRef<Path>,

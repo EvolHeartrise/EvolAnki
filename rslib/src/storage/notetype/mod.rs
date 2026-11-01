@@ -10,7 +10,6 @@ use rusqlite::OptionalExtension;
 use rusqlite::Row;
 use unicase::UniCase;
 
-use super::ids_to_string;
 use super::SqliteStorage;
 use crate::error::DbErrorKind;
 use crate::notetype::AlreadyGeneratedCardInfo;
@@ -120,15 +119,6 @@ impl SqliteStorage {
             .collect()
     }
 
-    pub(crate) fn all_notetypes_of_search_notes(&self) -> Result<Vec<NotetypeId>> {
-        self.db
-            .prepare_cached(
-                "SELECT DISTINCT mid FROM notes WHERE id IN (SELECT nid FROM search_nids)",
-            )?
-            .query_and_then([], |r| Ok(r.get(0)?))?
-            .collect()
-    }
-
     pub(crate) fn used_notetypes(&self) -> Result<HashSet<NotetypeId>> {
         self.db
             .prepare_cached("SELECT DISTINCT mid FROM notes")?
@@ -170,19 +160,6 @@ impl SqliteStorage {
         }
 
         Ok(())
-    }
-
-    pub(crate) fn note_ids_by_notetype(
-        &self,
-        nids: &[NoteId],
-    ) -> Result<Vec<(NotetypeId, NoteId)>> {
-        let mut sql = String::from("select mid, id from notes where id in ");
-        ids_to_string(&mut sql, nids);
-        sql += " order by mid, id";
-        self.db
-            .prepare(&sql)?
-            .query_and_then([], |r| Ok((r.get(0)?, r.get(1)?)))?
-            .collect()
     }
 
     pub(crate) fn all_note_ids_by_notetype(&self) -> Result<Vec<(NotetypeId, NoteId)>> {

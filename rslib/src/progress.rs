@@ -175,7 +175,6 @@ pub(crate) fn progress_to_proto(
                     ExportProgress::File => tr.exporting_exporting_file(),
                     ExportProgress::Media(n) => tr.exporting_processed_media_files(n),
                     ExportProgress::Notes(n) => tr.importing_processed_notes(n),
-                    ExportProgress::Cards(n) => tr.importing_processed_cards(n),
                     ExportProgress::Gathering => tr.importing_gathering(),
                 }
                 .into(),
@@ -294,7 +293,4 @@ impl<'f, F: 'f + FnMut(usize) -> Result<()>> Incrementor<'f, F> {
         (self.update_fn)(self.count)
     }
 
-    pub(crate) fn count(&self) -> usize {
-        self.count
-    }
 }

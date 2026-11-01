@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 pub use anki_proto::scheduler::schedule_cards_as_new_request::Context as ScheduleAsNewContext;
-pub use anki_proto::scheduler::RepositionDefaultsResponse;
-pub use anki_proto::scheduler::ScheduleCardsAsNewDefaultsResponse;
 use rand::seq::SliceRandom;
 
 use crate::card::CardQueue;
@@ -190,22 +188,6 @@ impl Collection {
         })
     }
 
-    pub fn reschedule_cards_as_new_defaults(
-        &self,
-        context: ScheduleAsNewContext,
-    ) -> ScheduleCardsAsNewDefaultsResponse {
-        match context {
-            ScheduleAsNewContext::Browser => ScheduleCardsAsNewDefaultsResponse {
-                restore_position: self.get_config_bool(BoolKey::RestorePositionBrowser),
-                reset_counts: self.get_config_bool(BoolKey::ResetCountsBrowser),
-            },
-            ScheduleAsNewContext::Reviewer => ScheduleCardsAsNewDefaultsResponse {
-                restore_position: self.get_config_bool(BoolKey::RestorePositionReviewer),
-                reset_counts: self.get_config_bool(BoolKey::ResetCountsReviewer),
-            },
-        }
-    }
-
     pub fn sort_cards(
         &mut self,
         cids: &[CardId],
@@ -251,29 +233,6 @@ impl Collection {
             }
         }
         Ok(count)
-    }
-
-    pub fn reposition_defaults(&self) -> RepositionDefaultsResponse {
-        RepositionDefaultsResponse {
-            random: self.get_config_bool(BoolKey::RandomOrderReposition),
-            shift: self.get_config_bool(BoolKey::ShiftPositionOfExistingCards),
-        }
-    }
-
-    /// This is handled by update_deck_configs() now; this function has been
-    /// kept around for now to support the old deck config screen.
-    pub fn sort_deck_legacy(&mut self, deck: DeckId, random: bool) -> Result<OpOutput<usize>> {
-        self.transact(Op::SortCards, |col| {
-            col.sort_deck(
-                deck,
-                if random {
-                    NewCardInsertOrder::Random
-                } else {
-                    NewCardInsertOrder::Due
-                },
-                col.usn()?,
-            )
-        })
     }
 
     pub(crate) fn sort_deck(

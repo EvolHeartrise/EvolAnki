@@ -278,7 +278,6 @@ impl<'n> NoteContext<'n> {
                 .change_notetype_of_notes_inner(ChangeNotetypeInput {
                     current_schema: self.target_col_schema_change()?,
                     note_ids,
-                    old_notetype_name: nt.name.clone(),
                     old_notetype_id: nt.id,
                     new_notetype_id: original.id,
                     new_fields: nt.field_ords_vec(),
@@ -382,7 +381,6 @@ impl<'n> NoteContext<'n> {
             incoming.merge(&existing);
             self.record_remapped_ords(&incoming);
 
-            let old_notetype_name = existing.name.clone();
             let new_fields = existing.field_ords_vec();
             let new_templates = Some(existing.template_ords_vec());
             incoming.copy_ords(&existing);
@@ -392,7 +390,6 @@ impl<'n> NoteContext<'n> {
                 .change_notetype_of_notes_inner(ChangeNotetypeInput {
                     current_schema: self.target_col_schema_change()?,
                     note_ids,
-                    old_notetype_name,
                     old_notetype_id: existing_ntid,
                     new_notetype_id: incoming_ntid,
                     new_fields,
