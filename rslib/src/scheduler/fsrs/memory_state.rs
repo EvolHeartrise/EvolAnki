@@ -11,6 +11,7 @@ use fsrs::FSRS5_DEFAULT_DECAY;
 use fsrs::FSRS6_DEFAULT_DECAY;
 use itertools::Either;
 use itertools::Itertools;
+use tracing::error;
 
 use super::params::ignore_revlogs_before_ms_from_config;
 use super::rescheduler::Rescheduler;
@@ -27,6 +28,7 @@ use crate::search::Negated;
 use crate::search::Node;
 use crate::search::SearchNode;
 use crate::search::StateKind;
+use crate::storage::comma_separated_ids;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ComputeMemoryProgress {
@@ -405,6 +407,116 @@ impl Collection {
     }
 }
 
+impl Collection {
+    /// FSRS is always on in this fork, so collections that have been using SM-2
+    /// need memory states for stats, search and retrievability sorting. To be
+    /// called when a real user collection is opened, not on the temporary ones
+    /// used for import and sync. A failure is logged rather than preventing
+    /// the collection from opening: the transaction is rolled back, cards
+    /// still get their state when answered, and the next open tries again.
+    pub(crate) fn migrate_to_fsrs_if_needed(&mut self) {
+        if let Err(err) = self.migrate_to_fsrs() {
+            error!(?err, "unable to compute FSRS memory states");
+        }
+    }
+
+    /// The stored config value marks whether this is needed, as nothing else
+    /// reads it. It is set to true afterwards, so this runs again only if sync
+    /// or import brings back false, along with any cards from an SM-2 client.
+    fn migrate_to_fsrs(&mut self) -> Result<()> {
+        if self.server || self.get_config_optional::<bool, _>(BoolKey::Fsrs) == Some(true) {
+            return Ok(());
+        }
+        self.transact_no_undo(|col| {
+            col.add_missing_memory_states()?;
+            col.set_config_bool_inner(BoolKey::Fsrs, true)?;
+            Ok(())
+        })
+    }
+
+    /// Only cards without a memory state are written to, and only their FSRS
+    /// fields: due dates, intervals, ease factors and revlogs are left alone.
+    fn add_missing_memory_states(&mut self) -> Result<()> {
+        let mut presets: HashMap<DeckConfigId, (DeckConfig, Vec<DeckId>)> = HashMap::new();
+        let mut deck_desired_retention = HashMap::new();
+        for deck in self.storage.get_all_decks()? {
+            let Ok(normal) = deck.normal() else {
+                continue;
+            };
+            if let Some(desired_retention) = normal.desired_retention {
+                deck_desired_retention.insert(deck.id, desired_retention);
+            }
+            // a missing preset falls back on the default one
+            let config = self
+                .get_deck_config(DeckConfigId(normal.config_id), true)?
+                .or_not_found(normal.config_id)?;
+            presets
+                .entry(config.id)
+                .or_insert_with(|| (config, vec![]))
+                .1
+                .push(deck.id);
+        }
+
+        let without_state = |decks: &[DeckId]| {
+            SearchBuilder::all([
+                SearchNode::DeckIdsWithoutChildren(comma_separated_ids(decks)).into(),
+                SearchNode::HasMemoryState.negated(),
+            ])
+            .try_into_search()
+        };
+
+        let entries = presets
+            .values()
+            .map(|(config, decks)| {
+                Ok(UpdateMemoryStateEntry {
+                    req: Some(UpdateMemoryStateRequest {
+                        params: config.fsrs_params().clone(),
+                        preset_desired_retention: config.inner.desired_retention,
+                        historical_retention: config.inner.historical_retention,
+                        max_interval: config.inner.maximum_review_interval,
+                        reschedule: false,
+                        deck_desired_retention: deck_desired_retention.clone(),
+                    }),
+                    search: without_state(decks)?,
+                    ignore_before: ignore_revlogs_before_ms_from_config(config)?,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        self.update_memory_state(entries)?;
+
+        // Cards with no usable revlog are skipped above, so infer their state
+        // from the card, as is done when answering them.
+        let usn = self.usn()?;
+        for (config, decks) in presets.values() {
+            let fsrs = FSRS::new(config.fsrs_params())?;
+            let search = SearchBuilder::all([
+                without_state(decks)?,
+                SearchNode::State(StateKind::New).negated(),
+            ]);
+            for mut card in self.all_cards_for_search(search)? {
+                let original = card.clone();
+                if let Err(err) =
+                    card.set_memory_state(&fsrs, None, config.inner.historical_retention)
+                {
+                    error!(?err, card = card.id.0, "unable to infer memory state");
+                    continue;
+                }
+                if card.memory_state.is_none() {
+                    continue;
+                }
+                card.decay = Some(get_decay_from_params(config.fsrs_params()));
+                card.desired_retention = Some(
+                    *deck_desired_retention
+                        .get(&card.original_or_current_deck_id())
+                        .unwrap_or(&config.inner.desired_retention),
+                );
+                self.update_card_inner(&mut card, original, usn)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Card {
     pub(crate) fn set_memory_state(
         &mut self,
@@ -731,6 +843,217 @@ mod tests {
             assert_eq!(card.desired_retention, None);
             assert_eq!(card.decay, None);
 
+            Ok(())
+        }
+    }
+
+    mod always_on {
+        use anki_proto::generic;
+        use serde_json::Value;
+
+        use super::*;
+        use crate::services::ConfigService;
+        use crate::tests::NoteAdder;
+
+        /// As sync does: replaces all config, with the provided value for FSRS.
+        fn receive_fsrs_config_from_sync(col: &mut Collection, value: bool) {
+            let mut config = col.storage.get_all_config().unwrap();
+            config.insert("fsrs".to_string(), Value::Bool(value));
+            col.storage
+                .set_all_config(config, Usn(1), TimestampSecs::now())
+                .unwrap();
+        }
+
+        fn stored_flag(col: &Collection) -> Option<bool> {
+            col.get_config_optional(BoolKey::Fsrs)
+        }
+
+        fn raw_flag(col: &mut Collection) -> Vec<u8> {
+            let key = generic::String {
+                val: "fsrs".to_string(),
+            };
+            ConfigService::get_config_json(col, key).unwrap().json
+        }
+
+        /// A review card with a real revlog, as left behind by SM-2.
+        fn add_sm2_review_card(col: &mut Collection) -> CardId {
+            let note = NoteAdder::basic(col).add(col);
+            let card_id = col.storage.card_ids_of_notes(&[note.id]).unwrap()[0];
+            col.answer_easy();
+            let mut card = col.storage.get_card(card_id).unwrap().unwrap();
+            card.clear_fsrs_data();
+            col.storage.update_card(&card).unwrap();
+            card_id
+        }
+
+        #[test]
+        fn new_collection_is_fsrs_on() {
+            let mut col = Collection::new();
+            assert_eq!(stored_flag(&col), None);
+            assert!(col.get_config_bool(BoolKey::Fsrs));
+            assert!(col.fsrs_enabled());
+            assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
+            assert_eq!(raw_flag(&mut col), b"true");
+        }
+
+        #[test]
+        fn synced_false_config_does_not_turn_fsrs_off() {
+            let mut col = Collection::new();
+            NoteAdder::basic(&mut col).add(&mut col);
+            receive_fsrs_config_from_sync(&mut col, false);
+
+            assert_eq!(stored_flag(&col), Some(false));
+            assert!(col.get_config_bool(BoolKey::Fsrs));
+            assert!(col.fsrs_enabled());
+            assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
+            assert_eq!(raw_flag(&mut col), b"true");
+
+            // answering schedules with FSRS
+            col.answer_easy();
+            assert!(col.get_first_card().memory_state.is_some());
+        }
+
+        #[test]
+        fn migration_adds_memory_states_without_rescheduling() -> Result<()> {
+            let mut col = Collection::new();
+            let card_id = add_sm2_review_card(&mut col);
+            receive_fsrs_config_from_sync(&mut col, false);
+            let before = col.storage.get_card(card_id)?.unwrap();
+            let revlog_before = col.storage.get_all_revlog_entries(TimestampSecs(0))?;
+            assert!(before.memory_state.is_none());
+
+            col.migrate_to_fsrs_if_needed();
+
+            let after = col.storage.get_card(card_id)?.unwrap();
+            assert!(after.memory_state.is_some());
+            assert!(after.desired_retention.is_some());
+            assert!(after.decay.is_some());
+            assert_eq!(after.due, before.due);
+            assert_eq!(after.interval, before.interval);
+            assert_eq!(after.ease_factor, before.ease_factor);
+            assert_eq!(after.queue, before.queue);
+            assert_eq!(after.ctype, before.ctype);
+            assert_eq!(after.reps, before.reps);
+            assert_eq!(after.lapses, before.lapses);
+            assert_eq!(
+                col.storage.get_all_revlog_entries(TimestampSecs(0))?,
+                revlog_before
+            );
+            assert_eq!(stored_flag(&col), Some(true));
+            Ok(())
+        }
+
+        #[test]
+        fn migration_infers_state_for_review_card_without_revlog() -> Result<()> {
+            let mut col = Collection::new();
+            let card_id = add_sm2_review_card(&mut col);
+            col.storage.db.execute_batch("delete from revlog")?;
+            let before = col.storage.get_card(card_id)?.unwrap();
+            let expected = FSRS::new(&[])?.memory_state_from_sm2(
+                before.ease_factor(),
+                before.interval as f32,
+                0.9,
+            )?;
+
+            col.migrate_to_fsrs_if_needed();
+
+            let after = col.storage.get_card(card_id)?.unwrap();
+            let state = after.memory_state.unwrap();
+            assert!((state.stability - expected.stability).abs() < 0.01);
+            assert!((state.difficulty - expected.difficulty).abs() < 0.01);
+            assert_eq!(after.due, before.due);
+            assert_eq!(after.interval, before.interval);
+            Ok(())
+        }
+
+        #[test]
+        fn migration_uses_deck_desired_retention() -> Result<()> {
+            let mut col = Collection::new();
+            let card_id = add_sm2_review_card(&mut col);
+            let mut deck = (*col.get_deck(DeckId(1))?.unwrap()).clone();
+            deck.normal_mut()?.desired_retention = Some(0.85);
+            col.update_deck(&mut deck)?;
+
+            col.migrate_to_fsrs_if_needed();
+
+            let card = col.storage.get_card(card_id)?.unwrap();
+            assert_eq!(card.desired_retention, Some(0.85));
+            Ok(())
+        }
+
+        #[test]
+        fn migration_leaves_new_cards_and_existing_states_alone() -> Result<()> {
+            let mut col = Collection::new();
+            let existing = NoteAdder::basic(&mut col).add(&mut col);
+            let existing = col.storage.card_ids_of_notes(&[existing.id])?[0];
+            col.answer_easy();
+            let new = NoteAdder::basic(&mut col).add(&mut col);
+            let new = col.storage.card_ids_of_notes(&[new.id])?[0];
+            // pending usns would hide a write to these cards
+            col.before_upload()?;
+            let existing_before = col.storage.get_card(existing)?.unwrap();
+            let new_before = col.storage.get_card(new)?.unwrap();
+            assert!(existing_before.memory_state.is_some());
+
+            col.migrate_to_fsrs_if_needed();
+
+            assert_eq!(col.storage.get_card(existing)?.unwrap(), existing_before);
+            assert_eq!(col.storage.get_card(new)?.unwrap(), new_before);
+            Ok(())
+        }
+
+        #[test]
+        fn migration_only_runs_once_until_sync_stores_false_again() -> Result<()> {
+            let mut col = Collection::new();
+            let card_id = add_sm2_review_card(&mut col);
+            col.migrate_to_fsrs_if_needed();
+            assert!(col
+                .storage
+                .get_card(card_id)?
+                .unwrap()
+                .memory_state
+                .is_some());
+
+            // with the stored flag true, a card without a state is not looked at
+            let mut card = col.storage.get_card(card_id)?.unwrap();
+            card.clear_fsrs_data();
+            col.storage.update_card(&card)?;
+            col.migrate_to_fsrs_if_needed();
+            assert!(col
+                .storage
+                .get_card(card_id)?
+                .unwrap()
+                .memory_state
+                .is_none());
+
+            // a synced false means an SM-2 client may have been used
+            receive_fsrs_config_from_sync(&mut col, false);
+            col.migrate_to_fsrs_if_needed();
+            assert!(col
+                .storage
+                .get_card(card_id)?
+                .unwrap()
+                .memory_state
+                .is_some());
+            assert_eq!(stored_flag(&col), Some(true));
+            Ok(())
+        }
+
+        #[test]
+        fn migration_does_not_run_on_server() -> Result<()> {
+            let mut col = Collection::new();
+            let card_id = add_sm2_review_card(&mut col);
+            col.server = true;
+
+            col.migrate_to_fsrs_if_needed();
+
+            assert!(col
+                .storage
+                .get_card(card_id)?
+                .unwrap()
+                .memory_state
+                .is_none());
+            assert_eq!(stored_flag(&col), None);
             Ok(())
         }
     }

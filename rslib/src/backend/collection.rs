@@ -24,7 +24,9 @@ impl BackendCollectionService for Backend {
             .set_tr(self.tr.clone())
             .set_shared_progress_state(self.progress_state.clone());
 
-        *guard = Some(builder.build()?);
+        let mut col = builder.build()?;
+        col.migrate_to_fsrs_if_needed();
+        *guard = Some(col);
 
         Ok(())
     }
@@ -114,6 +116,46 @@ impl Backend {
         if let Some(task) = self.backup_task.lock().unwrap().take() {
             task.join().unwrap()?;
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use anki_i18n::I18n;
+    use tempfile::tempdir;
+
+    use super::*;
+    use crate::tests::NoteAdder;
+
+    #[test]
+    fn opening_migrates_sm2_collection_but_building_a_temporary_one_does_not() -> Result<()> {
+        let dir = tempdir()?;
+        let path = dir.path().join("col.anki2");
+        let mut col = CollectionBuilder::new(&path).build()?;
+        NoteAdder::basic(&mut col).add(&mut col);
+        col.answer_easy();
+        let mut card = col.get_first_card();
+        card.clear_fsrs_data();
+        col.storage.update_card(&card)?;
+        col.close(None)?;
+
+        // as done with temporary collections during import and sync
+        let col = CollectionBuilder::new(&path).build()?;
+        assert!(col.get_first_card().memory_state.is_none());
+        col.close(None)?;
+
+        let backend = Backend::new(I18n::template_only(), false);
+        BackendCollectionService::open_collection(
+            &backend,
+            anki_proto::collection::OpenCollectionRequest {
+                collection_path: path.to_string_lossy().into(),
+                ..Default::default()
+            },
+        )?;
+        let guard = backend.lock_open_collection()?;
+        let col = guard.as_ref().unwrap();
+        assert!(col.get_first_card().memory_state.is_some());
         Ok(())
     }
 }

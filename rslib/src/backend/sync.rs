@@ -432,7 +432,10 @@ impl Backend {
         };
 
         // ensure re-opened regardless of outcome
-        col.replace(builder.build()?);
+        let mut reopened = builder.build()?;
+        // a full download may have replaced the collection with an SM-2 one
+        reopened.migrate_to_fsrs_if_needed();
+        col.replace(reopened);
 
         let result = match result {
             Ok(sync_result) => {
