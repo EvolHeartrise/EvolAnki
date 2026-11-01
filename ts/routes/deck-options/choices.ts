@@ -69,9 +69,7 @@ export function newSortOrderChoices(): Choice<DeckConfig_Config_NewCardSortOrder
     ];
 }
 
-export function reviewOrderChoices(
-    fsrs: boolean,
-): Choice<DeckConfig_Config_ReviewCardOrder>[] {
+export function reviewOrderChoices(): Choice<DeckConfig_Config_ReviewCardOrder>[] {
     return [
         ...[
             {
@@ -95,8 +93,8 @@ export function reviewOrderChoices(
                 value: DeckConfig_Config_ReviewCardOrder.INTERVALS_DESCENDING,
             },
         ],
-        ...difficultyOrders(fsrs),
-        ...retrievabilityOrders(fsrs),
+        ...difficultyOrders(),
+        ...retrievabilityOrders(),
         ...[
             {
                 label: tr.decksRelativeOverdueness(),
@@ -198,33 +196,20 @@ export function questionActionChoices(): Choice<DeckConfig_Config_QuestionAction
     ];
 }
 
-function difficultyOrders(fsrs: boolean): Choice<DeckConfig_Config_ReviewCardOrder>[] {
-    const order = [
+function difficultyOrders(): Choice<DeckConfig_Config_ReviewCardOrder>[] {
+    return [
         {
-            label: fsrs
-                ? tr.deckConfigSortOrderDescendingDifficulty()
-                : tr.deckConfigSortOrderAscendingEase(),
-            value: DeckConfig_Config_ReviewCardOrder.EASE_ASCENDING,
-        },
-        {
-            label: fsrs
-                ? tr.deckConfigSortOrderAscendingDifficulty()
-                : tr.deckConfigSortOrderDescendingEase(),
+            label: tr.deckConfigSortOrderAscendingDifficulty(),
             value: DeckConfig_Config_ReviewCardOrder.EASE_DESCENDING,
         },
+        {
+            label: tr.deckConfigSortOrderDescendingDifficulty(),
+            value: DeckConfig_Config_ReviewCardOrder.EASE_ASCENDING,
+        },
     ];
-    if (fsrs) {
-        order.reverse();
-    }
-    return order;
 }
 
-function retrievabilityOrders(
-    fsrs: boolean,
-): Choice<DeckConfig_Config_ReviewCardOrder>[] {
-    if (!fsrs) {
-        return [];
-    }
+function retrievabilityOrders(): Choice<DeckConfig_Config_ReviewCardOrder>[] {
     return [
         {
             label: tr.deckConfigSortOrderRetrievabilityAscending(),

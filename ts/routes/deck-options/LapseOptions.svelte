@@ -14,7 +14,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import { type HelpItem, HelpItemScheduler } from "$lib/components/types";
+    import type { HelpItem } from "$lib/components/types";
 
     import { leechChoices } from "./choices";
     import type { DeckOptionsState } from "./lib";
@@ -27,22 +27,14 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     const config = state.currentConfig;
     const defaults = state.defaults;
-    const fsrs = state.fsrs;
 
-    let stepsExceedMinimumInterval: string;
     let stepsTooLargeForFsrs: string;
     $: {
         const lastRelearnStepInDays = $config.relearnSteps.length
             ? $config.relearnSteps[$config.relearnSteps.length - 1] / 60 / 24
             : 0;
-        stepsExceedMinimumInterval =
-            !$fsrs && lastRelearnStepInDays > $config.minimumLapseInterval
-                ? tr.deckConfigRelearningStepsAboveMinimumInterval()
-                : "";
         stepsTooLargeForFsrs =
-            $fsrs && lastRelearnStepInDays >= 1
-                ? tr.deckConfigStepsTooLargeForFsrs()
-                : "";
+            lastRelearnStepInDays >= 1 ? tr.deckConfigStepsTooLargeForFsrs() : "";
     }
 
     const settings = {
@@ -50,12 +42,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             title: tr.deckConfigRelearningSteps(),
             help: tr.deckConfigRelearningStepsTooltip(),
             url: HelpPage.DeckOptions.relearningSteps,
-        },
-        minimumInterval: {
-            title: tr.schedulingMinimumInterval(),
-            help: tr.deckConfigMinimumIntervalTooltip(),
-            url: HelpPage.DeckOptions.minimumInterval,
-            sched: HelpItemScheduler.SM2,
         },
         leechThreshold: {
             title: tr.schedulingLeechThreshold(),
@@ -84,7 +70,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         title={tr.schedulingLapses()}
         url={HelpPage.DeckOptions.lapses}
         slot="tooltip"
-        fsrs={$fsrs}
         {helpSections}
         on:mount={(e) => {
             modal = e.detail.modal;
@@ -108,29 +93,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
         <Item>
             <Warning warning={stepsTooLargeForFsrs} />
-        </Item>
-
-        {#if !$fsrs}
-            <Item>
-                <SpinBoxRow
-                    bind:value={$config.minimumLapseInterval}
-                    defaultValue={defaults.minimumLapseInterval}
-                    min={1}
-                >
-                    <SettingTitle
-                        on:click={() =>
-                            openHelpModal(
-                                Object.keys(settings).indexOf("minimumInterval"),
-                            )}
-                    >
-                        {settings.minimumInterval.title}
-                    </SettingTitle>
-                </SpinBoxRow>
-            </Item>
-        {/if}
-
-        <Item>
-            <Warning warning={stepsExceedMinimumInterval} />
         </Item>
 
         <Item>

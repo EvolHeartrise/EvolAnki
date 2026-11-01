@@ -69,12 +69,6 @@ deck-config-learning-steps-tooltip =
     The `Good` button will advance to the next step, which is 10 minutes by default.
     Once all steps have been passed, the card will become a review card, and
     will appear on a different day. { -deck-config-delay-hint }
-deck-config-graduating-interval-tooltip =
-    The number of days to wait before showing a card again, after the `Good` button
-    is pressed on the final learning step.
-deck-config-easy-interval-tooltip =
-    The number of days to wait before showing a card again, after the `Easy` button
-    is used to immediately remove a card from learning.
 deck-config-new-insertion-order = Insertion order
 deck-config-new-insertion-order-tooltip =
     Controls the position (due #) new cards are assigned when you add new cards.
@@ -234,10 +228,6 @@ deck-config-sort-order-deck-then-due-date = Deck, then due date
 deck-config-sort-order-ascending-intervals = Ascending intervals
 # Sort the cards by the interval, in descending order (longest to shortest).
 deck-config-sort-order-descending-intervals = Descending intervals
-# Sort the cards by ease, in ascending order (lowest to highest ease).
-deck-config-sort-order-ascending-ease = Ascending ease
-# Sort the cards by ease, in descending order (highest to lowest ease).
-deck-config-sort-order-descending-ease = Descending ease
 # Sort the cards by difficulty, in ascending order (easiest to hardest).
 deck-config-sort-order-ascending-difficulty = Easy cards first
 # Sort the cards by difficulty, in descending order (hardest to easiest).
@@ -295,19 +285,6 @@ deck-config-maximum-interval-tooltip =
     The maximum number of days a review card will wait. When reviews have
     reached the limit, `Hard`, `Good` and `Easy` will all give the same delay.
     The shorter you set this, the greater your workload will be.
-deck-config-starting-ease-tooltip =
-    The ease multiplier new cards start with. By default, the `Good` button on a
-    newly-learned card will delay the next review by 2.5x the previous delay.
-deck-config-easy-bonus-tooltip =
-    An extra multiplier that is applied to a review card's interval when you rate
-    it `Easy`.
-deck-config-interval-modifier-tooltip =
-    This multiplier is applied to all reviews, and minor adjustments can be used
-    to make Anki more conservative or aggressive in its scheduling. Please see
-    the manual before changing this option.
-deck-config-hard-interval-tooltip = The multiplier applied to a review interval when answering `Hard`.
-deck-config-new-interval-tooltip = The multiplier applied to a review interval when answering `Again`.
-deck-config-minimum-interval-tooltip = The minimum interval given to a review card after answering `Again`.
 deck-config-custom-scheduling = Custom scheduling
 deck-config-custom-scheduling-tooltip = Affects the entire collection. Use at your own risk!
 
@@ -371,9 +348,6 @@ deck-config-reviews-too-low =
         [one] { $cards } new card each day
        *[other] { $cards } new cards each day
     }, your review limit should be at least { $expected }.
-deck-config-learning-step-above-graduating-interval = The graduating interval should be at least as long as your final learning step.
-deck-config-good-above-easy = The easy interval should be at least as long as the graduating interval.
-deck-config-relearning-steps-above-minimum-interval = The minimum lapse interval should be at least as long as your final relearning step.
 deck-config-maximum-answer-secs-above-recommended = Anki can schedule your reviews more efficiently when you keep each question short.
 deck-config-too-short-maximum-interval = A maximum interval less than 6 months is not recommended.
 deck-config-ignore-before-info = (Approximately) { $included }/{ $totalCards } cards will be used to optimize the FSRS parameters.

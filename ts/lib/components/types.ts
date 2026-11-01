@@ -8,14 +8,8 @@ export type HelpItem = {
     title: string;
     help?: string;
     url?: string;
-    sched?: HelpItemScheduler;
     global?: boolean;
 };
-
-export enum HelpItemScheduler {
-    SM2 = 0,
-    FSRS = 1,
-}
 
 export type IconData = {
     url: string;

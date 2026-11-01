@@ -39,7 +39,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     export let state: DeckOptionsState;
     export let openHelpModal: (String) => void;
-    export let newlyEnabled = false;
 
     export function onPresetChange() {
         desiredRetentionTabs[0] = new ValueTab(
@@ -68,8 +67,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     $: if (desiredRetentionFocused) {
         desiredRetentionEverFocused = true;
     }
-    $: showDesiredRetentionTooltip =
-        newlyEnabled || desiredRetentionEverFocused || optimized;
+    $: showDesiredRetentionTooltip = desiredRetentionEverFocused || optimized;
 
     let computeParamsProgress: ComputeParamsProgress | undefined;
     let computingParams = false;

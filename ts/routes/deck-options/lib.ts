@@ -43,7 +43,6 @@ type AllConfigs =
             | "limits"
             | "newCardsIgnoreReviewLimit"
             | "applyAllParentLimits"
-            | "fsrs"
             | "fsrsReschedule"
         >
     >
@@ -104,7 +103,7 @@ export class DeckOptionsState {
         this.deckLimits = writable(data.currentDeck?.limits ?? createLimits());
         this.newCardsIgnoreReviewLimit = writable(data.newCardsIgnoreReviewLimit);
         this.applyAllParentLimits = writable(data.applyAllParentLimits);
-        this.fsrs = writable(data.fsrs);
+        this.fsrs = writable(true);
         this.fsrsHealthCheck = writable(data.fsrsHealthCheck);
         this.legacyEvaluate = data.fsrsLegacyEvaluate;
         this.daysSinceLastOptimization = writable(data.daysSinceLastFsrsOptimize);
@@ -269,7 +268,7 @@ export class DeckOptionsState {
             limits: get(this.deckLimits),
             newCardsIgnoreReviewLimit: get(this.newCardsIgnoreReviewLimit),
             applyAllParentLimits: get(this.applyAllParentLimits),
-            fsrs: get(this.fsrs),
+            fsrs: true,
             fsrsReschedule: get(this.fsrsReschedule),
             fsrsHealthCheck: get(this.fsrsHealthCheck),
         };
@@ -364,7 +363,6 @@ export class DeckOptionsState {
             limits: get(this.deckLimits),
             newCardsIgnoreReviewLimit: get(this.newCardsIgnoreReviewLimit),
             applyAllParentLimits: get(this.applyAllParentLimits),
-            fsrs: get(this.fsrs),
             fsrsReschedule: get(this.fsrsReschedule),
             currentConfig: get(this.currentConfig),
         });

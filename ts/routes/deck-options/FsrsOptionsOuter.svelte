@@ -11,13 +11,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import Item from "$lib/components/Item.svelte";
-    import SettingTitle from "$lib/components/SettingTitle.svelte";
-    import SwitchRow from "$lib/components/SwitchRow.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import { type HelpItem, HelpItemScheduler } from "$lib/components/types";
+    import type { HelpItem } from "$lib/components/types";
 
     import FsrsOptions from "./FsrsOptions.svelte";
-    import GlobalLabel from "./GlobalLabel.svelte";
     import type { DeckOptionsState } from "./lib";
 
     export let state: DeckOptionsState;
@@ -28,12 +25,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         if (fsrsOptionsComponent) {
             fsrsOptionsComponent.onPresetChange();
         }
-    }
-
-    const fsrs = state.fsrs;
-    let newlyEnabled = false;
-    $: if (!$fsrs) {
-        newlyEnabled = true;
     }
 
     const settings = {
@@ -49,7 +40,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 tr.deckConfigDesiredRetentionTooltip() +
                 "\n\n" +
                 tr.deckConfigDesiredRetentionTooltip2(),
-            sched: HelpItemScheduler.FSRS,
         },
         modelParams: {
             title: tr.deckConfigWeights(),
@@ -57,12 +47,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 tr.deckConfigWeightsTooltip2() +
                 "\n\n" +
                 tr.deckConfigComputeOptimalWeightsTooltip2(),
-            sched: HelpItemScheduler.FSRS,
         },
         rescheduleCardsOnChange: {
             title: tr.deckConfigRescheduleCardsOnChange(),
             help: tr.deckConfigRescheduleCardsOnChangeTooltip(),
-            sched: HelpItemScheduler.FSRS,
             global: true,
         },
         healthCheck: {
@@ -73,7 +61,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 tr.deckConfigHealthCheckTooltip1() +
                 "\n\n" +
                 tr.deckConfigHealthCheckTooltip2(),
-            sched: HelpItemScheduler.FSRS,
             global: true,
         },
     };
@@ -93,7 +80,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         title={"FSRS"}
         url={HelpPage.DeckOptions.fsrs}
         slot="tooltip"
-        fsrs={$fsrs}
         {helpSections}
         on:mount={(e) => {
             modal = e.detail.modal;
@@ -101,26 +87,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         }}
     />
     <DynamicallySlottable slotHost={Item} {api}>
-        <Item>
-            <SwitchRow bind:value={$fsrs} defaultValue={false}>
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("fsrs"))}
-                >
-                    <GlobalLabel title={settings.fsrs.title} />
-                </SettingTitle>
-            </SwitchRow>
-        </Item>
-
-        {#if $fsrs}
-            <FsrsOptions
-                bind:this={fsrsOptionsComponent}
-                {state}
-                {newlyEnabled}
-                openHelpModal={(key) =>
-                    openHelpModal(Object.keys(settings).indexOf(key))}
-                {onPresetChange}
-            />
-        {/if}
+        <FsrsOptions
+            bind:this={fsrsOptionsComponent}
+            {state}
+            openHelpModal={(key) => openHelpModal(Object.keys(settings).indexOf(key))}
+            {onPresetChange}
+        />
     </DynamicallySlottable>
 </TitledContainer>

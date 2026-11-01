@@ -15,11 +15,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import { type HelpItem, HelpItemScheduler } from "$lib/components/types";
+    import type { HelpItem } from "$lib/components/types";
 
     import { newInsertOrderChoices } from "./choices";
     import type { DeckOptionsState } from "./lib";
-    import SpinBoxRow from "./SpinBoxRow.svelte";
     import StepsInputRow from "./StepsInputRow.svelte";
     import Warning from "./Warning.svelte";
 
@@ -28,28 +27,15 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     const config = state.currentConfig;
     const defaults = state.defaults;
-    const fsrs = state.fsrs;
 
-    let stepsExceedGraduatingInterval: string;
     let stepsTooLargeForFsrs: string;
     $: {
         const lastLearnStepInDays = $config.learnSteps.length
             ? $config.learnSteps[$config.learnSteps.length - 1] / 60 / 24
             : 0;
-        stepsExceedGraduatingInterval =
-            lastLearnStepInDays > $config.graduatingIntervalGood
-                ? tr.deckConfigLearningStepAboveGraduatingInterval()
-                : "";
         stepsTooLargeForFsrs =
-            $fsrs && lastLearnStepInDays >= 1
-                ? tr.deckConfigStepsTooLargeForFsrs()
-                : "";
+            lastLearnStepInDays >= 1 ? tr.deckConfigStepsTooLargeForFsrs() : "";
     }
-
-    $: goodExceedsEasy =
-        $config.graduatingIntervalGood > $config.graduatingIntervalEasy
-            ? tr.deckConfigGoodAboveEasy()
-            : "";
 
     $: insertionOrderRandom =
         $config.newCardInsertOrder == DeckConfig_Config_NewCardInsertOrder.RANDOM
@@ -61,18 +47,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             title: tr.deckConfigLearningSteps(),
             help: tr.deckConfigLearningStepsTooltip(),
             url: HelpPage.DeckOptions.learningSteps,
-        },
-        graduatingInterval: {
-            title: tr.schedulingGraduatingInterval(),
-            help: tr.deckConfigGraduatingIntervalTooltip(),
-            url: HelpPage.DeckOptions.graduatingInterval,
-            sched: HelpItemScheduler.SM2,
-        },
-        easyInterval: {
-            title: tr.schedulingEasyInterval(),
-            help: tr.deckConfigEasyIntervalTooltip(),
-            url: HelpPage.DeckOptions.easyInterval,
-            sched: HelpItemScheduler.SM2,
         },
         insertionOrder: {
             title: tr.deckConfigNewInsertionOrder(),
@@ -97,7 +71,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         url={HelpPage.DeckOptions.newCards}
         slot="tooltip"
         {helpSections}
-        fsrs={$fsrs}
         on:mount={(e) => {
             modal = e.detail.modal;
             carousel = e.detail.carousel;
@@ -121,48 +94,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         <Item>
             <Warning warning={stepsTooLargeForFsrs} />
         </Item>
-
-        {#if !$fsrs}
-            <Item>
-                <SpinBoxRow
-                    bind:value={$config.graduatingIntervalGood}
-                    defaultValue={defaults.graduatingIntervalGood}
-                >
-                    <SettingTitle
-                        on:click={() =>
-                            openHelpModal(
-                                Object.keys(settings).indexOf("graduatingInterval"),
-                            )}
-                    >
-                        {settings.graduatingInterval.title}
-                    </SettingTitle>
-                </SpinBoxRow>
-            </Item>
-
-            <Item>
-                <Warning warning={stepsExceedGraduatingInterval} />
-            </Item>
-
-            <Item>
-                <SpinBoxRow
-                    bind:value={$config.graduatingIntervalEasy}
-                    defaultValue={defaults.graduatingIntervalEasy}
-                >
-                    <SettingTitle
-                        on:click={() =>
-                            openHelpModal(
-                                Object.keys(settings).indexOf("easyInterval"),
-                            )}
-                    >
-                        {settings.easyInterval.title}
-                    </SettingTitle>
-                </SpinBoxRow>
-            </Item>
-
-            <Item>
-                <Warning warning={goodExceedsEasy} />
-            </Item>
-        {/if}
 
         <Item>
             <EnumSelectorRow

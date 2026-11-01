@@ -18,14 +18,13 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import HelpSection from "./HelpSection.svelte";
     import Icon from "./Icon.svelte";
     import Row from "./Row.svelte";
-    import { type HelpItem, HelpItemScheduler } from "./types";
+    import type { HelpItem } from "./types";
 
     export let title: string;
     export let url: string;
     export let linkLabel: string | undefined = undefined;
     export let startIndex = 0;
     export let helpSections: HelpItem[];
-    export let fsrs = false;
 
     let carousel: Carousel;
 
@@ -88,9 +87,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                                             carousel.to(activeIndex);
                                         }}
                                         class:active={i == activeIndex}
-                                        class:d-none={fsrs
-                                            ? item.sched === HelpItemScheduler.SM2
-                                            : item.sched == HelpItemScheduler.FSRS}
                                     >
                                         {item.title}
                                     </button>
@@ -108,13 +104,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 >
                     <div class="carousel-inner">
                         {#each helpSections as item, i}
-                            <div
-                                class="carousel-item"
-                                class:active={i == startIndex}
-                                class:d-none={fsrs
-                                    ? item.sched === HelpItemScheduler.SM2
-                                    : item.sched == HelpItemScheduler.FSRS}
-                            >
+                            <div class="carousel-item" class:active={i == startIndex}>
                                 <HelpSection {item} />
                             </div>
                         {/each}
