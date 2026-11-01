@@ -244,19 +244,7 @@ deck-config-maximum-interval-tooltip =
 
 ## Easy Days section.
 
-deck-config-easy-days-title = Easy Days
-deck-config-easy-days-monday = Mon
-deck-config-easy-days-tuesday = Tue
-deck-config-easy-days-wednesday = Wed
-deck-config-easy-days-thursday = Thu
-deck-config-easy-days-friday = Fri
-deck-config-easy-days-saturday = Sat
-deck-config-easy-days-sunday = Sun
 deck-config-easy-days-normal = Normal
-deck-config-easy-days-reduced = Reduced
-deck-config-easy-days-minimum = Minimum
-deck-config-easy-days-no-normal-days = At least one day should be set to '{ deck-config-easy-days-normal }'.
-deck-config-easy-days-change = Existing reviews will not be rescheduled unless '{ deck-config-reschedule-cards-on-change }' is enabled in the FSRS options.
 
 ## Adding/renaming
 

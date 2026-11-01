@@ -140,7 +140,7 @@ export class DeckOptionsState {
 
     /**
      * Patch the original config if components change it after preset select
-     * `EasyDays` and `DateInput` both do this when their settings are blank
+     * `DateInput` does this when its setting is blank
      * We only need to patch when the preset is first selected.
      */
     async markCurrentPresetAsLoaded(): Promise<void> {

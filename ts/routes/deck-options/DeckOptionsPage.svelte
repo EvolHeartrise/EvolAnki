@@ -23,7 +23,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { type DeckOptionsState, saveInProgress } from "./lib";
     import NewOptions from "./NewOptions.svelte";
     import TimerOptions from "./TimerOptions.svelte";
-    import EasyDays from "./EasyDays.svelte";
 
     export let state: DeckOptionsState;
     const addons = state.addonComponents;
@@ -56,7 +55,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export const timerOptions = {};
     export const audioOptions = {};
     export const advancedOptions = {};
-    export const easyDays = {};
 
     let dailyLimitsComponent: DailyLimits | undefined;
     let fsrsOptionsOuterComponent: FsrsOptionsOuter | undefined;
@@ -132,10 +130,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                     <Addons {state} />
                 </Row>
             {/if}
-
-            <Row class="row-columns">
-                <EasyDays {state} api={easyDays} />
-            </Row>
 
             <Row class="row-columns">
                 <AdvancedOptions {state} api={advancedOptions} />

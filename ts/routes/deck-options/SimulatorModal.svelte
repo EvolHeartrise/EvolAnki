@@ -40,7 +40,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { reviewOrderChoices } from "./choices";
     import EnumSelectorRow from "$lib/components/EnumSelectorRow.svelte";
     import { DeckConfig_Config_LeechAction } from "@generated/anki/deck_config_pb";
-    import EasyDaysInput from "./EasyDaysInput.svelte";
     import Warning from "./Warning.svelte";
     import type { ComputeRetentionProgress } from "@generated/anki/collection_pb";
     import Modal from "bootstrap/js/dist/modal";
@@ -110,7 +109,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         simulateFsrsRequest.suspendAfterLapseCount = suspendLeeches
             ? leechThreshold
             : undefined;
-        simulateFsrsRequest.easyDaysPercentages = easyDayPercentages;
+        simulateFsrsRequest.easyDaysPercentages = $config.easyDaysPercentages;
     }
 
     function renderRetentionProgress(
@@ -254,7 +253,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 ? DeckConfig_Config_LeechAction.SUSPEND
                 : DeckConfig_Config_LeechAction.TAG_ONLY;
             $config.leechThreshold = leechThreshold;
-            $config.easyDaysPercentages = [...easyDayPercentages];
             onPresetChange();
         }
     }
@@ -306,8 +304,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             (workload ? simulateWorkloadSubgraph : simulateSubgraph) as any as never,
         );
     }
-
-    $: easyDayPercentages = [...$config.easyDaysPercentages];
 
     export let modal: Modal | null = null;
 
@@ -414,13 +410,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                         {tr.schedulingMaximumReviewsday()}
                     </SettingTitle>
                 </SpinBoxRow>
-
-                <details>
-                    <summary>{tr.deckConfigEasyDaysTitle()}</summary>
-                    {#key easyDayPercentages}
-                        <EasyDaysInput bind:values={easyDayPercentages} />
-                    {/key}
-                </details>
 
                 <details>
                     <summary>{tr.deckConfigAdvancedSettings()}</summary>
