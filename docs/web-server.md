@@ -241,8 +241,7 @@ Safari 18.4. A file that can't play is skipped.
 - No pages for: adding or editing cards, the browser, changing a notetype, importing,
   making filtered decks, custom study, or managing decks and tags. Agents do those with
   [`evolanki-admin`](admin-cli.md). They aren't reachable over HTTP.
-- Every normal deck has its own settings, and no two decks can share them: there are no
-  presets, and no `preset:` search. A new deck starts from the built-in values, including
+- Every normal deck has its own settings, and no two decks can share them. A new deck starts from the built-in values, including
   `Default`, the deck that's always there, and deleting a deck deletes its settings. If you
   delete `Default`, it stays, empty, and goes back to built-in values. Subdecks have their
   own too, with nothing inherited, though a parent's daily limit still caps its subdecks as
@@ -251,8 +250,7 @@ Safari 18.4. A file that can't play is skipped.
   the simulator and the retention tools work on the deck and its subdecks, as `deck:` does,
   without suspended cards. A search of your own in its advanced settings replaces that.
   With fewer than 400 reviews to go on, optimizing leaves the parameters as they are.
-- The load balancer counts cards per deck, as it did per preset: it spaces out a deck's
-  own cards, not those of other decks.
+- The load balancer spaces out a deck's own cards, not those of other decks.
 - Deck options has no easy days section. Stored values are used as before; with none,
   every day counts as normal. The load balancer has no control either, and stays on
   unless the collection's config says otherwise.
