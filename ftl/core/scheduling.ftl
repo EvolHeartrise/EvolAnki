@@ -64,4 +64,3 @@ scheduling-new-cards = New Cards
 scheduling-new-cardsday = New cards/day
 scheduling-reviews = Reviews
 scheduling-show-answer-timer = Show on-screen timer
-scheduling-the-default-configuration-cant-be-removed = The default configuration can't be removed.

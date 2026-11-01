@@ -589,7 +589,8 @@ pub(crate) mod tests {
     }
 
     /// Give a new card in this deck `reviews` reviews, a day apart, which
-    /// counts for that many items, less the first, as training data.
+    /// counts for that many items, less the first, as training data. `start`
+    /// keeps them apart from another card's, as a clash would move them.
     fn add_reviewed_card(col: &mut Collection, deck: DeckId, reviews: i64, start: i64) -> CardId {
         let card = CardAdder::new().deck(deck).add(col).remove(0);
         let mut updated = card.clone();
@@ -602,7 +603,7 @@ pub(crate) mod tests {
             col.storage
                 .add_revlog_entry(
                     &RevlogEntry {
-                        id: RevlogId(now - (reviews - review) * 86_400_000 - start),
+                        id: RevlogId(now - (reviews - review) * 86_400_000 - start * 60_000),
                         cid: card.id,
                         review_kind: if review == 0 {
                             RevlogReviewKind::Learning
@@ -639,9 +640,9 @@ pub(crate) mod tests {
         let parent = DeckAdder::new("P").add(&mut col);
         let child = DeckAdder::new("P::C").add(&mut col);
         let other = DeckAdder::new("O").add(&mut col);
-        add_reviewed_card(&mut col, parent.id, 3, 1);
-        add_reviewed_card(&mut col, child.id, 3, 2);
-        add_reviewed_card(&mut col, other.id, 3, 3);
+        add_reviewed_card(&mut col, parent.id, 5, 1);
+        add_reviewed_card(&mut col, child.id, 5, 2);
+        add_reviewed_card(&mut col, other.id, 5, 3);
 
         let items = |col: &mut Collection, deck: &Deck| {
             let search = default_param_search(deck).unwrap();
@@ -684,6 +685,9 @@ pub(crate) mod tests {
         for start in 0..150 {
             add_reviewed_card(&mut col, big.id, 5, start);
         }
+        let big_search = default_param_search(&big)?;
+        let big_items = items_for(&mut col, &big_search).fsrs_items;
+        assert!(big_items >= MIN_ITEMS_TO_OPTIMIZE, "{big_items}");
         add_reviewed_card(&mut col, small.id, 5, 1000);
         let before = |col: &Collection, deck: &Deck| {
             col.get_deck_config(deck.config_id().unwrap(), false)

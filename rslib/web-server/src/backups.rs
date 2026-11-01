@@ -17,6 +17,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use anki::backend::Backend;
+use anki::deckconfig::settings_repair_needed;
 use anki::storage::copy_database;
 use anki::storage::verify_copied_collection;
 use anyhow::Context;
@@ -62,12 +63,31 @@ impl Backups {
 
     /// Back up a collection nothing has open yet.
     pub fn take_of_closed_file(&self, collection: &Path) {
-        let result = self.write(|destination| {
+        self.report(self.write_of_closed_file(collection));
+    }
+
+    /// Opening a collection may change it for good, if it's from before decks
+    /// had their own settings: see `settings_repair_needed`. This makes sure
+    /// a copy from before that exists, and is the one kind of change that
+    /// doesn't go ahead without one.
+    pub fn take_before_opening(&self, collection: &Path) -> Result<()> {
+        if settings_repair_needed(collection).unwrap_or(true) {
+            let path = self
+                .write_of_closed_file(collection)
+                .context("not opening this, as it would change and the backup failed")?;
+            self.report(Ok(path));
+        } else {
+            self.take_of_closed_file(collection);
+        }
+        Ok(())
+    }
+
+    fn write_of_closed_file(&self, collection: &Path) -> Result<PathBuf> {
+        self.write(|destination| {
             let source = Connection::open_with_flags(collection, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
             copy_database(&source, destination)?;
             Ok(())
-        });
-        self.report(result);
+        })
     }
 
     /// Back up the open collection, however long the backend is busy for.

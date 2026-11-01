@@ -335,7 +335,6 @@ impl Collection {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::deckconfig::DeckConfigId;
     use crate::error::Result;
 
     #[test]

@@ -13,8 +13,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import AdvancedOptions from "./AdvancedOptions.svelte";
     import AudioOptions from "./AudioOptions.svelte";
     import AutoAdvance from "./AutoAdvance.svelte";
-    import ConfigSelector from "./ConfigSelector.svelte";
     import DailyLimits from "./DailyLimits.svelte";
+    import DeckOptionsHeader from "./DeckOptionsHeader.svelte";
     import DisplayOrder from "./DisplayOrder.svelte";
     import FsrsOptionsOuter from "./FsrsOptionsOuter.svelte";
     import HtmlAddon from "./HtmlAddon.svelte";
@@ -54,20 +54,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export const audioOptions = {};
     export const advancedOptions = {};
 
-    let dailyLimitsComponent: DailyLimits | undefined;
-    let fsrsOptionsOuterComponent: FsrsOptionsOuter | undefined;
-
-    function onPresetChange() {
-        if (dailyLimitsComponent) {
-            dailyLimitsComponent.onPresetChange();
-        }
-        if (fsrsOptionsOuterComponent) {
-            fsrsOptionsOuterComponent.onPresetChange();
-        }
-    }
 </script>
 
-<ConfigSelector {state} on:presetchange={onPresetChange} />
+<DeckOptionsHeader {state} />
 
 <div class="deck-options-page">
     <Container
@@ -78,11 +67,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     >
         <div>
             <Row class="row-columns">
-                <DailyLimits
-                    {state}
-                    api={dailyLimits}
-                    bind:this={dailyLimitsComponent}
-                />
+                <DailyLimits {state} api={dailyLimits} />
             </Row>
 
             <Row class="row-columns">
@@ -98,11 +83,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             </Row>
 
             <Row class="row-columns">
-                <FsrsOptionsOuter
-                    {state}
-                    api={{}}
-                    bind:this={fsrsOptionsOuterComponent}
-                />
+                <FsrsOptionsOuter {state} api={{}} />
             </Row>
         </div>
 

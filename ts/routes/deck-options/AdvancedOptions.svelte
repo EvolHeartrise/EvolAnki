@@ -66,9 +66,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         ) {
             lastIgnoreRevlogsBeforeDate = ignoreRevlogsBeforeDate;
             getIgnoredBeforeCount({
-                search:
-                    $config.paramSearch ||
-                    `preset:"${state.getCurrentNameForSearch()}" -is:suspended`,
+                search: $config.paramSearch || state.defaultSearch(),
                 ignoreRevlogsBeforeDate,
             }).then((resp) => {
                 ignoreRevlogsBeforeCount = resp;

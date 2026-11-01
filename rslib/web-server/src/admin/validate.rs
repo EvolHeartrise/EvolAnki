@@ -20,8 +20,11 @@ use anki_proto::card_rendering::RenderCardResponse;
 use anki_proto::card_rendering::RenderExistingCardRequest;
 use anki_proto::cards::CardId;
 use anki_proto::collection::CheckDatabaseResponse;
+use anki_proto::deck_config::deck_config::Config;
 use anki_proto::deck_config::DeckConfig;
 use anki_proto::deck_config::DeckConfigId;
+use anki_proto::deck_config::DeckConfigsForUpdate;
+use anki_proto::decks::deck;
 use anki_proto::decks::deck::Kind;
 use anki_proto::decks::Deck;
 use anki_proto::decks::DeckId;
@@ -37,9 +40,11 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use percent_encoding::percent_decode_str;
+use prost::Message;
 use regex::Regex;
 use rusqlite::types::Value as Sql;
 use rusqlite::Connection;
+use rusqlite::OptionalExtension;
 use serde_json::json;
 use serde_json::Value;
 use sha2::Digest;
@@ -589,8 +594,7 @@ fn validate_with_work_dir(
     let backend = rpc::new_backend()?;
     open_collection(&backend, &throwaway)?;
 
-    // presets
-    let parts = presets_section(&mut out, &backend, snapshot)?;
+    let parts = decks_section(&mut out, &backend, snapshot, &mut problems)?;
     due_section(&mut out, &backend, snapshot, &mut problems)?;
     rendering_section(&mut out, &backend, snapshot, &target_media, &mut problems)?;
     media_section(&mut out, &backend, target, manifest, &mut problems)?;
@@ -637,38 +641,80 @@ fn validate_with_work_dir(
     Ok(json!({"report": report_path, "problems": problems}))
 }
 
-struct PresetInfo {
+struct DeckSettingsInfo {
     easy_days: Vec<(String, Vec<f32>)>,
 }
 
-fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> Result<PresetInfo> {
-    out.head("FSRS parameters per preset");
-    let ids: Vec<i64> = {
-        let mut statement = snapshot.prepare("select id from deck_config order by id")?;
-        let rows = statement.query_map([], |row| row.get(0))?;
-        rows.collect::<rusqlite::Result<_>>()?
+/// What a deck had in the snapshot, by the rules from before settings belonged
+/// to decks: the row it pointed at, or row 1, with its overrides.
+fn settings_in_snapshot(snapshot: &Connection, did: i64) -> Result<Option<Config>> {
+    let kind: Vec<u8> = snapshot.query_row("select kind from decks where id = ?", [did], |row| {
+        row.get(0)
+    })?;
+    let Some(deck::kind_container::Kind::Normal(normal)) =
+        deck::KindContainer::decode(kind.as_slice())?.kind
+    else {
+        return Ok(None);
     };
-    let deck_ids: Vec<i64> = {
-        let mut statement = snapshot.prepare("select id from decks")?;
-        let rows = statement.query_map([], |row| row.get(0))?;
-        rows.collect::<rusqlite::Result<_>>()?
+    let row = |dcid: i64| {
+        snapshot
+            .query_row(
+                "select config from deck_config where id = ?",
+                [dcid],
+                |row| row.get::<_, Vec<u8>>(0),
+            )
+            .optional()
     };
-    let mut decks_of: HashMap<i64, Vec<String>> = HashMap::new();
-    for did in deck_ids {
-        let deck: Deck = call_typed(backend, "getDeck", &DeckId { did })?;
-        if let Some(Kind::Normal(normal)) = deck.kind {
-            decks_of
-                .entry(normal.config_id)
-                .or_default()
-                .push(deck.name);
-        }
+    let bytes = match row(normal.config_id)? {
+        Some(bytes) => Some(bytes),
+        None => row(1)?,
+    };
+    let mut config = match bytes {
+        Some(bytes) => Config::decode(bytes.as_slice())?,
+        None => return Ok(None),
+    };
+    if let Some(limit) = normal.review_limit {
+        config.reviews_per_day = limit;
     }
+    if let Some(limit) = normal.new_limit {
+        config.new_per_day = limit;
+    }
+    if let Some(retention) = normal.desired_retention {
+        config.desired_retention = retention;
+    }
+    Ok(Some(config))
+}
+
+fn decks_section(
+    out: &mut Out,
+    backend: &Backend,
+    snapshot: &Connection,
+    problems: &mut Vec<String>,
+) -> Result<DeckSettingsInfo> {
+    out.head("FSRS parameters per deck");
+    let deck_ids: Vec<i64> = {
+        let mut statement = snapshot.prepare("select id from decks order by name")?;
+        let rows = statement.query_map([], |row| row.get(0))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
     let mut rows = vec![];
     let mut easy_days = vec![];
     let mut optimizer_rows = vec![];
-    for dcid in ids {
-        let preset: DeckConfig = call_typed(backend, "getDeckConfig", &DeckConfigId { dcid })?;
-        let config = preset.config.clone().context("preset has no config")?;
+    let mut changed = vec![];
+    for did in deck_ids {
+        let deck: Deck = call_typed(backend, "getDeck", &DeckId { did })?;
+        if !matches!(deck.kind, Some(Kind::Normal(_))) {
+            continue;
+        }
+        let name = deck.name;
+        let settings: DeckConfig = call_typed(backend, "getDeckConfig", &DeckConfigId { dcid: did })?;
+        let config = settings.config.clone().context("deck has no settings")?;
+        if settings_in_snapshot(snapshot, did)?
+            .as_ref()
+            .is_some_and(|before| before != &config)
+        {
+            changed.push(name.clone());
+        }
         let (version, params) = if !config.fsrs_params_6.is_empty() {
             ("FSRS 6", config.fsrs_params_6.clone())
         } else if !config.fsrs_params_5.is_empty() {
@@ -678,10 +724,8 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
         } else {
             ("none, defaults apply", vec![])
         };
-        let decks = decks_of.get(&dcid).cloned().unwrap_or_default();
         rows.push(vec![
-            preset.name.clone(),
-            sample(&decks, 10),
+            name.clone(),
             format!("{version} ({} values)", params.len()),
             format!("{:.2}", config.desired_retention),
             format!("{:.2}", config.historical_retention),
@@ -691,21 +735,13 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
             format!("`{}`", config.ignore_revlogs_before_date),
             format!("`{}`", config.param_search),
         ]);
-        easy_days.push((preset.name.clone(), config.easy_days_percentages.clone()));
+        easy_days.push((name.clone(), config.easy_days_percentages.clone()));
 
         // what the optimizer would say, on the throwaway copy
-        if decks.is_empty() {
-            optimizer_rows.push(vec![
-                preset.name.clone(),
-                "no decks use it".into(),
-                "-".into(),
-                "-".into(),
-                "-".into(),
-            ]);
-            continue;
-        }
         let search = if config.param_search.is_empty() {
-            format!("preset:\"{}\" -is:suspended", preset.name)
+            let info: DeckConfigsForUpdate =
+                call_typed(backend, "getDeckConfigsForUpdate", &DeckId { did })?;
+            info.current_deck.context("no current deck")?.default_search
         } else {
             config.param_search.clone()
         };
@@ -723,7 +759,7 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
         );
         match computed {
             Err(err) => optimizer_rows.push(vec![
-                preset.name.clone(),
+                name.clone(),
                 format!("failed: {err:#}"),
                 "-".into(),
                 "-".into(),
@@ -751,7 +787,7 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
                 };
                 let same = computed.params == params || computed.params.is_empty();
                 optimizer_rows.push(vec![
-                    preset.name.clone(),
+                    name.clone(),
                     if same {
                         "no change".to_string()
                     } else {
@@ -765,8 +801,8 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
                         )
                     },
                     computed.fsrs_items.to_string(),
-                    if params.is_empty() {
-                        "default params".to_string()
+                    if params.is_empty() || computed.fsrs_items == 0 {
+                        "-".to_string()
                     } else {
                         evaluate(&params)
                     },
@@ -779,10 +815,14 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
             }
         }
     }
+    if !changed.is_empty() {
+        problems.push(format!(
+            "these decks' settings differ from the snapshot's: {changed:?}"
+        ));
+    }
     out.table(
         &[
-            "preset",
-            "decks",
+            "deck",
             "stored parameters",
             "desired ret.",
             "historical ret.",
@@ -794,15 +834,21 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
         ],
         &rows,
     );
+    out.line(
+        "Each deck has its own, which were compared with what it used in the snapshot, with any \
+         override it had for this deck alone.",
+    );
+    out.line("");
     out.line("### What the optimizer would suggest");
     out.line("");
     out.line(
-        "Run on a throwaway copy. **Nothing has been saved**; that's for the owner to decide.",
+        "Run on a throwaway copy, per deck, including its subdecks. **Nothing has been saved**; \
+         that's for the owner to decide. A deck with too few reviews keeps what it has.",
     );
     out.line("");
     out.table(
         &[
-            "preset",
+            "deck",
             "suggested parameters",
             "reviews used",
             "current",
@@ -810,7 +856,7 @@ fn presets_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> R
         ],
         &optimizer_rows,
     );
-    Ok(PresetInfo { easy_days })
+    Ok(DeckSettingsInfo { easy_days })
 }
 
 fn due_section(
@@ -852,17 +898,12 @@ fn due_section(
         let review = count(format!("{queue} = 2 and due <= {today}"))?;
         let proto: Deck = call_typed(backend, "getDeck", &DeckId { did })?;
         let (new_stock, learn_stock, review_stock) = match proto.kind {
-            Some(Kind::Normal(normal)) => {
-                let preset: DeckConfig = call_typed(
-                    backend,
-                    "getDeckConfig",
-                    &DeckConfigId {
-                        dcid: normal.config_id,
-                    },
-                )?;
-                let config = preset.config.context("preset config")?;
-                let review_limit = normal.review_limit.unwrap_or(config.reviews_per_day) as i64;
-                let new_limit = normal.new_limit.unwrap_or(config.new_per_day) as i64;
+            Some(Kind::Normal(_)) => {
+                let settings: DeckConfig =
+                    call_typed(backend, "getDeckConfig", &DeckConfigId { dcid: did })?;
+                let config = settings.config.context("deck has no settings")?;
+                let review_limit = config.reviews_per_day as i64;
+                let new_limit = config.new_per_day as i64;
                 let capped_interday = interday.min(review_limit);
                 let left = review_limit - capped_interday;
                 let capped_review = review.min(left);
@@ -1284,7 +1325,7 @@ fn settings_section(
     out: &mut Out,
     snapshot: &Connection,
     converted: &Connection,
-    presets: &PresetInfo,
+    decks: &DeckSettingsInfo,
 ) -> Result<()> {
     out.head("Stored settings");
     let config = |db: &Connection| -> Result<BTreeMap<String, Vec<u8>>> {
@@ -1339,7 +1380,7 @@ fn settings_section(
         ("applyAllParentLimits", "Used for counts."),
         (
             "dayLearnFirst",
-            "Ignored: each preset's learning mix decides the order.",
+            "Ignored: each deck's learning mix decides the order.",
         ),
         ("estTimes", "Ignored: answer buttons always show intervals."),
         ("dueCounts", "Ignored: the reviewer always shows counts."),
@@ -1410,14 +1451,14 @@ fn settings_section(
         col(converted)?
     ));
     out.line("");
-    out.line("Easy days per preset, Monday first; empty means every day is normal. These are used as stored, with no control in the pages:");
+    out.line("Easy days per deck, Monday first; empty means every day is normal. These are used as stored, with no control in the pages:");
     out.line("");
-    let rows: Vec<Vec<String>> = presets
+    let rows: Vec<Vec<String>> = decks
         .easy_days
         .iter()
         .map(|(name, days)| vec![name.clone(), format!("{days:?}")])
         .collect();
-    out.table(&["preset", "easy days"], &rows);
+    out.table(&["deck", "easy days"], &rows);
     Ok(())
 }
 

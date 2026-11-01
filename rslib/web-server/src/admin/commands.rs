@@ -400,7 +400,6 @@ fn card_show(admin: &Admin, args: &Value) -> Result<Value> {
     let stats: CardStatsResponse = call_typed(&admin.backend, "cardStats", &CardId { cid })?;
     let mut out = card_json(&card);
     out["deck"] = stats.deck.clone().into();
-    out["preset"] = stats.preset.clone().into();
     out["notetype"] = stats.notetype.clone().into();
     out["retrievability"] = json!(stats.fsrs_retrievability);
     out["reviews"] = stats.revlog.len().into();

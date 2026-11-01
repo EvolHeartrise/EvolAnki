@@ -212,14 +212,7 @@ impl Server {
 
 fn new_per_day(server: &Server) -> (DeckConfigsForUpdate, u32) {
     let info: DeckConfigsForUpdate = server.rpc("getDeckConfigsForUpdate", &DeckId { did: 1 });
-    let value = info.all_config[0]
-        .config
-        .as_ref()
-        .unwrap()
-        .config
-        .as_ref()
-        .unwrap()
-        .new_per_day;
+    let value = info.config.as_ref().unwrap().config.as_ref().unwrap().new_per_day;
     (info, value)
 }
 
@@ -230,13 +223,13 @@ fn deck_options_save_persists_across_restart() {
     let (info, before) = new_per_day(&server);
     let wanted = before + 17;
 
-    let mut config = info.all_config[0].config.clone().unwrap();
+    let mut config = info.config.clone().unwrap();
     config.config.as_mut().unwrap().new_per_day = wanted;
     let _: OpChanges = server.rpc(
         "updateDeckConfigs",
         &UpdateDeckConfigsRequest {
             target_deck_id: 1,
-            configs: vec![config],
+            config: Some(config),
             mode: UpdateDeckConfigsMode::Normal as i32,
             limits: info.current_deck.as_ref().unwrap().limits,
             fsrs: true,
@@ -887,13 +880,13 @@ fn backups_taken_during_reviews_are_consistent() {
     ]);
     // the default limit on new cards a day is too few for this
     let (info, _) = new_per_day(&server);
-    let mut config = info.all_config[0].config.clone().unwrap();
+    let mut config = info.config.clone().unwrap();
     config.config.as_mut().unwrap().new_per_day = 100;
     let _: OpChanges = server.rpc(
         "updateDeckConfigs",
         &UpdateDeckConfigsRequest {
             target_deck_id: 1,
-            configs: vec![config],
+            config: Some(config),
             mode: UpdateDeckConfigsMode::Normal as i32,
             limits: info.current_deck.as_ref().unwrap().limits,
             fsrs: true,

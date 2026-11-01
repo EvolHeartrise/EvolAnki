@@ -17,6 +17,7 @@ use anyhow::Result;
 use clap::Parser;
 use clap::Subcommand;
 use evolanki_server::admin::commands;
+use anki::deckconfig::settings_repair_needed;
 use evolanki_server::admin::convert;
 use evolanki_server::admin::socket;
 use evolanki_server::admin::socket::Sent;
@@ -176,9 +177,11 @@ fn run_directly(collection: &Path, request: &Request) -> Result<Value> {
         );
     }
     let backups = Arc::new(Backups::new(collection)?);
-    // opening an SM-2 collection migrates it, which is worth having a copy from
-    // before, as the server does
-    if !fsrs_is_on(collection) {
+    // opening an SM-2 collection migrates it, as does one with settings shared
+    // between decks, which is worth having a copy from before, as the server does
+    if settings_repair_needed(collection).unwrap_or(true) {
+        backups.take_before_opening(collection)?;
+    } else if !fsrs_is_on(collection) {
         backups.take_of_closed_file(collection);
     }
     let backend = rpc::new_backend()?;

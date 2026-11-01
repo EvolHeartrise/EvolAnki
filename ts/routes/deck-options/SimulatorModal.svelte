@@ -48,7 +48,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let simulateFsrsRequest: SimulateFsrsReviewRequest;
     export let computing: boolean;
     export let openHelpModal: (key: string) => void;
-    export let onPresetChange: () => void;
     /** Do not modify this once set */
     export let workload: boolean = false;
 
@@ -233,8 +232,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         );
     }
 
-    function saveConfigToPreset() {
-        if (confirm(tr.deckConfigSaveOptionsToPresetConfirm())) {
+    function saveToDeckOptions() {
+        if (confirm(tr.deckConfigSaveOptionsToDeckConfirm())) {
             $config.newPerDay = simulateFsrsRequest.newLimit;
             $config.reviewsPerDay = simulateFsrsRequest.reviewLimit;
             $config.maximumReviewInterval = simulateFsrsRequest.maxInterval;
@@ -243,7 +242,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             }
             $newCardsIgnoreReviewLimit = simulateFsrsRequest.newCardsIgnoreReviewLimit;
             $config.reviewOrder = simulateFsrsRequest.reviewOrder;
-            onPresetChange();
         }
     }
 
@@ -499,9 +497,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                     <button
                         class="btn {computing ? 'btn-warning' : 'btn-primary'}"
                         disabled={computing}
-                        on:click={saveConfigToPreset}
+                        on:click={saveToDeckOptions}
                     >
-                        {tr.deckConfigSaveOptionsToPreset()}
+                        {tr.deckConfigSaveOptionsToDeck()}
                     </button>
 
                     {#if processing}

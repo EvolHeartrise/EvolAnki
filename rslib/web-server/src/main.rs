@@ -125,7 +125,7 @@ async fn run(args: Args) -> Result<()> {
     let backups = Backups::new(&args.collection)?;
     // before opening it can change anything, such as by upgrading it
     if existed {
-        backups.take_of_closed_file(&args.collection);
+        backups.take_before_opening(&args.collection)?;
     }
 
     let backend = rpc::new_backend()?;

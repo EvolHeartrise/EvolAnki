@@ -142,11 +142,53 @@ test("FSRS optimize runs with progress polling", async ({ page }) => {
     await page.goto(`${server.url}/deck-options/1`);
     const polled = page.waitForResponse((r) => r.url().endsWith("/_anki/latestProgress"));
     const computed = page.waitForResponse((r) => r.url().endsWith("/_anki/computeFsrsParams"));
-    await page.getByRole("button", { name: "Optimize Current Preset" }).click();
+    await page.getByRole("button", { name: "Optimize This Deck" }).click();
     expect((await computed).ok()).toBe(true);
     expect((await polled).ok()).toBe(true);
     // too few reviews to optimize, so it reports that its parameters are already best
     await expect.poll(() => messages.length).toBe(1);
+    expect(problems).toEqual([]);
+});
+
+test("deck options has settings for this deck, and nothing about sharing them", async ({ page }) => {
+    const problems = failOnPageProblems(page);
+    await page.goto(`${server.url}/deck-options/1`);
+    await expect(page.getByRole("heading", { name: "Default", exact: true })).toBeVisible();
+    await expect(newCardsInput(page)).toBeVisible();
+
+    const text = await page.locator("body").innerText();
+    expect(text).not.toMatch(/preset/i);
+    expect(text).not.toMatch(/used by/i);
+    expect(text).not.toMatch(/subdecks/i);
+    for (const name of ["This deck"]) {
+        await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+    }
+    // the daily limits have a regular value, and one for today
+    const everyDay = page.getByRole("button", { name: "Every day", exact: true });
+    const today = page.getByRole("button", { name: "Today only", exact: true });
+    await expect(everyDay).toHaveCount(2);
+    await expect(today).toHaveCount(2);
+    // and the optimizer works on this deck
+    await expect(page.getByRole("button", { name: "Optimize This Deck" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Optimize All Decks" })).toBeVisible();
+    expect(problems).toEqual([]);
+});
+
+test("a today-only limit is saved separately from the regular one", async ({ page }) => {
+    const problems = failOnPageProblems(page);
+    await page.goto(`${server.url}/deck-options/1`);
+    const input = newCardsInput(page);
+    await expect(input).toHaveValue("20");
+    await page.getByRole("button", { name: "Today only", exact: true }).first().click();
+    await input.fill("3");
+    await input.blur();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page).toHaveURL(/\/overview\/1/);
+
+    await page.goto(`${server.url}/deck-options/1`);
+    await expect(newCardsInput(page)).toHaveValue("3");
+    await page.getByRole("button", { name: "Every day", exact: true }).first().click();
+    await expect(newCardsInput(page)).toHaveValue("20");
     expect(problems).toEqual([]);
 });
 

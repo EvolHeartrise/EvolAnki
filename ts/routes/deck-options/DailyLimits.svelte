@@ -26,23 +26,6 @@
     export let state: DeckOptionsState;
     export let api: Record<string, never>;
 
-    export function onPresetChange() {
-        newTabs[0] = new ValueTab(
-            tr.deckConfigSharedPreset(),
-            $config.newPerDay,
-            (value) => ($config.newPerDay = value!),
-            $config.newPerDay,
-            null,
-        );
-        reviewTabs[0] = new ValueTab(
-            tr.deckConfigSharedPreset(),
-            $config.reviewsPerDay,
-            (value) => ($config.reviewsPerDay = value!),
-            $config.reviewsPerDay,
-            null,
-        );
-    }
-
     const config = state.currentConfig;
     const limits = state.deckLimits;
     const defaults = state.defaults;
@@ -69,21 +52,28 @@
               })
             : "";
 
-    const newTabs: ValueTab[] = [
-        new ValueTab(
-            tr.deckConfigSharedPreset(),
+    function newEveryDayTab(): ValueTab {
+        return new ValueTab(
+            tr.deckConfigEveryDay(),
             $config.newPerDay,
             (value) => ($config.newPerDay = value!),
             $config.newPerDay,
             null,
-        ),
-        new ValueTab(
-            tr.deckConfigDeckOnly(),
-            $limits.new ?? null,
-            (value) => ($limits.new = value ?? undefined),
+        );
+    }
+
+    function reviewEveryDayTab(): ValueTab {
+        return new ValueTab(
+            tr.deckConfigEveryDay(),
+            $config.reviewsPerDay,
+            (value) => ($config.reviewsPerDay = value!),
+            $config.reviewsPerDay,
             null,
-            null,
-        ),
+        );
+    }
+
+    const newTabs: ValueTab[] = [
+        newEveryDayTab(),
         new ValueTab(
             tr.deckConfigTodayOnly(),
             $limits.newTodayActive ? ($limits.newToday ?? null) : null,
@@ -94,20 +84,7 @@
     ];
 
     const reviewTabs: ValueTab[] = [
-        new ValueTab(
-            tr.deckConfigSharedPreset(),
-            $config.reviewsPerDay,
-            (value) => ($config.reviewsPerDay = value!),
-            $config.reviewsPerDay,
-            null,
-        ),
-        new ValueTab(
-            tr.deckConfigDeckOnly(),
-            $limits.review ?? null,
-            (value) => ($limits.review = value ?? undefined),
-            null,
-            null,
-        ),
+        reviewEveryDayTab(),
         new ValueTab(
             tr.deckConfigTodayOnly(),
             $limits.reviewTodayActive ? ($limits.reviewToday ?? null) : null,
@@ -116,6 +93,14 @@
             $limits.reviewToday ?? null,
         ),
     ];
+
+    // the simulator can change these from outside the tabs
+    $: if (newTabs[0].value !== $config.newPerDay) {
+        newTabs[0] = newEveryDayTab();
+    }
+    $: if (reviewTabs[0].value !== $config.reviewsPerDay) {
+        reviewTabs[0] = reviewEveryDayTab();
+    }
 
     let newValue = 0;
     let reviewsValue = 0;

@@ -173,8 +173,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         if (deck.kind.case !== "normal") {
             return undefined;
         }
-        const dcid = deck.kind.value.configId;
-        return (await getDeckConfig({ dcid })).config;
+        return (await getDeckConfig({ dcid: deck.id })).config;
     }
 
     /** typeAnsQuestionFilter() in qt/aqt/reviewer.py, up to the substitution. */

@@ -20,13 +20,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let state: DeckOptionsState;
     export let api: Record<string, never>;
 
-    let fsrsOptionsComponent: FsrsOptions | undefined;
-    export function onPresetChange() {
-        if (fsrsOptionsComponent) {
-            fsrsOptionsComponent.onPresetChange();
-        }
-    }
-
     const settings = {
         fsrs: {
             title: "FSRS",
@@ -88,10 +81,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     />
     <DynamicallySlottable slotHost={Item} {api}>
         <FsrsOptions
-            bind:this={fsrsOptionsComponent}
             {state}
             openHelpModal={(key) => openHelpModal(Object.keys(settings).indexOf(key))}
-            {onPresetChange}
         />
     </DynamicallySlottable>
 </TitledContainer>

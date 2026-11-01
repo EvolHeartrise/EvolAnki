@@ -3,13 +3,6 @@
 
 ## Top section
 
-# Used in the deck configuration screen to show how many decks are used
-# by a particular configuration group, eg "Group1 (used by 3 decks)"
-deck-config-used-by-decks =
-    used by { $decks ->
-        [one] { $decks } deck
-       *[other] { $decks } decks
-    }
 deck-config-default-name = Default
 deck-config-title = Deck Options
 
@@ -31,8 +24,7 @@ deck-config-limit-interday-bound-by-reviews =
     The review limit also affects interday learning cards. When applying the limit,
     interday learning cards are gathered first, then review cards.
 deck-config-tab-description =
-    - `Preset`: The limit applies to all decks using this preset.
-    - `This deck`: The limit is specific to this deck.
+    - `Every day`: The limit for this deck.
     - `Today only`: Make a temporary change to this deck's limit.
 deck-config-new-cards-ignore-review-limit = New cards ignore review limit
 deck-config-new-cards-ignore-review-limit-tooltip =
@@ -50,8 +42,7 @@ deck-config-affects-entire-collection = Affects the entire collection.
 ## Daily limit tabs: please try to keep these as short as the English version,
 ## as longer text will not fit on small screens.
 
-deck-config-shared-preset = Preset
-deck-config-deck-only = This deck
+deck-config-every-day = Every day
 deck-config-today-only = Today only
 
 ## New Cards section
@@ -248,23 +239,11 @@ deck-config-maximum-interval-tooltip =
 
 deck-config-easy-days-normal = Normal
 
-## Adding/renaming
-
-deck-config-add-group = Add Preset
-deck-config-name-prompt = Name
-deck-config-rename-group = Rename Preset
-deck-config-clone-group = Clone Preset
-
-## Removing
-
-deck-config-remove-group = Remove Preset
-deck-config-confirm-remove-name = Remove { $name }?
 
 ## Other Buttons
 
 deck-config-save-button = Save
-deck-config-save-to-all-subdecks = Save to All Subdecks
-deck-config-save-and-optimize = Optimize All Presets
+deck-config-save-and-optimize = Optimize All Decks
 deck-config-revert-button-tooltip = Restore this setting to its default value?
 
 ## These strings are shown via the Description button at the bottom of the
@@ -301,12 +280,12 @@ deck-config-must-have-400-reviews =
     } You must have at least 400 reviews for this operation.
 # Numbers that control how aggressively the FSRS algorithm schedules cards
 deck-config-weights = FSRS parameters
-deck-config-optimize-button = Optimize Current Preset
+deck-config-optimize-button = Optimize This Deck
 # Indicates that a given function or label, provided via the "text" variable, operates slowly.
 deck-config-slow-suffix = { $text } (slow)
 deck-config-compute-button = Compute
 deck-config-ignore-before = Ignore cards reviewed before
-deck-config-time-to-optimize = It's been a while - using the Optimize All Presets button is recommended.
+deck-config-time-to-optimize = It's been a while - using the Optimize All Decks button is recommended.
 deck-config-evaluate-button = Evaluate
 deck-config-desired-retention = Desired retention
 deck-config-historical-retention = Historical retention
@@ -319,7 +298,7 @@ deck-config-fsrs-tooltip =
     
     The Free Spaced Repetition Scheduler (FSRS) is an alternative to Anki's legacy SuperMemo 2 (SM-2) algorithm.
     By more accurately determining how likely you are to forget a card, it can help you remember
-    more material in the same amount of time. This setting is shared by all presets.
+    more material in the same amount of time.
 deck-config-desired-retention-tooltip =
     By default, Anki schedules cards so that you have a 90% chance of remembering them when
     they come up for review again. If you increase this value, Anki will show cards more frequently
@@ -343,7 +322,7 @@ deck-config-historical-retention-tooltip =
     this option.
 deck-config-weights-tooltip2 =
     FSRS parameters affect how cards are scheduled. Anki will start with default parameters. You can use 
-    the option below to optimize the parameters to best match your performance in decks using this preset.
+    the option below to optimize the parameters to best match your performance in this deck.
 deck-config-reschedule-cards-on-change-tooltip =
     Affects the entire collection, and is not saved.
     
@@ -362,11 +341,11 @@ deck-config-ignore-before-tooltip-2 =
     This can be useful if you imported someone else's scheduling data, or have changed the way you use the answer buttons.
 deck-config-compute-optimal-weights-tooltip2 =
     When you click the Optimize button, FSRS will analyze your review history, and generate parameters that are 
-    optimal for your memory and the content you're studying. If your decks vary wildly in subjective difficulty, it 
-    is recommended to assign them separate presets, as the parameters for easy decks and hard decks will be different. 
+    optimal for your memory and the content you're studying. Each deck has its own parameters.
     You don't need to optimize your parameters frequently - once every few months is sufficient.
     
-    By default, parameters will be calculated from the review history of all decks using the current preset. You can
+    By default, parameters will be calculated from the review history of this deck and its subdecks. With too few
+    reviews, a deck keeps the parameters it has. You can
     optionally adjust the search before calculating the parameters, if you'd like to alter which cards are used for
     optimizing the parameters.
 deck-config-please-save-your-changes-first = Please save your changes first.
@@ -386,7 +365,7 @@ deck-config-percent-input = { $pct }%
 deck-config-checking-for-improvement = Checking for improvement...
 deck-config-fsrs-params-optimal = The FSRS parameters are currently optimal. This is expected once parameters are well-fitted to your review history. You can try optimizing again after doing more reviews.
 deck-config-fsrs-confirm-save-and-optimize = This will save any other changes you have made. Are you sure?
-deck-config-fsrs-params-no-reviews = No reviews found. Make sure this preset is assigned to all decks (including subdecks) that you want to optimize, and try again.
+deck-config-fsrs-params-no-reviews = No reviews found in this deck or its subdecks.
 deck-config-wait-for-audio = Wait for audio
 deck-config-show-reminder = Show Reminder
 deck-config-answer-again = Answer Again
@@ -399,7 +378,7 @@ deck-config-desired-retention-below-optimal = Your desired retention is below op
 # cards that can be recalled or retrieved on a specific date.
 deck-config-fsrs-simulator-experimental = FSRS Simulator (Experimental)
 deck-config-fsrs-simulate-desired-retention-experimental = FSRS Desired Retention Simulator (Experimental)
-deck-config-fsrs-simulate-save-preset = After optimizing, please save your deck preset before running the simulator.
+deck-config-fsrs-simulate-save-first = After optimizing, please save your deck options before running the simulator.
 deck-config-fsrs-desired-retention-help-me-decide-experimental = Help Me Decide (Experimental)
 deck-config-additional-new-cards-to-simulate = Additional new cards to simulate
 deck-config-simulate = Simulate
@@ -407,8 +386,8 @@ deck-config-clear-last-simulate = Clear Last Simulation
 deck-config-fsrs-simulator-radio-count = Reviews
 deck-config-advanced-settings = Advanced Settings
 deck-config-smooth-graph = Smooth graph
-deck-config-save-options-to-preset = Save Changes to Preset
-deck-config-save-options-to-preset-confirm = Overwrite the options in your current preset with the options that are currently set in the simulator?
+deck-config-save-options-to-deck = Save Changes to Deck
+deck-config-save-options-to-deck-confirm = Overwrite the options of this deck with the options that are currently set in the simulator?
 # Radio button in the FSRS simulation diagram (Deck options -> FSRS) selecting
 # to show the total number of cards that can be recalled or retrieved on a
 # specific date.
@@ -439,6 +418,6 @@ deck-config-fsrs-good-fit =
 
 deck-config-unable-to-determine-desired-retention = Unable to determine a minimum recommended retention.
 deck-config-health-check-tooltip1 = This will show a warning if FSRS struggles to adapt to your memory.
-deck-config-health-check-tooltip2 = Health check is performed only when using Optimize Current Preset.
+deck-config-health-check-tooltip2 = Health check is performed only when using Optimize This Deck.
 deck-config-compute-optimal-retention = Compute minimum recommended retention
 deck-config-predicted-optimal-retention = Minimum recommended retention: { $num }
