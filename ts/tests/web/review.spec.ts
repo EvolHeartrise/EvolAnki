@@ -393,7 +393,7 @@ test("each deck's options are its own, down to subdecks and new ones", async ({ 
     expect(problems).toEqual([]);
 
     const counts = await query<{ settings: number; decks: number }>(
-        "select (select count() from deck_config) as settings, (select count() from decks) as decks",
+        "select (select count() from deck_config) as settings, (select count() from decks not indexed) as decks",
     );
     expect(counts[0].settings).toBe(counts[0].decks);
 });
