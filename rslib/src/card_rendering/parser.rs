@@ -1,8 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::collections::HashMap;
-
 use nom::branch::alt;
 use nom::bytes::complete::is_not;
 use nom::bytes::complete::tag;
@@ -26,8 +24,6 @@ use nom::Parser;
 use super::CardNodes;
 use super::Directive;
 use super::Node;
-use super::OtherDirective;
-use super::TtsDirective;
 
 type IResult<'a, O> = nom::IResult<&'a str, O>;
 
@@ -42,46 +38,6 @@ impl<'a> CardNodes<'a> {
         }
 
         Self { nodes, text_only }
-    }
-}
-
-impl<'a> Directive<'a> {
-    fn new(name: &'a str, options: Vec<(&'a str, &'a str)>, content: &'a str) -> Self {
-        match name {
-            "tts" => {
-                let mut lang = "";
-                let mut voices = vec![];
-                let mut speed = 1.0;
-                let mut blank = None;
-                let mut other_options = HashMap::new();
-
-                for option in options {
-                    match option.0 {
-                        "lang" => lang = option.1,
-                        "voices" => voices = option.1.split(',').collect(),
-                        "speed" => speed = option.1.parse().unwrap_or(1.0),
-                        "cloze_blank" => blank = Some(option.1),
-                        _ => {
-                            other_options.insert(option.0, option.1);
-                        }
-                    }
-                }
-
-                Self::Tts(TtsDirective {
-                    content,
-                    lang,
-                    voices,
-                    speed,
-                    blank,
-                    options: other_options,
-                })
-            }
-            _ => Self::Other(OtherDirective {
-                name,
-                content,
-                options: options.into_iter().collect(),
-            }),
-        }
     }
 }
 
@@ -192,7 +148,13 @@ fn tag_node(s: &str) -> IResult<'_, Node<'_>> {
             pair(opening_parser(tag_name), content_parser(tag_name)),
             closing_parser(tag_name),
         ),
-        |(options, content)| Node::Directive(Directive::new(tag_name, options, content)),
+        |(options, content)| {
+            Node::Directive(Directive {
+                name: tag_name,
+                content,
+                options: options.into_iter().collect(),
+            })
+        },
     )
     .parse(s)
 }
@@ -203,6 +165,8 @@ fn text_node(s: &str) -> IResult<'_, Node<'_>> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use super::*;
 
     macro_rules! assert_parsed_nodes {
@@ -255,68 +219,45 @@ mod test {
         // tags
         assert_parsed_nodes!(
             "[anki:foo]bar[/anki:foo]",
-            Directive(super::Directive::Other(OtherDirective {
+            Directive(super::Directive {
                 name: "foo",
                 content: "bar",
                 options: HashMap::new()
-            }))
+            })
         );
         assert_parsed_nodes!(
             "[anki:foo]]bar[[/anki:foo]",
-            Directive(super::Directive::Other(OtherDirective {
+            Directive(super::Directive {
                 name: "foo",
                 content: "]bar[",
                 options: HashMap::new()
-            }))
+            })
         );
         assert_parsed_nodes!(
             "[anki:foo bar=baz][/anki:foo]",
-            Directive(super::Directive::Other(OtherDirective {
+            Directive(super::Directive {
                 name: "foo",
                 content: "",
                 options: [("bar", "baz")].into_iter().collect(),
-            }))
+            })
         );
         // unquoted white space separates options, "]" terminates
         assert_parsed_nodes!(
             "[anki:foo\na=b\tc=d e=f][/anki:foo]",
-            Directive(super::Directive::Other(OtherDirective {
+            Directive(super::Directive {
                 name: "foo",
                 content: "",
                 options: [("a", "b"), ("c", "d"), ("e", "f")].into_iter().collect(),
-            }))
+            })
         );
         assert_parsed_nodes!(
             "[anki:foo a=\"b \t\n c ]\"][/anki:foo]",
-            Directive(super::Directive::Other(OtherDirective {
+            Directive(super::Directive {
                 name: "foo",
                 content: "",
                 options: [("a", "b \t\n c ]")].into_iter().collect(),
-            }))
+            })
         );
 
-        // tts tags
-        assert_parsed_nodes!(
-            "[anki:tts lang=jp_JP voices=Alice,Bob speed=0.5 cloze_blank= bar=baz][/anki:tts]",
-            Directive(super::Directive::Tts(TtsDirective {
-                content: "",
-                lang: "jp_JP",
-                voices: vec!["Alice", "Bob"],
-                speed: 0.5,
-                blank: Some(""),
-                options: [("bar", "baz")].into_iter().collect(),
-            }))
-        );
-        assert_parsed_nodes!(
-            "[anki:tts speed=foo][/anki:tts]",
-            Directive(super::Directive::Tts(TtsDirective {
-                content: "",
-                lang: "",
-                voices: vec![],
-                speed: 1.0,
-                blank: None,
-                options: HashMap::new(),
-            }))
-        );
     }
 }

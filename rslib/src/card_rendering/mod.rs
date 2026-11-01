@@ -3,11 +3,8 @@
 
 use std::collections::HashMap;
 
-use crate::prelude::*;
-
 mod parser;
 pub(crate) mod service;
-pub mod tts;
 mod writer;
 
 pub fn strip_av_tags<S: Into<String> + AsRef<str>>(txt: S) -> String {
@@ -19,10 +16,9 @@ pub fn strip_av_tags<S: Into<String> + AsRef<str>>(txt: S) -> String {
 pub fn extract_av_tags<S: Into<String> + AsRef<str>>(
     txt: S,
     question_side: bool,
-    tr: &I18n,
 ) -> (String, Vec<anki_proto::card_rendering::AvTag>) {
     nodes_or_text_only(txt.as_ref())
-        .map(|nodes| nodes.write_and_extract_av_tags(question_side, tr))
+        .map(|nodes| nodes.write_and_extract_av_tags(question_side))
         .unwrap_or_else(|| (txt.into(), vec![]))
 }
 
@@ -61,24 +57,8 @@ enum Node<'a> {
     Directive(Directive<'a>),
 }
 
-#[derive(Debug, PartialEq)]
-enum Directive<'a> {
-    Tts(TtsDirective<'a>),
-    Other(OtherDirective<'a>),
-}
-
-#[derive(Debug, PartialEq)]
-struct TtsDirective<'a> {
-    content: &'a str,
-    lang: &'a str,
-    voices: Vec<&'a str>,
-    speed: f32,
-    blank: Option<&'a str>,
-    options: HashMap<&'a str, &'a str>,
-}
-
 #[derive(Debug, PartialEq, Eq)]
-struct OtherDirective<'a> {
+struct Directive<'a> {
     name: &'a str,
     content: &'a str,
     options: HashMap<&'a str, &'a str>,
@@ -87,7 +67,7 @@ struct OtherDirective<'a> {
 #[cfg(feature = "bench")]
 #[inline]
 pub fn anki_directive_benchmark() {
-    CardNodes::parse("[anki:foo bar=baz][/anki:foo][anki:tts lang=jp_JP voices=Alice,Bob speed=0.5 cloze_blank= bar=baz][/anki:tts]");
+    CardNodes::parse("[anki:foo bar=baz][/anki:foo]");
 }
 
 #[cfg(test)]
@@ -114,46 +94,32 @@ mod test {
 
     #[test]
     fn av_extracting() {
-        let tr = I18n::template_only();
-        let (txt, tags) = extract_av_tags(
-            "foo [sound:bar.mp3] baz [anki:tts lang=en_US][...][/anki:tts]",
-            true,
-            &tr,
-        );
+        let (txt, tags) = extract_av_tags("foo [sound:bar.mp3] baz", true);
         assert_eq!(
             (txt.as_str(), tags),
             (
-                "foo [anki:play:q:0] baz [anki:play:q:1]",
-                vec![
-                    anki_proto::card_rendering::AvTag {
-                        value: Some(anki_proto::card_rendering::av_tag::Value::SoundOrVideo(
-                            "bar.mp3".to_string()
-                        ))
-                    },
-                    anki_proto::card_rendering::AvTag {
-                        value: Some(anki_proto::card_rendering::av_tag::Value::Tts(
-                            anki_proto::card_rendering::TtsTag {
-                                field_text: tr.card_templates_blank().to_string(),
-                                lang: "en_US".to_string(),
-                                voices: vec![],
-                                speed: 1.0,
-                                other_args: vec![],
-                            }
-                        ))
-                    }
-                ],
+                "foo [anki:play:q:0] baz",
+                vec![anki_proto::card_rendering::AvTag {
+                    value: Some(anki_proto::card_rendering::av_tag::Value::SoundOrVideo(
+                        "bar.mp3".to_string()
+                    ))
+                }],
             ),
         );
+    }
 
-        assert_eq!(
-            extract_av_tags("[anki:tts]foo[/anki:tts]", true, &tr),
-            (
-                format!(
-                    "[{}]",
-                    tr.errors_bad_directive("anki:tts", tr.errors_option_not_set("lang"))
-                ),
-                vec![],
-            ),
-        );
+    /// A deck made for other Anki clients can still hold these. They speak text
+    /// and were never shown, so they leave nothing behind, whatever their options.
+    #[test]
+    fn tts_tags_are_dropped() {
+        for tag in [
+            "[anki:tts]foo[/anki:tts]",
+            "[anki:tts lang=en_US voices=Bob speed=0.5]foo[/anki:tts]",
+        ] {
+            let input = format!("a{tag}b");
+            assert_eq!(extract_av_tags(&input, true), ("ab".to_string(), vec![]));
+            assert_eq!(strip_av_tags(input.as_str()), "ab");
+            assert_eq!(prettify_av_tags(input.as_str()), "ab");
+        }
     }
 }

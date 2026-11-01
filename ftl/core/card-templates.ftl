@@ -1,5 +1,3 @@
-# This word is used by TTS voices instead of the elided part of a cloze.
-card-templates-blank = blank
 card-templates-front-template = Front Template
 card-templates-back-template = Back Template
 card-templates-sample-cloze = This is a { "{{c1::" }sample{ "}}" } cloze deletion.

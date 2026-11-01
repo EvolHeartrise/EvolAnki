@@ -6,11 +6,7 @@ use std::fmt::Write as _;
 use super::CardNodes;
 use super::Directive;
 use super::Node;
-use super::OtherDirective;
-use super::TtsDirective;
-use crate::prelude::*;
 use crate::text::decode_entities;
-use crate::text::strip_html_for_tts;
 
 impl CardNodes<'_> {
     pub(super) fn write_without_av_tags(&self) -> String {
@@ -20,9 +16,8 @@ impl CardNodes<'_> {
     pub(super) fn write_and_extract_av_tags(
         &self,
         question_side: bool,
-        tr: &I18n,
     ) -> (String, Vec<anki_proto::card_rendering::AvTag>) {
-        let mut extractor = AvExtractor::new(question_side, tr);
+        let mut extractor = AvExtractor::new(question_side);
         (extractor.write(self), extractor.tags)
     }
 
@@ -56,33 +51,11 @@ trait Write {
     }
 
     fn write_directive(&mut self, buf: &mut String, directive: &Directive) {
-        match directive {
-            Directive::Tts(directive) => self.write_tts_directive(buf, directive),
-            Directive::Other(directive) => self.write_other_directive(buf, directive),
-        };
-    }
-
-    fn write_tts_directive(&mut self, buf: &mut String, directive: &TtsDirective) {
-        write!(buf, "[anki:tts").unwrap();
-
-        for (key, val) in [
-            ("lang", directive.lang),
-            ("voices", &directive.voices.join(",")),
-            ("speed", &directive.speed.to_string()),
-        ] {
-            self.write_directive_option(buf, key, val);
+        // Text-to-speech is gone. A deck from elsewhere can still have these tags,
+        // whose text was only ever spoken, so nothing shows in their place.
+        if directive.name == "tts" {
+            return;
         }
-        if let Some(blank) = directive.blank {
-            self.write_directive_option(buf, "cloze_blank", blank);
-        }
-        for (key, val) in &directive.options {
-            self.write_directive_option(buf, key, val);
-        }
-
-        write!(buf, "]{}[/anki:tts]", directive.content).unwrap();
-    }
-
-    fn write_other_directive(&mut self, buf: &mut String, directive: &OtherDirective) {
         write!(buf, "[anki:{}", directive.name).unwrap();
         for (key, val) in &directive.options {
             self.write_directive_option(buf, key, val);
@@ -115,38 +88,27 @@ impl AvStripper {
 
 impl Write for AvStripper {
     fn write_sound(&mut self, _buf: &mut String, _resource: &str) {}
-
-    fn write_tts_directive(&mut self, _buf: &mut String, _directive: &TtsDirective) {}
 }
 
-struct AvExtractor<'a> {
+struct AvExtractor {
     side: char,
     tags: Vec<anki_proto::card_rendering::AvTag>,
-    tr: &'a I18n,
 }
 
-impl<'a> AvExtractor<'a> {
-    fn new(question_side: bool, tr: &'a I18n) -> Self {
+impl AvExtractor {
+    fn new(question_side: bool) -> Self {
         Self {
             side: if question_side { 'q' } else { 'a' },
             tags: vec![],
-            tr,
         }
     }
 
     fn write_play_tag(&self, buf: &mut String) {
         write!(buf, "[anki:play:{}:{}]", self.side, self.tags.len()).unwrap();
     }
-
-    fn transform_tts_content(&self, directive: &TtsDirective) -> String {
-        strip_html_for_tts(directive.content).replace(
-            "[...]",
-            directive.blank.unwrap_or(&self.tr.card_templates_blank()),
-        )
-    }
 }
 
-impl Write for AvExtractor<'_> {
+impl Write for AvExtractor {
     fn write_sound(&mut self, buf: &mut String, resource: &str) {
         self.write_play_tag(buf);
         self.tags.push(anki_proto::card_rendering::AvTag {
@@ -154,43 +116,6 @@ impl Write for AvExtractor<'_> {
                 decode_entities(resource).into(),
             )),
         });
-    }
-
-    fn write_tts_directive(&mut self, buf: &mut String, directive: &TtsDirective) {
-        if let Some(error) = directive.error(self.tr) {
-            write!(buf, "[{error}]").unwrap();
-            return;
-        }
-
-        self.write_play_tag(buf);
-        self.tags.push(anki_proto::card_rendering::AvTag {
-            value: Some(anki_proto::card_rendering::av_tag::Value::Tts(
-                anki_proto::card_rendering::TtsTag {
-                    field_text: self.transform_tts_content(directive),
-                    lang: directive.lang.into(),
-                    voices: directive.voices.iter().map(ToString::to_string).collect(),
-                    speed: directive.speed,
-                    other_args: directive
-                        .options
-                        .iter()
-                        .map(|(key, val)| format!("{key}={val}"))
-                        .collect(),
-                },
-            )),
-        });
-    }
-}
-
-impl TtsDirective<'_> {
-    fn error(&self, tr: &I18n) -> Option<String> {
-        if self.lang.is_empty() {
-            Some(
-                tr.errors_bad_directive("anki:tts", tr.errors_option_not_set("lang"))
-                    .into(),
-            )
-        } else {
-            None
-        }
     }
 }
 
@@ -205,10 +130,6 @@ impl AvPrettifier {
 impl Write for AvPrettifier {
     fn write_sound(&mut self, buf: &mut String, resource: &str) {
         write!(buf, "🔉{resource}🔉").unwrap();
-    }
-
-    fn write_tts_directive(&mut self, buf: &mut String, directive: &TtsDirective) {
-        write!(buf, "💬{}💬", directive.content).unwrap();
     }
 }
 

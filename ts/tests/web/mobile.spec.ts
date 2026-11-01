@@ -211,54 +211,23 @@ for (
             await expect(control).toHaveCount(0);
         });
 
-        test("TTS tags are spoken, and sound/video files find the right element", async () => {
+        test("sound and video files find the right element", async () => {
             browser = await launch();
             const context = await browser.newContext({ ...device });
             const page = await context.newPage();
-            // Not all of these browsers have a voice here, so stand in for the engine.
-            await page.addInitScript(() => {
-                (window as any).spoken = [];
-                (window as any).SpeechSynthesisUtterance = class {
-                    lang = "";
-                    rate = 1;
-                    voice = null;
-                    volume = 1;
-                    onend: (() => void) | null = null;
-                    onerror = null;
-                    constructor(readonly text: string) {}
-                };
-                Object.defineProperty(window, "speechSynthesis", {
-                    value: {
-                        getVoices: () => [],
-                        cancel: () => undefined,
-                        speak(utterance: any) {
-                            if (utterance.text) {
-                                (window as any).spoken.push({
-                                    text: utterance.text,
-                                    lang: utterance.lang,
-                                    rate: utterance.rate,
-                                });
-                            }
-                            setTimeout(() => utterance.onend?.(), 0);
-                        },
-                    },
-                });
-            });
             await start(
                 [
                     {
-                        deck: "Speech",
+                        deck: "Clips",
                         notetype: "Basic",
-                        fields: ["[anki:tts lang=ja_JP speed=1.5]こんにちは[/anki:tts]", "[sound:clip.webm]answer"],
+                        fields: ["front", "[sound:clip.webm]answer"],
                     },
                 ],
-                ["Speech"],
+                ["Clips"],
             );
-            await openDeck(page, "Speech");
+            await openDeck(page, "Clips");
             await page.getByRole("button", { name: "Study Now" }).tap();
             await expect(card(page).locator("#qa")).toBeAttached();
-            await expect.poll(() => page.evaluate(() => (window as any).spoken))
-                .toEqual([{ text: "こんにちは", lang: "ja-JP", rate: 1.5 }]);
             await expect(page.locator("video")).toBeHidden();
 
             await page.getByRole("button", { name: "Show Answer" }).tap();

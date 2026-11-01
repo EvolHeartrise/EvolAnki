@@ -6,8 +6,6 @@ mod filtered;
 mod invalid_input;
 mod not_found;
 mod search;
-#[cfg(windows)]
-pub mod windows;
 
 use anki_i18n::I18n;
 use anki_io::FileIoError;
@@ -93,11 +91,6 @@ pub enum AnkiError {
         source: ImportError,
     },
     InvalidId,
-    #[cfg(windows)]
-    #[snafu(context(false))]
-    WindowsError {
-        source: windows::WindowsError,
-    },
     InvalidMethodIndex,
     InvalidServiceIndex,
     FsrsParamsInvalid,
@@ -174,8 +167,6 @@ impl AnkiError {
             AnkiError::SchedulerUpgradeRequired => {
                 tr.scheduling_update_required().replace("V2", "v3")
             }
-            #[cfg(windows)]
-            AnkiError::WindowsError { source } => format!("{source:?}"),
             AnkiError::FsrsUnableToDetermineDesiredRetention => tr
                 .deck_config_unable_to_determine_desired_retention()
                 .into(),

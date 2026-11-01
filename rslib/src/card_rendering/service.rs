@@ -34,7 +34,7 @@ impl crate::services::CardRenderingService for Collection {
         &mut self,
         input: anki_proto::card_rendering::ExtractAvTagsRequest,
     ) -> Result<anki_proto::card_rendering::ExtractAvTagsResponse> {
-        let out = extract_av_tags(input.text, input.question_side, &self.tr);
+        let out = extract_av_tags(input.text, input.question_side);
         Ok(anki_proto::card_rendering::ExtractAvTagsResponse {
             text: out.0,
             av_tags: out.1,

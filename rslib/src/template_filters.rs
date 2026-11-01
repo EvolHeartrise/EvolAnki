@@ -92,14 +92,10 @@ fn apply_filter(
         "cloze-only" => cloze_only_filter(text, context),
         // an empty filter name (caused by using two colons) is ignored
         "" => text.into(),
-        _ => {
-            if let Some(options) = filter_name.strip_prefix("tts ") {
-                tts_filter(options, text).into()
-            } else {
-                // unrecognized filter
-                return (false, None);
-            }
-        }
+        // text-to-speech is gone, and what it spoke wasn't shown on the card
+        name if name.starts_with("tts ") => String::new().into(),
+        // unrecognized filter
+        _ => return (false, None),
     };
 
     (
@@ -197,10 +193,6 @@ fn hint_filter<'a>(text: &'a str, field_name: &str) -> Cow<'a, str> {
 "##
     )
     .into()
-}
-
-fn tts_filter(options: &str, text: &str) -> String {
-    format!("[anki:tts lang={options}]{text}[/anki:tts]")
 }
 
 // Tests
@@ -306,10 +298,17 @@ field</a>
     }
 
     #[test]
-    fn tts() {
+    fn tts_shows_nothing() {
+        let ctx = RenderContext {
+            fields: &Default::default(),
+            nonempty_fields: &Default::default(),
+            card_ord: 0,
+            frontside: None,
+            partial_for_python: false,
+        };
         assert_eq!(
-            tts_filter("en_US voices=Bob,Jane", "foo"),
-            "[anki:tts lang=en_US voices=Bob,Jane]foo[/anki:tts]"
+            apply_filters("foo", &["tts en_US voices=Bob"], "Front", &ctx),
+            ("".into(), vec![])
         );
     }
 }

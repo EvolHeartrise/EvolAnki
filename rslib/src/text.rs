@@ -66,18 +66,6 @@ pub(crate) fn strip_utf8_bom(s: &str) -> &str {
     s.strip_prefix('\u{feff}').unwrap_or(s)
 }
 
-#[derive(Debug, PartialEq)]
-pub enum AvTag {
-    SoundOrVideo(String),
-    TextToSpeech {
-        field_text: String,
-        lang: String,
-        voices: Vec<String>,
-        speed: f32,
-        other_args: Vec<String>,
-    },
-}
-
 static HTML: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
         "(?si)",
@@ -88,22 +76,6 @@ static HTML: LazyLock<Regex> = LazyLock::new(|| {
     ))
     .unwrap()
 });
-static HTML_LINEBREAK_TAGS: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r#"(?xsi)
-            </?
-            (?:
-                br|address|article|aside|blockquote|canvas|dd|div
-                |dl|dt|fieldset|figcaption|figure|footer|form
-                |h[1-6]|header|hr|li|main|nav|noscript|ol
-                |output|p|pre|section|table|tfoot|ul|video
-            )
-            >
-        "#,
-    )
-    .unwrap()
-});
-
 pub static HTML_MEDIA_TAGS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r#"(?xsi)
@@ -250,12 +222,6 @@ pub(crate) fn newlines_to_spaces(text: &str) -> Cow<'_, str> {
     } else {
         text.into()
     }
-}
-
-pub fn strip_html_for_tts(html: &str) -> Cow<'_, str> {
-    HTML_LINEBREAK_TAGS
-        .replace_all(html, " ")
-        .map_cow(strip_html)
 }
 
 /// Truncate a String on a valid UTF8 boundary.

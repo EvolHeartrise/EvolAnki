@@ -1,7 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-// Plays a card's [sound:] and [anki:tts] tags in the page, as the card's frame can't.
+// Plays a card's [sound:] tags in the page, as the card's frame can't.
 //
 // Phones won't start playback without a user gesture. Android Chrome remembers one
 // for the page, while iOS wants each media element to have been played from inside
@@ -19,9 +19,6 @@ const VIDEO_EXTENSIONS = new Set(["avi", "flv", "m4v", "mkv", "mov", "mp4", "mpe
 /** A single silent sample. */
 const SILENCE = "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAACAgA==";
 
-const SPEECH_MIN_MILLIS = 8_000;
-const SPEECH_MILLIS_PER_CHAR = 400;
-
 export function isVideoFile(filename: string): boolean {
     return VIDEO_EXTENSIONS.has(filename.split(".").pop()?.toLowerCase() ?? "");
 }
@@ -29,7 +26,6 @@ export function isVideoFile(filename: string): boolean {
 let audio: HTMLAudioElement | null = null;
 let video: HTMLVideoElement | null = null;
 const unlocked = new Set<HTMLMediaElement>();
-let speechUnlocked = false;
 
 function audioElement(): HTMLAudioElement {
     return (audio ??= document.createElement("audio"));
@@ -53,35 +49,6 @@ export function unlockMedia(): void {
             element.play().then(() => unlocked.add(element)).catch(() => undefined);
         }
     }
-    if (!speechUnlocked && "speechSynthesis" in window) {
-        speechUnlocked = true;
-        const utterance = new SpeechSynthesisUtterance("");
-        utterance.volume = 0;
-        window.speechSynthesis.speak(utterance);
-    }
-}
-
-/** A voice from those listed in the tag, or for its language. */
-export function pickVoice(
-    voices: Pick<SpeechSynthesisVoice, "name" | "lang">[],
-    wanted: string[],
-    lang: string,
-): number {
-    const named = wanted.flatMap((name) => {
-        const found = voices.findIndex((voice) => voice.name === name);
-        return found >= 0 ? [found] : [];
-    });
-    if (named.length) {
-        return named[0];
-    }
-    // Anki's en_US is the web's en-US, and a voice can have a region of its own
-    const tag = lang.replace("_", "-").toLowerCase();
-    const exact = voices.findIndex((voice) => voice.lang.replace("_", "-").toLowerCase() === tag);
-    if (exact >= 0) {
-        return exact;
-    }
-    const language = tag.split("-")[0];
-    return voices.findIndex((voice) => voice.lang.replace("_", "-").toLowerCase().split("-")[0] === language);
 }
 
 export interface PlayerCallbacks {
@@ -94,7 +61,6 @@ export interface PlayerCallbacks {
 export class MediaPlayer {
     private queue: AVTag[] = [];
     private pending: AVTag[] = [];
-    private speechTimer: ReturnType<typeof setTimeout> | undefined;
     /** Stops events of earlier items from advancing the queue. */
     private generation = 0;
     private removeListeners: (() => void)[] = [];
@@ -141,10 +107,6 @@ export class MediaPlayer {
         this.pending = [];
         audio?.pause();
         video?.pause();
-        clearTimeout(this.speechTimer);
-        if ("speechSynthesis" in window) {
-            window.speechSynthesis.cancel();
-        }
         this.callbacks.onVideo(false);
         this.callbacks.onBlocked(false);
     }
@@ -157,15 +119,12 @@ export class MediaPlayer {
     }
 
     private playNext(): void {
-        clearTimeout(this.speechTimer);
         const tag = this.queue.shift();
         if (!tag) {
             return;
         }
         if (tag.value.case === "soundOrVideo") {
             this.playFile(tag, tag.value.value);
-        } else if (tag.value.case === "tts") {
-            this.speak(tag, tag.value.value);
         } else {
             this.playNext();
         }
@@ -199,45 +158,5 @@ export class MediaPlayer {
                 }
             },
         );
-    }
-
-    private speak(tag: AVTag, tts: { fieldText: string; lang: string; voices: string[]; speed: number }): void {
-        if (!("speechSynthesis" in window) || !tts.fieldText.trim()) {
-            this.playNext();
-            return;
-        }
-        const generation = this.generation;
-        const advance = () => {
-            if (generation === this.generation) {
-                this.generation += 1;
-                this.playNext();
-            }
-        };
-        const synthesis = window.speechSynthesis;
-        const utterance = new SpeechSynthesisUtterance(tts.fieldText);
-        utterance.lang = tts.lang.replace("_", "-");
-        if (tts.speed > 0) {
-            utterance.rate = Math.min(Math.max(tts.speed, 0.1), 10);
-        }
-        const voices = synthesis.getVoices();
-        const voice = voices[pickVoice(voices, tts.voices, tts.lang)];
-        if (voice) {
-            utterance.voice = voice;
-        }
-        utterance.onend = advance;
-        utterance.onerror = (event) => {
-            if (event.error === "not-allowed" && generation === this.generation) {
-                clearTimeout(this.speechTimer);
-                this.refused(tag);
-            } else if (event.error !== "canceled" && event.error !== "interrupted") {
-                advance();
-            }
-        };
-        // Some browsers have no voices, and never finish or fail.
-        this.speechTimer = setTimeout(
-            advance,
-            Math.max(SPEECH_MIN_MILLIS, tts.fieldText.length * SPEECH_MILLIS_PER_CHAR),
-        );
-        synthesis.speak(utterance);
     }
 }

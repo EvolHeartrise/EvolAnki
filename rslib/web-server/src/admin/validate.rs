@@ -968,9 +968,8 @@ fn rendering_section(
                 let question = flatten(&rendered.question_nodes);
                 let answer = flatten(&rendered.answer_nodes);
                 let visible = refs.tag.replace_all(&question, "");
-                let has_media = question.contains("[sound:")
-                    || question.to_lowercase().contains("<img")
-                    || question.contains("[anki:tts");
+                let has_media =
+                    question.contains("[sound:") || question.to_lowercase().contains("<img");
                 if rendered.is_empty || (visible.trim().is_empty() && !has_media) {
                     entry[2] += 1;
                     blank.push(*cid);
@@ -1091,7 +1090,7 @@ fn rendering_section(
             refs.handler.find_iter(&texts).count().to_string(),
             sample(&remote_refs, 5),
             sample(&missing, 10),
-            (all.contains("{{type:") || all.contains("{{tts")).to_string(),
+            all.contains("{{type:").to_string(),
         ]);
     }
     out.table(
@@ -1103,7 +1102,7 @@ fn rendering_section(
             "inline handlers",
             "remote assets",
             "fields or css files missing",
-            "type-in or tts",
+            "type-in",
         ],
         &rows,
     );

@@ -191,8 +191,7 @@ real autoplay policy, and its WebKit, with emulated devices. WebKit on Linux has
 autoplay policy to speak of, so that one is acted out with a stand-in that refuses
 until a tap. **None of this has been on an actual phone.** Things to check on one: that
 autoplay works after Study Now on iOS Safari in particular (it depends on the one-tap
-"unlock" above), TTS voices, the on-screen keyboard over type-in answers, safe-area insets
-on a notch, and how your audio formats play. iOS has no `.ogg`/`.opus` support before
+"unlock" above), the on-screen keyboard over type-in answers, safe-area insets on a notch, and how your audio formats play. iOS has no `.ogg`/`.opus` support before
 Safari 18.4, and neither platform plays `.mkv` or `.avi` reliably. A file that can't
 play is skipped.
 
@@ -201,8 +200,9 @@ play is skipped.
 - Scripts in cards don't run, so nor does custom scheduling.
 - `[sound:]` files play in the page, one after another. Those with a video extension show
   in a player under the card, which plays whatever the browser supports.
-- `{{tts}}` and `[anki:tts]` use the browser's `speechSynthesis`. Voices are whatever
-  the device has: first any named in the tag, then one for its language.
+- There is no text-to-speech. A `{{tts ...:Field}}` filter or `[anki:tts]` tag in an
+  imported card shows nothing, and plays nothing. Their text was only ever spoken, so a
+  card whose front was only that has a blank front.
 - English only.
 - `[latex]` isn't rendered. Marks, timeboxing, auto advance, `reviewExtra`, editing,
   suspending and flags aren't in the reviewer. Automatic leech suspension and its notice,

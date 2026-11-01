@@ -2689,34 +2689,10 @@
   },
   {
     "authors": "Microsoft",
-    "description": "Rust for Windows",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "windows",
-    "repository": "https://github.com/microsoft/windows-rs"
-  },
-  {
-    "authors": null,
-    "description": "Windows collection types",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "windows-collections",
-    "repository": "https://github.com/microsoft/windows-rs"
-  },
-  {
-    "authors": "Microsoft",
     "description": "Core type support for COM and Windows",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "name": "windows-core",
-    "repository": "https://github.com/microsoft/windows-rs"
-  },
-  {
-    "authors": null,
-    "description": "Windows async types",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "windows-future",
     "repository": "https://github.com/microsoft/windows-rs"
   },
   {
@@ -2749,14 +2725,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "name": "windows-link",
-    "repository": "https://github.com/microsoft/windows-rs"
-  },
-  {
-    "authors": null,
-    "description": "Windows numeric types",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "windows-numerics",
     "repository": "https://github.com/microsoft/windows-rs"
   },
   {
@@ -2813,14 +2781,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "name": "windows-targets",
-    "repository": "https://github.com/microsoft/windows-rs"
-  },
-  {
-    "authors": "Microsoft",
-    "description": "Windows threading",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "windows-threading",
     "repository": "https://github.com/microsoft/windows-rs"
   },
   {

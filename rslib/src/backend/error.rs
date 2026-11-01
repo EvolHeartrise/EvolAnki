@@ -42,8 +42,6 @@ impl AnkiError {
             | AnkiError::FsrsParamsInvalid
             | AnkiError::FsrsUnableToDetermineDesiredRetention
             | AnkiError::FsrsInsufficientData => Kind::InvalidInput,
-            #[cfg(windows)]
-            AnkiError::WindowsError { .. } => Kind::OsError,
             AnkiError::SchedulerUpgradeRequired => Kind::SchedulerUpgradeRequired,
             AnkiError::FsrsInsufficientReviews { .. } => Kind::InvalidInput,
             AnkiError::ZipError { .. } => Kind::IoError,

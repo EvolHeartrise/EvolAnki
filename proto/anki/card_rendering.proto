@@ -36,8 +36,6 @@ service CardRenderingService {
 // backend service.
 service BackendCardRenderingService {
   rpc StripHtml(StripHtmlRequest) returns (generic.String);
-  rpc AllTtsVoices(AllTtsVoicesRequest) returns (AllTtsVoicesResponse);
-  rpc WriteTtsStream(WriteTtsStreamRequest) returns (generic.Empty);
 }
 
 message ExtractAvTagsRequest {
@@ -53,16 +51,7 @@ message ExtractAvTagsResponse {
 message AVTag {
   oneof value {
     string sound_or_video = 1;
-    TTSTag tts = 2;
   }
-}
-
-message TTSTag {
-  string field_text = 1;
-  string lang = 2;
-  repeated string voices = 3;
-  float speed = 4;
-  repeated string other_args = 5;
 }
 
 message ExtractLatexRequest {
@@ -173,25 +162,4 @@ message CompareAnswerRequest {
 message ExtractClozeForTypingRequest {
   string text = 1;
   uint32 ordinal = 2;
-}
-
-message AllTtsVoicesRequest {
-  bool validate = 1;
-}
-
-message AllTtsVoicesResponse {
-  message TtsVoice {
-    string id = 1;
-    string name = 2;
-    string language = 3;
-    optional bool available = 4;
-  }
-  repeated TtsVoice voices = 1;
-}
-
-message WriteTtsStreamRequest {
-  string path = 1;
-  string voice_id = 2;
-  float speed = 3;
-  string text = 4;
 }
