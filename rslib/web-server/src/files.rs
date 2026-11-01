@@ -22,6 +22,7 @@ use regex::bytes::Regex;
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
 
+use crate::frame;
 use crate::AppState;
 
 /// Collection media is untrusted: an SVG or HTML file must not run as an active
@@ -48,10 +49,20 @@ const SVELTEKIT_ROUTES: &[&str] = &[
     "image-occlusion",
     "preferences",
     "editor",
+    "overview",
+    "review",
 ];
 
 /// These routes show note content, so scripts are locked to our bundled paths.
 const UNTRUSTED_SVELTEKIT_ROUTES: &[&str] = &["editor", "image-occlusion"];
+
+/// These embed untrusted content in the frames from frame.rs, and have no
+/// scripts of their own to allow for. "" is the deck list. Limiting frame-src
+/// also stops a card from navigating its frame to another site.
+const FRAMING_SVELTEKIT_ROUTES: &[&str] = &["", "overview", "review", "congrats"];
+
+/// Tells the pages that they aren't in Qt; see ts/lib/tslib/webapp.ts.
+const WEB_APP_META: &[u8] = br#"<head><meta name="evolanki-web" content="1">"#;
 
 static SVELTEKIT_CSP_META: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
@@ -59,6 +70,8 @@ static SVELTEKIT_CSP_META: LazyLock<Regex> = LazyLock::new(|| {
     )
     .unwrap()
 });
+
+static HEAD_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new("<head>").unwrap());
 
 fn mime_for_path(path: &str) -> &'static str {
     let ext = Path::new(path)
@@ -158,11 +171,14 @@ pub async fn serve(state: &AppState, request: Request) -> Response {
     if path == "favicon.ico" {
         return bundled(state, "imgs/favicon.ico", &path, None).await;
     }
+    if path == "_anki/frameBase" {
+        return frame_base(state, &request);
+    }
     if path.is_empty() {
-        return text_response(
-            StatusCode::NOT_FOUND,
-            "No home page yet. Try /deck-options/1, /graphs, /congrats or /card-info/<card id>.",
-        );
+        return bundled(state, "sveltekit/index.html", &path, Some("")).await;
+    }
+    if let Some(rest) = path.strip_prefix("_frame/") {
+        return frame::serve(state, rest, request).await;
     }
     if let Some(route) = is_sveltekit_route(&path) {
         return bundled(state, "sveltekit/index.html", &path, Some(route)).await;
@@ -179,7 +195,25 @@ pub async fn serve(state: &AppState, request: Request) -> Response {
     media(state, &path, request).await
 }
 
-async fn bundled(
+/// Only for our own pages: this is what lets a page embed media cross-origin.
+/// Guard.rs and CORP already stop others reading it; this also refuses to
+/// respond to them at all.
+fn frame_base(state: &AppState, request: &Request) -> Response {
+    let site = request.headers().get("sec-fetch-site");
+    if site.is_some_and(|site| site != "same-origin") {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    (
+        [
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        frame::base(state),
+    )
+        .into_response()
+}
+
+pub(crate) async fn bundled(
     state: &AppState,
     relative: &str,
     request_path: &str,
@@ -208,14 +242,21 @@ async fn bundled(
                 "CSP meta tag not found in SvelteKit index page",
             );
         };
-        if UNTRUSTED_SVELTEKIT_ROUTES.contains(&route) {
+        let framing = FRAMING_SVELTEKIT_ROUTES.contains(&route);
+        let csp = if framing || UNTRUSTED_SVELTEKIT_ROUTES.contains(&route) {
             let hash = String::from_utf8_lossy(&captures[1]).into_owned();
-            Some(untrusted_sveltekit_csp(state.port, &hash))
+            let mut csp = untrusted_sveltekit_csp(state.port, &hash);
+            if framing {
+                csp.push_str("; frame-src 'self'");
+            }
+            csp
         } else {
             // the page's own CSP would stop a trusted page's inline scripts
             data = SVELTEKIT_CSP_META.replace(&data, &b""[..]).into_owned();
-            Some(TRUSTED_PAGE_CSP.to_string())
-        }
+            TRUSTED_PAGE_CSP.to_string()
+        };
+        data = HEAD_TAG.replace(&data, WEB_APP_META).into_owned();
+        Some(csp)
     } else if mime == "text/html" {
         Some(TRUSTED_PAGE_CSP.to_string())
     } else {
@@ -256,7 +297,7 @@ fn untrusted_sveltekit_csp(port: u16, script_hash: &str) -> String {
     )
 }
 
-async fn media(state: &AppState, path: &str, request: Request) -> Response {
+pub(crate) async fn media(state: &AppState, path: &str, request: Request) -> Response {
     let Some(full) = safe_join(&state.media_dir, path) else {
         return invalid_path(StatusCode::FORBIDDEN, path);
     };

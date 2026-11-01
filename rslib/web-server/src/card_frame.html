@@ -1,0 +1,133 @@
+<!doctype html>
+<!--
+Hosts untrusted card HTML. Served with `sandbox allow-scripts`, so its origin is
+opaque whichever way it is opened; see src/frame.rs and docs/web-server.md.
+
+The private MessagePort is received and captured here before any untrusted code
+exists in this document. Card scripts therefore can't reach it. They can call
+window.parent.postMessage, but nothing in the parent listens for that.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<script nonce="@NONCE@">
+(function () {
+    "use strict";
+    const isStatic = location.search === "?static";
+    window.ankiAssetBase = new URL("../a/", document.baseURI).href;
+    let post = null;
+
+    function setTheme(dark) {
+        const root = document.documentElement;
+        root.classList.toggle("night-mode", dark);
+        if (dark) {
+            root.dataset.bsTheme = "dark";
+        } else {
+            delete root.dataset.bsTheme;
+        }
+    }
+
+    function onPortMessage(event) {
+        const msg = event.data;
+        switch (msg.type) {
+            case "question":
+                setTheme(msg.dark);
+                window._showQuestion(msg.html, msg.answer, msg.bodyClass);
+                window._queueAction(() => post({ type: "shown", seq: msg.seq }));
+                break;
+            case "answer":
+                setTheme(msg.dark);
+                window._showAnswer(msg.html, msg.bodyClass);
+                window._queueAction(() => post({ type: "shown", seq: msg.seq }));
+                break;
+            case "theme":
+                setTheme(msg.dark);
+                document.body.classList.toggle("nightMode", msg.dark);
+                document.body.classList.toggle("night_mode", msg.dark);
+                break;
+            case "getTyped": {
+                const input = document.getElementById("typeans");
+                post({ type: "typed", value: input ? String(input.value) : "" });
+                break;
+            }
+            case "static":
+                setTheme(msg.dark);
+                // innerHTML doesn't run scripts, and the CSP blocks everything else
+                document.getElementById("content").innerHTML = msg.html;
+                break;
+        }
+    }
+
+    // Removed after one use, so that a card can't hand us a port of its own.
+    window.addEventListener("message", function init(event) {
+        if (event.source !== window.parent || event.ports.length !== 1) {
+            return;
+        }
+        window.removeEventListener("message", init);
+        const port = event.ports[0];
+        post = port.postMessage.bind(port);
+        port.onmessage = onPortMessage;
+        post({ type: "ready" });
+        new ResizeObserver(() => {
+            post({ type: "resize", height: document.documentElement.scrollHeight });
+        }).observe(document.documentElement);
+    });
+
+    // Only real key presses count, so a script can't answer or suspend cards.
+    window.addEventListener("keydown", (event) => {
+        if (!event.isTrusted || !post || event.ctrlKey || event.metaKey || event.altKey) {
+            return;
+        }
+        const target = event.target;
+        const tag = target && target.tagName;
+        const editing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"
+            || (target && target.isContentEditable);
+        if (editing && !(event.key === "Enter" && target.id === "typeans")) {
+            return;
+        }
+        if (event.key === " ") {
+            event.preventDefault();
+        }
+        post({ type: "key", key: event.key, repeat: event.repeat });
+    }, true);
+
+    // The sandbox has no popups, and following a link would replace the card.
+    document.addEventListener("click", (event) => {
+        const link = event.target && event.target.closest && event.target.closest("a[href]");
+        if (!link || (link.getAttribute("href") || "").startsWith("#")) {
+            return;
+        }
+        event.preventDefault();
+        if (event.isTrusted && post && /^https?:/i.test(link.href)) {
+            post({ type: "open", url: link.href });
+        }
+    }, true);
+
+    // What templates and reviewer.js expect from Qt. Scripts can call this, so
+    // it can do no more than play the card's audio or reveal its answer.
+    window.pycmd = window.bridgeCommand = function (command) {
+        if (!post || typeof command !== "string") {
+            return;
+        }
+        const play = /^play:([qa]):(\d{1,6})$/.exec(command);
+        if (play) {
+            post({ type: "play", side: play[1], index: Number(play[2]) });
+        } else if (command === "ans") {
+            post({ type: "reveal" });
+        }
+    };
+
+    setTheme(isStatic && location.hash === "#night");
+})();
+</script>
+<link rel="stylesheet" href="../a/css/webview.css">
+@HEAD@
+<style>
+html { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+@STYLE@
+</style>
+</head>
+<body>
+@BODY@
+</body>
+</html>

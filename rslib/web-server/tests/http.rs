@@ -446,7 +446,7 @@ fn media_is_served_safely() {
 
     assert_eq!(server.get("/missing.png").status, 404);
     assert_eq!(server.get("/folder").status, 403);
-    assert_eq!(server.get("/").status, 404);
+    assert_eq!(server.get("/not-there").status, 404);
 
     for bad in [
         "/../secret.txt",
@@ -478,7 +478,7 @@ fn pages_have_the_expected_headers() {
     let fixture = Fixture::new();
     let server = fixture.start();
 
-    for trusted in ["/deck-options/1", "/graphs", "/card-info/5", "/congrats"] {
+    for trusted in ["/deck-options/1", "/graphs", "/card-info/5"] {
         let reply = server.get(trusted);
         assert_eq!(reply.status, 200, "{trusted}");
         assert_eq!(reply.header("content-type").as_deref(), Some("text/html"));
@@ -494,6 +494,19 @@ fn pages_have_the_expected_headers() {
             reply.header("x-content-type-options").as_deref(),
             Some("nosniff")
         );
+    }
+
+    assert!(reply_is_web_app(&server, "/deck-options/1"));
+    assert!(reply_is_web_app(&server, "/"));
+
+    for framing in ["/", "/overview/1", "/review", "/congrats"] {
+        let csp = server
+            .get(framing)
+            .header("content-security-policy")
+            .unwrap();
+        assert!(csp.contains("frame-src 'self'"), "{framing}: {csp}");
+        assert!(csp.contains("script-src http://127.0.0.1:"), "{csp}");
+        assert!(!csp.contains("unsafe-inline"), "{csp}");
     }
 
     let reply = server.get("/editor/");
@@ -516,6 +529,113 @@ fn pages_have_the_expected_headers() {
     assert_eq!(server.get("/_app/immutable/missing.mjs").status, 404);
     assert_eq!(server.get("/_anki/readyz").status, 200);
     assert_eq!(server.get("/_addons/x/y").status, 404);
+}
+
+fn reply_is_web_app(server: &Server, path: &str) -> bool {
+    server.get(path).text().contains("evolanki-web")
+}
+
+/// The API must stay shut to a sandboxed frame, whose origin is "null", while
+/// the frame's own prefix serves media and nothing else.
+#[test]
+fn frame_routes_are_narrow() {
+    let fixture = Fixture::new();
+    let server = fixture.start();
+    fs::write(fixture.media().join("pic.png"), "png").unwrap();
+    fs::write(fixture.dir.path().join("web/secret.js"), "1").unwrap();
+    fs::create_dir_all(fixture.dir.path().join("web/js")).unwrap();
+    fs::write(fixture.dir.path().join("web/js/reviewer.js"), "1").unwrap();
+    fs::write(fixture.dir.path().join("web/js/editor.js"), "1").unwrap();
+
+    let host = server.host();
+    let base = server.get("/_anki/frameBase").text();
+    assert!(base.starts_with("/_frame/") && base.ends_with('/'), "{base}");
+    let null_origin = [("Host", host.as_str()), ("Origin", "null")];
+
+    // a sandboxed frame or other site can't learn the prefix
+    let reply = server.raw("GET", "/_anki/frameBase", &null_origin, b"");
+    assert_eq!(reply.status, 403);
+    let cross = [("Host", host.as_str()), ("Sec-Fetch-Site", "cross-site")];
+    assert_eq!(server.raw("GET", "/_anki/frameBase", &cross, b"").status, 403);
+
+    // embeddable through the prefix only
+    let reply = server.raw("GET", &format!("{base}m/pic.png"), &null_origin, b"");
+    assert_eq!(reply.status, 200);
+    assert_eq!(reply.text(), "png");
+    assert_eq!(
+        reply.header("cross-origin-resource-policy").as_deref(),
+        Some("cross-origin")
+    );
+    assert_eq!(
+        reply.header("access-control-allow-origin").as_deref(),
+        Some("null")
+    );
+    assert!(reply
+        .header("content-security-policy")
+        .unwrap()
+        .contains("script-src 'none'"));
+
+    let reply = server.get("/pic.png");
+    assert_eq!(
+        reply.header("cross-origin-resource-policy").as_deref(),
+        Some("same-origin")
+    );
+    assert_eq!(reply.header("access-control-allow-origin"), None);
+    assert_eq!(server.raw("GET", "/pic.png", &null_origin, b"").status, 403);
+
+    // a wrong token is just a missing path, and null origin is refused before that
+    assert_eq!(server.get("/_frame/nope/m/pic.png").status, 404);
+    let reply = server.raw("GET", "/_frame/nope/m/pic.png", &null_origin, b"");
+    assert_eq!(reply.status, 403);
+
+    // listed assets only
+    assert_eq!(server.get(&format!("{base}a/js/reviewer.js")).status, 200);
+    assert_eq!(server.get(&format!("{base}a/js/editor.js")).status, 404);
+    assert_eq!(server.get(&format!("{base}a/secret.js")).status, 404);
+    assert_eq!(server.get(&format!("{base}other")).status, 404);
+    for bad in ["m/../../../secret.txt", "m/%2e%2e/%2e%2e/secret.txt", "a/js/../secret.js"] {
+        assert_ne!(server.get(&format!("{base}{bad}")).status, 200, "{bad}");
+    }
+
+    // the API is unchanged, even for a caller who has the token
+    let binary = [
+        ("Host", host.as_str()),
+        ("Origin", "null"),
+        ("Content-Type", "application/binary"),
+    ];
+    for path in [
+        "/_anki/getQueuedCards".to_string(),
+        format!("{base}m/x"),
+        format!("{base}../../_anki/getQueuedCards"),
+    ] {
+        assert_eq!(server.raw("POST", &path, &binary, b"").status, 403, "{path}");
+    }
+    let reply = server.raw("GET", "/_anki/js/reviewer.js", &null_origin, b"");
+    assert_eq!(reply.status, 403);
+
+    // the document, with a CSP of its own that keeps its sandbox if opened directly
+    let reply = server.get(&format!("{base}m/"));
+    assert_eq!(reply.status, 200);
+    let csp = reply.header("content-security-policy").unwrap();
+    for wanted in [
+        "sandbox allow-scripts",
+        "connect-src 'none'",
+        "form-action 'none'",
+        "base-uri 'none'",
+        "frame-src 'none'",
+        "'unsafe-inline'",
+    ] {
+        assert!(csp.contains(wanted), "{wanted}: {csp}");
+    }
+    assert!(!csp.contains("allow-same-origin"), "{csp}");
+    assert!(reply.text().contains(r#"id="qa""#));
+
+    let reply = server.get(&format!("{base}m/?static"));
+    let csp = reply.header("content-security-policy").unwrap();
+    let script_src = csp.split(';').find(|d| d.contains("script-src")).unwrap();
+    assert!(script_src.contains("'nonce-"), "{csp}");
+    assert!(!script_src.contains("unsafe"), "{csp}");
+    assert!(reply.text().contains(r#"id="content""#));
 }
 
 fn fails_with(fixture: &Fixture, args: &[&str], message: &str) {

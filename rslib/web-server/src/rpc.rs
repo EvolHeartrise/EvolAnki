@@ -46,6 +46,7 @@ pub const ALLOWED: &[&str] = &[
     "getDeckNames",
     "getCurrentDeck",
     "setCurrentDeck",
+    "setDeckCollapsed",
     // I18nService
     "i18nResources",
     // NotesService
@@ -82,6 +83,7 @@ pub const ALLOWED: &[&str] = &[
     "simulateFsrsReview",
     "simulateFsrsWorkload",
     // DeckConfigService
+    "getDeckConfig",
     "getDeckConfigsForUpdate",
     "updateDeckConfigs",
     "getIgnoredBeforeCount",
@@ -89,6 +91,7 @@ pub const ALLOWED: &[&str] = &[
     // CardRenderingService
     "renderExistingCard",
     "extractAvTags",
+    "renderMarkdown",
     "extractClozeForTyping",
     "compareAnswer",
     "encodeIriPaths",

@@ -5,6 +5,7 @@
 //! docs/web-server.md.
 
 mod files;
+mod frame;
 mod guard;
 mod rpc;
 mod seed;
@@ -69,6 +70,10 @@ struct Args {
     /// When creating a collection, add sample notes and reviews to it.
     #[arg(long, requires = "create")]
     seed_demo: bool,
+    /// When creating a collection, add the decks and notes in this JSON file.
+    /// For tests; see SeedFile in seed.rs.
+    #[arg(long, requires = "create", conflicts_with = "seed_demo")]
+    seed_file: Option<PathBuf>,
     /// Language for backend messages and page text.
     #[arg(long, default_value = "en")]
     lang: String,
@@ -80,6 +85,8 @@ pub struct AppState {
     media_dir: PathBuf,
     /// The port actually bound, which the Host check compares against.
     port: u16,
+    /// Random path prefix for what sandboxed frames may load; see frame.rs.
+    frame_token: String,
 }
 
 #[tokio::main]
@@ -115,12 +122,16 @@ async fn run(args: Args) -> Result<()> {
     if args.seed_demo && !existed {
         seed::seed_demo_content(&backend)?;
     }
+    if let (Some(path), false) = (&args.seed_file, existed) {
+        seed::seed_from_file(&backend, path)?;
+    }
 
     let state = Arc::new(AppState {
         backend: backend.clone(),
         web_root: args.web_root,
         media_dir,
         port,
+        frame_token: frame::new_token(),
     });
     let app = Router::new()
         .fallback(handle)

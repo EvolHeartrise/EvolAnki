@@ -4,7 +4,15 @@
 //! Fills a new collection with notes and a few reviews, for development and
 //! tests. Goes through the same RPCs as the pages do.
 
+use std::path::Path;
+
 use anki::backend::Backend;
+use anki_proto::cards::CardIds;
+use anki_proto::collection::OpChangesWithId;
+use anki_proto::decks::deck::Kind;
+use anki_proto::decks::Deck;
+use anki_proto::notes::NoteId;
+use anki_proto::scheduler::SetDueDateRequest;
 use anki_proto::generic;
 use anki_proto::notes::AddNoteRequest;
 use anki_proto::notes::AddNoteResponse;
@@ -17,6 +25,7 @@ use anki_proto::scheduler::GetQueuedCardsRequest;
 use anki_proto::scheduler::QueuedCards;
 use anyhow::Context;
 use anyhow::Result;
+use serde::Deserialize;
 
 use crate::rpc::call_typed;
 
@@ -63,6 +72,103 @@ pub fn seed_demo_content(backend: &Backend) -> Result<()> {
             milliseconds_taken: 1000,
         };
         let _: anki_proto::collection::OpChanges = call_typed(backend, "answerCard", &answer)?;
+    }
+    Ok(())
+}
+
+/// What `--seed-file` reads. Tests use it for content the API can't add.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SeedFile {
+    #[serde(default)]
+    decks: Vec<SeedDeck>,
+    #[serde(default)]
+    notes: Vec<SeedNote>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SeedDeck {
+    name: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    markdown: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SeedNote {
+    /// Name of a deck listed above; the default deck if not given.
+    deck: Option<String>,
+    notetype: String,
+    fields: Vec<String>,
+    /// Make its cards reviews due today, rather than new.
+    #[serde(default)]
+    due: bool,
+}
+
+pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
+    let text = std::fs::read_to_string(path).with_context(|| path.display().to_string())?;
+    let seed: SeedFile = serde_json::from_str(&text).context("invalid seed file")?;
+
+    let mut decks = vec![];
+    for deck in seed.decks {
+        let mut new: Deck = call_typed(backend, "newDeck", &generic::Empty {})?;
+        new.name = deck.name.clone();
+        if let Some(Kind::Normal(normal)) = &mut new.kind {
+            normal.description = deck.description;
+            normal.markdown_description = deck.markdown;
+        }
+        let added: OpChangesWithId = call_typed(backend, "addDeck", &new)?;
+        decks.push((deck.name, added.id));
+    }
+
+    let names: NotetypeNames = call_typed(backend, "getNotetypeNames", &generic::Empty {})?;
+    for seed_note in seed.notes {
+        let notetype = names
+            .entries
+            .iter()
+            .find(|e| e.name == seed_note.notetype)
+            .with_context(|| format!("no notetype {}", seed_note.notetype))?;
+        let deck_id = match &seed_note.deck {
+            Some(name) => {
+                decks
+                    .iter()
+                    .find(|(deck, _)| deck == name)
+                    .with_context(|| format!("no deck {name}"))?
+                    .1
+            }
+            None => DEFAULT_DECK,
+        };
+        let mut note: Note = call_typed(backend, "newNote", &NotetypeId { ntid: notetype.id })?;
+        note.fields = seed_note.fields;
+        let added: AddNoteResponse = call_typed(
+            backend,
+            "addNote",
+            &AddNoteRequest {
+                note: Some(note),
+                deck_id,
+            },
+        )?;
+        if seed_note.due {
+            let cards: CardIds = call_typed(
+                backend,
+                "cardsOfNote",
+                &NoteId {
+                    nid: added.note_id,
+                },
+            )?;
+            let _: anki_proto::collection::OpChanges = call_typed(
+                backend,
+                "setDueDate",
+                &SetDueDateRequest {
+                    card_ids: cards.cids,
+                    days: "0".into(),
+                    config_key: None,
+                },
+            )?;
+        }
     }
     Ok(())
 }

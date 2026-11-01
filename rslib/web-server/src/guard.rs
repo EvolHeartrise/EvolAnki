@@ -9,6 +9,10 @@
 //! - The Origin, Sec-Fetch-Site and Content-Type checks stop other sites from
 //!   driving the API. application/binary is not a CORS-safelisted type, so a
 //!   cross-origin fetch would need a preflight, and we never grant one.
+//!
+//! Card frames (frame.rs) are sandboxed, so their origin is "null" and these
+//! checks refuse them, which is what keeps card scripts off the API. The one
+//! exception is reading from the frame's own unguessable path prefix.
 
 use std::sync::Arc;
 
@@ -31,11 +35,19 @@ pub async fn check_request(
     next: Next,
 ) -> Response {
     let authority = request.uri().authority().map(|a| a.as_str().to_string());
+    let null_origin_allowed = matches!(*request.method(), Method::GET | Method::HEAD)
+        && request
+            .uri()
+            .path()
+            .strip_prefix("/_frame/")
+            .and_then(|path| path.strip_prefix(state.frame_token.as_str()))
+            .is_some_and(|path| path.starts_with('/'));
     let verdict = check(
         request.method(),
         authority.as_deref(),
         request.headers(),
         state.port,
+        null_origin_allowed,
     );
     let mut response = match verdict {
         Ok(()) => next.run(request).await,
@@ -50,10 +62,9 @@ pub async fn check_request(
         HeaderValue::from_static("nosniff"),
     );
     // stops other sites embedding media or pages with no-cors requests
-    headers.insert(
-        "cross-origin-resource-policy",
-        HeaderValue::from_static("same-origin"),
-    );
+    headers
+        .entry("cross-origin-resource-policy")
+        .or_insert(HeaderValue::from_static("same-origin"));
     response
 }
 
@@ -76,6 +87,7 @@ fn check(
     uri_authority: Option<&str>,
     headers: &HeaderMap,
     port: u16,
+    null_origin_allowed: bool,
 ) -> Result<(), String> {
     let host = single_header(headers, header::HOST)?
         .ok_or("missing host header")?
@@ -92,7 +104,8 @@ fn check(
 
     // localhost and 127.0.0.1 are different origins, so one can't call the other
     if let Some(origin) = single_header(headers, header::ORIGIN)? {
-        if !origin.eq_ignore_ascii_case(&format!("http://{host}")) {
+        let frame_read = null_origin_allowed && origin == "null";
+        if !frame_read && !origin.eq_ignore_ascii_case(&format!("http://{host}")) {
             return Err(format!("origin not allowed: {origin}"));
         }
     }
@@ -120,7 +133,7 @@ mod test {
         for (name, value) in list {
             headers.append(*name, HeaderValue::from_static(value));
         }
-        check(&method, None, &headers, 8765)
+        check(&method, None, &headers, 8765, false)
     }
 
     const BIN: (&str, &str) = ("content-type", "application/binary");
@@ -153,8 +166,8 @@ mod test {
     fn absolute_targets() {
         let mut headers = HeaderMap::new();
         headers.append("host", HeaderValue::from_static("127.0.0.1:8765"));
-        assert!(check(&Method::GET, Some("127.0.0.1:8765"), &headers, 8765).is_ok());
-        assert!(check(&Method::GET, Some("evil.example"), &headers, 8765).is_err());
+        assert!(check(&Method::GET, Some("127.0.0.1:8765"), &headers, 8765, false).is_ok());
+        assert!(check(&Method::GET, Some("evil.example"), &headers, 8765, false).is_err());
     }
 
     #[test]
@@ -183,6 +196,18 @@ mod test {
                 "{origin}"
             );
         }
+    }
+
+    #[test]
+    fn null_origin_is_only_for_frame_reads() {
+        let mut headers = HeaderMap::new();
+        headers.append("host", HeaderValue::from_static("127.0.0.1:8765"));
+        headers.append("origin", HeaderValue::from_static("null"));
+        assert!(check(&Method::GET, None, &headers, 8765, true).is_ok());
+        assert!(check(&Method::GET, None, &headers, 8765, false).is_err());
+
+        headers.insert("origin", HeaderValue::from_static("https://evil.example"));
+        assert!(check(&Method::GET, None, &headers, 8765, true).is_err());
     }
 
     #[test]
