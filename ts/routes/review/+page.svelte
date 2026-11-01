@@ -6,7 +6,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { goto } from "$app/navigation";
     import type { AVTag } from "@generated/anki/card_rendering_pb";
     import {
-        BuryOrSuspendCardsRequest_Mode,
         CardAnswer_Rating,
         type QueuedCards,
         QueuedCards_Queue,
@@ -14,7 +13,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     } from "@generated/anki/scheduler_pb";
     import {
         answerCard,
-        buryOrSuspendCards,
         compareAnswer,
         describeNextStates,
         encodeIriPaths,
@@ -291,7 +289,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             try {
                 rendered = await renderCard(current);
             } catch (err) {
-                // eg a template error, which shouldn't stop the user burying it
+                // eg a template error, which shouldn't stop the session
                 rendered = {
                     question: `<div>${String(err).replace(/</g, "&lt;")}</div>`,
                     answer: "",
@@ -405,30 +403,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         await nextCard();
     }
 
-    async function hide(
-        mode: BuryOrSuspendCardsRequest_Mode,
-        wholeNote: boolean,
-    ): Promise<void> {
-        if (side === "transition" || !current) {
-            return;
-        }
-        const card = current.card!;
-        side = "transition";
-        try {
-            await buryOrSuspendCards(
-                {
-                    cardIds: wholeNote ? [] : [card.id],
-                    noteIds: wholeNote ? [card.noteId] : [],
-                    mode,
-                },
-                { alertOnError: false },
-            );
-        } catch (err) {
-            showNotice(err instanceof Error ? err.message : String(err));
-        }
-        await nextCard();
-    }
-
     // Audio
     // ---------------------------------------------------------
 
@@ -508,18 +482,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             case "r":
             case "F5":
                 replay();
-                return true;
-            case "-":
-                hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, false);
-                return true;
-            case "=":
-                hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, true);
-                return true;
-            case "@":
-                hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, false);
-                return true;
-            case "!":
-                hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, true);
                 return true;
             default:
                 return false;
@@ -636,24 +598,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 {tr.undoUndo()}
             </button>
             <button on:click={replay}>{tr.actionsReplayAudio()}</button>
-            <button
-                on:click={() => hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, false)}
-            >
-                {tr.studyingBuryCard()}
-            </button>
-            <button
-                on:click={() => hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, true)}
-            >
-                {tr.studyingBuryNote()}
-            </button>
-            <button
-                on:click={() => hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, false)}
-            >
-                {tr.actionsSuspendCard()}
-            </button>
-            <button on:click={() => hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, true)}>
-                {tr.studyingSuspendNote()}
-            </button>
         </div>
 
         <div class="counts">

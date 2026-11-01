@@ -5,7 +5,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import type { PageData } from "./$types";
     import * as tr from "@generated/ftl";
-    import { isWebApp } from "@tslib/webapp";
 
     import CongratsPage from "./CongratsPage.svelte";
 
@@ -13,7 +12,5 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 </script>
 
 <CongratsPage info={data.info}>
-    {#if isWebApp()}
-        <p><a href="/" data-sveltekit-reload>{tr.actionsDecks()}</a></p>
-    {/if}
+    <p><a href="/" data-sveltekit-reload>{tr.actionsDecks()}</a></p>
 </CongratsPage>

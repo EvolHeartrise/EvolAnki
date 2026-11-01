@@ -143,7 +143,6 @@ mod test {
         assert!(is_frame_asset("js/vendor/mathjax/tex-chtml-full.js"));
         for path in [
             "sveltekit/index.html",
-            "js/editor.js",
             "js/vendor/jquery.min.js",
             "",
         ] {

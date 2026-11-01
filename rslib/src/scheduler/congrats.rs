@@ -35,7 +35,6 @@ impl Collection {
             have_user_buried: info.have_user_buried,
             is_filtered_deck,
             secs_until_next_learn,
-            bridge_commands_supported: true,
             deck_description,
         })
     }
@@ -59,8 +58,7 @@ mod test {
                 have_user_buried: false,
                 is_filtered_deck: false,
                 secs_until_next_learn: 86_400,
-                bridge_commands_supported: true,
-                deck_description: "".to_string()
+                    deck_description: "".to_string()
             }
         )
     }

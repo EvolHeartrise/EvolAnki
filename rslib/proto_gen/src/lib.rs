@@ -53,7 +53,6 @@ pub fn get_services(pool: &DescriptorPool) -> (Vec<CollectionService>, Vec<Backe
                 Either::Left(CollectionService::from_proto(service))
             }
         });
-    // frontend.proto is only in col_services
     assert_eq!(col_services.len(), backend_services.len());
     // copy collection methods into backend services if they don't have one with
     // a matching name

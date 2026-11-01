@@ -12,7 +12,6 @@ use super::NotetypeConfig;
 use crate::config::ConfigEntry;
 use crate::config::ConfigKey;
 use crate::error::Result;
-use crate::image_occlusion::notetype::image_occlusion_notetype;
 use crate::invalid_input;
 use crate::notetype::Notetype;
 use crate::storage::SqliteStorage;
@@ -45,7 +44,6 @@ pub fn all_stock_notetypes(tr: &I18n) -> Vec<Notetype> {
         basic_optional_reverse(tr),
         basic_typing(tr),
         cloze(tr),
-        image_occlusion_notetype(tr),
     ]
 }
 
@@ -82,7 +80,6 @@ pub(crate) fn get_stock_notetype(kind: StockKind, tr: &I18n) -> Notetype {
         Kind::BasicOptionalReversed => basic_optional_reverse(tr),
         Kind::BasicTyping => basic_typing(tr),
         Kind::Cloze => cloze(tr),
-        Kind::ImageOcclusion => image_occlusion_notetype(tr),
     }
 }
 
@@ -94,7 +91,6 @@ pub(crate) fn get_original_stock_notetype(kind: OriginalStockKind, tr: &I18n) ->
         OriginalStockKind::BasicOptionalReversed => basic_optional_reverse(tr),
         OriginalStockKind::BasicTyping => basic_typing(tr),
         OriginalStockKind::Cloze => cloze(tr),
-        OriginalStockKind::ImageOcclusion => image_occlusion_notetype(tr),
     })
 }
 

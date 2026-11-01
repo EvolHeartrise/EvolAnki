@@ -4,7 +4,6 @@
 import { on } from "./events";
 import type { Modifier } from "./keys";
 import { checkIfModifierKey, checkModifiers, keyToPlatformString, modifiersToPlatformString } from "./keys";
-import { registerPackage } from "./runtime-require";
 
 const keyCodeLookup = {
     Backspace: 8,
@@ -172,7 +171,3 @@ export function registerShortcut(
     return on(target, event, handler);
 }
 
-registerPackage("anki/shortcuts", {
-    registerShortcut,
-    getPlatformString,
-});

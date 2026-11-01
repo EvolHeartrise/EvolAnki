@@ -16,21 +16,15 @@ use anki_proto::backend::backend_error::Kind;
 use anki_proto::backend::BackendError;
 use anki_proto::backend::BackendInit;
 use anki_proto::generic;
-use anki_proto::scheduler::CongratsInfoResponse;
 use anyhow::anyhow;
 use axum::http::StatusCode;
 use prost::Message;
 
 include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 
-/// RPCs passed straight to the backend. Anything not listed here, in
-/// [UNSUPPORTED] or in [run] is refused, which keeps out e.g. closeCollection.
-///
-/// Methods that read or write arbitrary server-side paths or fetch URLs
-/// (import*, getCsvMetadata, addMediaFromPath, getImageForOcclusion,
-/// getAbsoluteMediaPath) are deliberately absent: a browser page has no
-/// business naming files on the server. The editor and importers will need
-/// upload-based replacements.
+/// RPCs passed straight to the backend, which is all that a browser can reach.
+/// This server has no login, so it holds what the pages use and nothing else;
+/// see `allow_list_matches_the_pages` in tests/http.rs.
 pub const ALLOWED: &[&str] = &[
     // CollectionService
     "latestProgress",
@@ -54,9 +48,6 @@ pub const ALLOWED: &[&str] = &[
     // NotetypesService
     "getNotetype",
     "getNotetypeNames",
-    "getChangeNotetypeInfo",
-    // Applied by a Qt dialog in mediasrv.py; a page can just call the RPC.
-    "changeNotetype",
     // StatsService
     "cardStats",
     "getReviewLogs",
@@ -70,8 +61,7 @@ pub const ALLOWED: &[&str] = &[
     "answerCard",
     "describeNextStates",
     "stateIsLeech",
-    "buryOrSuspendCards",
-    "unburyDeck",
+    "congratsInfo",
     "studiedToday",
     "schedTimingToday",
     // SchedulerService: FSRS tools on the deck options page
@@ -101,57 +91,6 @@ pub const ALLOWED: &[&str] = &[
     "getConfigBool",
     // CardsService
     "getCard",
-    "setFlag",
-];
-
-/// FrontendService methods that mediasrv.py implements by driving Qt. They
-/// have no meaning here yet, so they fail loudly rather than pretending to
-/// have worked.
-pub const UNSUPPORTED: &[(&str, &str)] = &[
-    (
-        "getSchedulingStatesWithContext",
-        "reviewer state lives in the Qt reviewer",
-    ),
-    (
-        "setSchedulingStates",
-        "reviewer state lives in the Qt reviewer",
-    ),
-    (
-        "deckOptionsRequireClose",
-        "there is no deck options dialog to close",
-    ),
-    ("importDone", "there is no import dialog"),
-    ("importDialogRequireClose", "there is no import dialog"),
-    ("searchInBrowser", "there is no card browser yet"),
-    ("convertPastedImage", "it relies on Qt's image handling"),
-    ("openFilePicker", "the server can't show a file dialog"),
-    ("openMedia", "the server can't open files on your desktop"),
-    ("showInMediaFolder", "the server can't open a file manager"),
-    ("recordAudio", "the server can't record audio"),
-    ("playFile", "the server can't play audio; the browser must"),
-    ("closeAddCards", "there is no add cards window"),
-    ("closeEditCurrent", "there is no edit window"),
-    ("openLink", "the page should open links itself"),
-    ("askUser", "the page should ask with its own UI"),
-    (
-        "showMessageBox",
-        "the page should show messages with its own UI",
-    ),
-    ("openFieldsDialog", "there is no fields dialog"),
-    ("openCardsDialog", "there is no card layout dialog"),
-    ("getProfileConfigJson", "there are no profiles"),
-    ("setProfileConfigJson", "there are no profiles"),
-    ("getMetaJson", "there is no profile metadata"),
-    ("setMetaJson", "there is no profile metadata"),
-    (
-        "readClipboard",
-        "the server has no access to your clipboard",
-    ),
-    (
-        "writeClipboard",
-        "the server has no access to your clipboard",
-    ),
-    ("saveCustomColours", "it reads Qt's colour dialog"),
 ];
 
 static INDEXES: LazyLock<HashMap<&'static str, (u32, u32)>> = LazyLock::new(|| {
@@ -236,34 +175,11 @@ pub fn run(backend: &Backend, method: &str, input: &[u8]) -> Result<Vec<u8>, Rpc
             .encode_to_vec()),
             other => other,
         },
-        // mediasrv.py also moves the Qt main window to the overview screen when
-        // cards are due; that decision now belongs to the page. We clear
-        // bridge_commands_supported as the buried/custom study links in the
-        // page call Qt bridge commands, which don't exist here.
-        "congratsInfo" => {
-            let output = call(backend, method, input)?;
-            let mut info = CongratsInfoResponse::decode(output.as_slice())
-                .map_err(|err| RpcError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
-            info.bridge_commands_supported = false;
-            Ok(info.encode_to_vec())
-        }
-        // Tells Qt that the webview has loaded, which has nothing to wait for
-        // here. Every page load sends it, so it must succeed.
-        "deckOptionsReady" => Ok(vec![]),
         _ if ALLOWED.contains(&method) => call(backend, method, input),
-        _ => {
-            if let Some((_, reason)) = UNSUPPORTED.iter().find(|(name, _)| *name == method) {
-                Err(RpcError::new(
-                    StatusCode::NOT_IMPLEMENTED,
-                    format!("{method} is not available in the web version: {reason}."),
-                ))
-            } else {
-                Err(RpcError::new(
-                    StatusCode::NOT_FOUND,
-                    format!("{method} not found"),
-                ))
-            }
-        }
+        _ => Err(RpcError::new(
+            StatusCode::NOT_FOUND,
+            format!("{method} not found"),
+        )),
     }
 }
 
@@ -273,52 +189,9 @@ mod test {
 
     #[test]
     fn allowed_methods_exist_in_the_backend() {
-        for &method in ALLOWED.iter().chain(&["getConfigJson", "congratsInfo"]) {
+        for &method in ALLOWED.iter().chain(&["getConfigJson"]) {
             assert!(INDEXES.contains_key(method), "unknown method {method}");
         }
-    }
-
-    /// Frontend methods have indexes but no dispatcher in the Rust backend,
-    /// so they must be handled here rather than allow-listed.
-    #[test]
-    fn frontend_service_is_fully_accounted_for() {
-        let frontend = [
-            "getSchedulingStatesWithContext",
-            "setSchedulingStates",
-            "deckOptionsRequireClose",
-            "deckOptionsReady",
-            "importDone",
-            "importDialogRequireClose",
-            "searchInBrowser",
-            "convertPastedImage",
-            "openFilePicker",
-            "openMedia",
-            "showInMediaFolder",
-            "recordAudio",
-            "playFile",
-            "closeAddCards",
-            "closeEditCurrent",
-            "openLink",
-            "askUser",
-            "showMessageBox",
-            "openFieldsDialog",
-            "openCardsDialog",
-            "getProfileConfigJson",
-            "setProfileConfigJson",
-            "getMetaJson",
-            "setMetaJson",
-            "readClipboard",
-            "writeClipboard",
-            "saveCustomColours",
-        ];
-        for method in frontend {
-            assert!(!ALLOWED.contains(&method), "{method}");
-            assert!(
-                method == "deckOptionsReady" || UNSUPPORTED.iter().any(|(m, _)| *m == method),
-                "{method}"
-            );
-        }
-        assert_eq!(UNSUPPORTED.len(), frontend.len() - 1);
     }
 
     #[test]

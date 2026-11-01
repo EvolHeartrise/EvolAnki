@@ -466,7 +466,6 @@ mod tests {
             ),
             (Kind::BasicTyping, "Basic (type in the answer)"),
             (Kind::Cloze, "Cloze"),
-            (Kind::ImageOcclusion, "Image Occlusion"),
         ];
         for (kind, expected_name) in cases {
             let mut col = Collection::new();

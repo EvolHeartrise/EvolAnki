@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import { registerPackage } from "@tslib/runtime-require";
 import { get, readable } from "svelte/store";
 
 interface ThemeInfo {
@@ -29,7 +28,3 @@ const observer = new MutationObserver((_mutationsList, _observer) => {
     setPageTheme!(getThemeFromRoot());
 });
 observer.observe(document.documentElement, { attributeFilter: ["class"] });
-
-registerPackage("anki/theme", {
-    pageTheme,
-});

@@ -3,7 +3,6 @@
 
 @use "sass:string";
 @use "../lib/sass/vars";
-@use "../routes/image-occlusion/review";
 
 hr {
     background-color: vars.palette(darkgray, 0);
@@ -40,35 +39,6 @@ li {
 
 pre {
     text-align: left;
-}
-
-#_flag {
-    position: fixed;
-    [dir="ltr"] & {
-        right: 10px;
-    }
-    [dir="rtl"] & {
-        left: 10px;
-    }
-    top: 0;
-    font-size: 30px;
-    -webkit-text-stroke-width: 1px;
-    -webkit-text-stroke-color: black;
-}
-
-#_mark {
-    position: fixed;
-    [dir="ltr"] & {
-        left: 10px;
-    }
-    [dir="rtl"] & {
-        right: 10px;
-    }
-    top: 0;
-    font-size: 30px;
-    color: yellow;
-    -webkit-text-stroke-width: 1px;
-    -webkit-text-stroke-color: black;
 }
 
 #typeans {

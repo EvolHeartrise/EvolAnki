@@ -3,9 +3,7 @@ Copyright: Ankitects Pty Ltd and contributors
 License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
-    import { goto, invalidateAll } from "$app/navigation";
-    import { UnburyDeckRequest_Mode } from "@generated/anki/scheduler_pb";
-    import { unburyDeck } from "@generated/backend";
+    import { goto } from "$app/navigation";
     import * as tr from "@generated/ftl";
     import { onMount } from "svelte";
 
@@ -21,14 +19,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     const notice = pendingNotice.text;
     pendingNotice.text = "";
     $: finished = data.queued.cards.length === 0;
-    $: buried = data.congrats.haveSchedBuried || data.congrats.haveUserBuried;
     $: filtered = data.deck.kind.case === "filtered";
     $: optionsHref = `/deck-options/${data.did}`;
-
-    async function unbury(): Promise<void> {
-        await unburyDeck({ deckId: data.did, mode: UnburyDeckRequest_Mode.ALL });
-        await invalidateAll();
-    }
 
     function study(): Promise<void> {
         return goto("/review");
@@ -53,13 +45,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     {/if}
 
     {#if finished}
-        <CongratsPage info={data.congrats}>
-            {#if buried}
-                <button class="btn btn-secondary" on:click={unbury}>
-                    {tr.studyingUnbury()}
-                </button>
-            {/if}
-        </CongratsPage>
+        <CongratsPage info={data.congrats} />
     {:else}
         <table class="counts">
             <tbody>

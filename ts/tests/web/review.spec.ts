@@ -339,28 +339,6 @@ test("the keyboard drives the reviewer, and undo restores card and count", async
     expect(revlog).toEqual([{ ease: 4 }]);
 });
 
-test("bury and suspend hide the card until undone", async ({ page }) => {
-    await start({
-        decks: [{ name: "Hide" }],
-        notes: [BASIC("first", "a1", "Hide"), BASIC("second", "a2", "Hide"), BASIC("third", "a3", "Hide")],
-    });
-    const problems = failOnPageProblems(page);
-    await study(page, "Hide");
-    await expect(card(page)).toContainText("first");
-    await page.getByRole("button", { name: "Bury Card" }).click();
-    await expect(card(page)).toContainText("second");
-    await page.keyboard.press("@");
-    await expect(card(page)).toContainText("third");
-    await page.keyboard.press("u");
-    await expect(card(page)).toContainText("second");
-    await page.getByRole("button", { name: "Suspend Card" }).click();
-    await expect(card(page)).toContainText("third");
-    expect(problems).toEqual([]);
-
-    const queues = await query<{ queue: number }>("select queue from cards order by id");
-    expect(queues.map((c) => c.queue)).toEqual([-3, -1, 0]);
-});
-
 test("a leech is reported and suspended", async ({ page }) => {
     await start({
         decks: [{ name: "Leech" }],

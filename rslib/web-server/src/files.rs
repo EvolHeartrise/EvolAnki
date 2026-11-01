@@ -41,20 +41,10 @@ const SVELTEKIT_ROUTES: &[&str] = &[
     "graphs",
     "congrats",
     "card-info",
-    "change-notetype",
     "deck-options",
-    "import-anki-package",
-    "import-csv",
-    "import-page",
-    "image-occlusion",
-    "preferences",
-    "editor",
     "overview",
     "review",
 ];
-
-/// These routes show note content, so scripts are locked to our bundled paths.
-const UNTRUSTED_SVELTEKIT_ROUTES: &[&str] = &["editor", "image-occlusion"];
 
 /// These embed untrusted content in the frames from frame.rs, and have no
 /// scripts of their own to allow for. "" is the deck list. Limiting frame-src
@@ -243,13 +233,12 @@ pub(crate) async fn bundled(
             );
         };
         let framing = FRAMING_SVELTEKIT_ROUTES.contains(&route);
-        let csp = if framing || UNTRUSTED_SVELTEKIT_ROUTES.contains(&route) {
+        let csp = if framing {
             let hash = String::from_utf8_lossy(&captures[1]).into_owned();
-            let mut csp = untrusted_sveltekit_csp(state.port, &hash);
-            if framing {
-                csp.push_str("; frame-src 'self'");
-            }
-            csp
+            format!(
+                "{}; frame-src 'self'",
+                untrusted_sveltekit_csp(state.port, &hash)
+            )
         } else {
             // the page's own CSP would stop a trusted page's inline scripts
             data = SVELTEKIT_CSP_META.replace(&data, &b""[..]).into_owned();

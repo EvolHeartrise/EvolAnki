@@ -6,8 +6,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import type { CongratsInfoResponse } from "@generated/anki/scheduler_pb";
     import { congratsInfo } from "@generated/backend";
     import * as tr from "@generated/ftl";
-    import { bridgeLink } from "@tslib/bridgecommand";
-    import { isWebApp } from "@tslib/webapp";
 
     import Col from "$lib/components/Col.svelte";
     import Container from "$lib/components/Container.svelte";
@@ -19,19 +17,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let info: CongratsInfoResponse;
     export let refreshPeriodically = true;
 
-    const webApp = isWebApp();
     const congrats = tr.schedulingCongratulationsFinished();
     let nextLearnMsg: string;
     $: nextLearnMsg = buildNextLearnMsg(info);
     const today_reviews = tr.schedulingTodayReviewLimitReached();
     const today_new = tr.schedulingTodayNewLimitReached();
-
-    const unburyThem = bridgeLink("unbury", tr.schedulingUnburyThem());
-    const buriedMsg = tr.schedulingBuriedCardsFound({ unburyThem });
-    const customStudy = bridgeLink("customStudy", tr.schedulingCustomStudy());
-    const customStudyMsg = tr.schedulingHowToCustomStudy({
-        customStudy,
-    });
 
     onMount(() => {
         if (refreshPeriodically) {
@@ -61,21 +51,14 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 <p>{today_new}</p>
             {/if}
 
-            <slot />
-
-            {#if info.bridgeCommandsSupported}
-                {#if info.haveSchedBuried || info.haveUserBuried}
-                    <p>
-                        {@html buriedMsg}
-                    </p>
-                {/if}
-
-                {#if !info.isFilteredDeck}
-                    <p>
-                        {@html customStudyMsg}
-                    </p>
-                {/if}
+            {#if info.haveSchedBuried || info.haveUserBuried}
+                <p class="buried">
+                    Some related cards are held back until tomorrow, so that you don't
+                    see them on the same day.
+                </p>
             {/if}
+
+            <slot />
 
             {#if info.deckDescription}
                 <div class="description">

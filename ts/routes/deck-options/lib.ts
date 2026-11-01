@@ -13,7 +13,6 @@ import { updateDeckConfigs } from "@generated/backend";
 import { localeCompare } from "@tslib/i18n";
 import { runWithBackendProgress } from "@tslib/progress";
 import { promiseWithResolver } from "@tslib/promise";
-import { isWebApp } from "@tslib/webapp";
 import { cloneDeep, isEqual, isEqualWith } from "lodash-es";
 import { tick } from "svelte";
 import type { Readable, Writable } from "svelte/store";
@@ -455,14 +454,10 @@ export class ValueTab {
 /** Set while a save is running; the current step's description, if any. */
 export const saveInProgress = writable<{ label: string } | null>(null);
 
-/** Qt shows its own progress for a save, as it runs it in the background. */
 export async function saveWithProgress(
     state: DeckOptionsState,
     mode: UpdateDeckConfigsMode,
 ): Promise<void> {
-    if (!isWebApp()) {
-        return state.save(mode);
-    }
     saveInProgress.set({ label: "" });
     try {
         await runWithBackendProgress(() => state.save(mode), (progress) => {

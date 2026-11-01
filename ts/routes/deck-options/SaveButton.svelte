@@ -7,7 +7,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import * as tr from "@generated/ftl";
     import { withCollapsedWhitespace } from "@tslib/i18n";
     import { getPlatformString } from "@tslib/shortcuts";
-    import { isWebApp } from "@tslib/webapp";
     import { createEventDispatcher, tick } from "svelte";
 
     import DropdownDivider from "$lib/components/DropdownDivider.svelte";
@@ -53,10 +52,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     async function save(mode: UpdateDeckConfigsMode): Promise<void> {
         await commitEditing();
         await saveWithProgress(state, mode);
-        if (isWebApp()) {
-            // Qt closes its dialog here
-            window.location.href = `/overview/${state.targetDeckId}?saved=1`;
-        }
+        window.location.href = `/overview/${state.targetDeckId}?saved=1`;
     }
 
     const saveKeyCombination = "Control+Enter";

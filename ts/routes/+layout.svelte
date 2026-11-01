@@ -6,24 +6,19 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import "./base.scss";
 
     import * as tr from "@generated/ftl";
-    import { isWebApp } from "@tslib/webapp";
     import { setContext } from "svelte";
 
     import { modalsKey, touchDeviceKey } from "$lib/components/context-keys";
 
     setContext(modalsKey, new Map());
     setContext(touchDeviceKey, "ontouchstart" in document.documentElement);
-
-    const webApp = isWebApp();
 </script>
 
-{#if webApp}
-    <!-- Full loads, as pages have different content security policies -->
-    <nav class="app-nav" data-sveltekit-reload>
-        <a href="/">{tr.actionsDecks()}</a>
-        <a href="/graphs">Stats</a>
-    </nav>
-{/if}
+<!-- Full loads, as pages have different content security policies -->
+<nav class="app-nav" data-sveltekit-reload>
+    <a href="/">{tr.actionsDecks()}</a>
+    <a href="/graphs">Stats</a>
+</nav>
 
 <slot />
 

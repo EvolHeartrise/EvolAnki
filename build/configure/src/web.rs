@@ -26,7 +26,6 @@ pub fn build_and_check_web(build: &mut Build) -> Result<()> {
     build_and_check_tslib(build)?;
     build_sveltekit(build)?;
     declare_and_check_other_libraries(build)?;
-    build_editable(build)?;
     build_and_check_reviewer(build)?;
     build_and_check_mathjax(build)?;
     build_web_root(build)?;
@@ -108,12 +107,10 @@ fn build_and_check_tslib(build: &mut Build) -> Result<()> {
 fn declare_and_check_other_libraries(build: &mut Build) -> Result<()> {
     for (library, inputs) in [
         ("sveltelib", inputs![":ts:lib", glob!("ts/sveltelib/**")]),
-        ("domlib", inputs![":ts:lib", glob!("ts/domlib/**")]),
         (
             "components",
             inputs![":ts:lib", ":ts:sveltelib", glob!("ts/components/**")],
         ),
-        ("html-filter", inputs![glob!("ts/lib/html-filter/**")]),
     ] {
         let library_with_ts = format!("ts:{library}");
         build.add_dependency(&library_with_ts, inputs.clone());
@@ -122,32 +119,10 @@ fn declare_and_check_other_libraries(build: &mut Build) -> Result<()> {
     Ok(())
 }
 
-/// `css/editable.css` is loaded by the editor's rich text input.
-fn build_editable(build: &mut Build) -> Result<()> {
-    build.add_action(
-        "ts:editable",
-        EsbuildScript {
-            script: inputs!["ts/bundle_svelte.mjs"],
-            entrypoint: inputs!["ts/lib/editable/index.ts"],
-            output_stem: "ts/editable/editable",
-            deps: inputs![
-                ":ts:lib",
-                ":ts:components",
-                ":ts:domlib",
-                ":ts:sveltelib",
-                ":sass",
-                ":sveltekit",
-                glob!("ts/lib/editable/**"),
-            ],
-            extra_exts: &["css"],
-        },
-    )
-}
-
 fn build_and_check_reviewer(build: &mut Build) -> Result<()> {
     let reviewer_deps = inputs![
         ":ts:lib",
-        glob!("ts/{reviewer,image-occlusion}/**"),
+        glob!("ts/reviewer/**"),
         ":sveltekit"
     ];
     build.add_action(
@@ -165,7 +140,7 @@ fn build_and_check_reviewer(build: &mut Build) -> Result<()> {
         CompileSass {
             input: inputs!["ts/reviewer/reviewer.scss"],
             output: "ts/reviewer/reviewer.css",
-            deps: inputs![":sass", "ts/routes/image-occlusion/review.scss"],
+            deps: inputs![":sass"],
             load_paths: vec!["."],
         },
     )?;
@@ -175,11 +150,8 @@ fn build_and_check_reviewer(build: &mut Build) -> Result<()> {
 fn check_web(build: &mut Build) -> Result<()> {
     let fmt_excluded = "{target,extra,ts/.svelte-kit,node_modules}/**";
     let dprint_files = inputs![glob!["**/*.{ts,mjs,js,md,json,toml,scss}", fmt_excluded]];
-    let prettier_pattern = "{**/*.svelte,docs-site/**/*.mdx}";
-    let prettier_files = inputs![
-        glob!["**/*.svelte", fmt_excluded],
-        glob!["docs-site/**/*.mdx", fmt_excluded]
-    ];
+    let prettier_pattern = "**/*.svelte";
+    let prettier_files = inputs![glob!["**/*.svelte", fmt_excluded]];
 
     build.add_action(
         "check:format:dprint",
@@ -347,8 +319,7 @@ fn build_web_root(build: &mut Build) -> Result<()> {
             load_paths: vec![".", "node_modules"],
         },
     )?;
-    let ts_css =
-        build.inputs_with_suffix(inputs![":ts:editable", ":ts:reviewer:reviewer.css"], ".css");
+    let ts_css = build.inputs_with_suffix(inputs![":ts:reviewer:reviewer.css"], ".css");
     build.add_action(
         "web:css",
         CopyFiles {

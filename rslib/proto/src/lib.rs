@@ -23,7 +23,6 @@ protobuf!(deck_config, "deck_config");
 protobuf!(decks, "decks");
 protobuf!(generic, "generic");
 protobuf!(i18n, "i18n");
-protobuf!(image_occlusion, "image_occlusion");
 protobuf!(import_export, "import_export");
 protobuf!(links, "links");
 protobuf!(media, "media");

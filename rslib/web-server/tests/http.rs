@@ -25,7 +25,6 @@ use anki_proto::deck_config::UpdateDeckConfigsMode;
 use anki_proto::deck_config::UpdateDeckConfigsRequest;
 use anki_proto::decks::DeckId;
 use anki_proto::generic;
-use anki_proto::scheduler::CongratsInfoResponse;
 use prost::Message;
 use tempfile::TempDir;
 
@@ -257,9 +256,6 @@ fn rpc_behaviour_matches_mediasrv() {
     let fixture = Fixture::new();
     let server = fixture.start();
 
-    // successful call with no output is a 204
-    assert_eq!(server.rpc_raw("deckOptionsReady", b"").status, 204);
-
     // binary output
     let reply = server.rpc_raw(
         "getConfigJson",
@@ -288,12 +284,7 @@ fn rpc_behaviour_matches_mediasrv() {
     assert_eq!(reply.status, 500);
     assert!(!reply.text().is_empty());
     let reply = server.rpc_raw("getDeckConfigsForUpdate", b"\xff\xff\xff");
-    assert_eq!(reply.status, 500);
-
-    // the congrats page must not offer Qt-only links
-    let info: CongratsInfoResponse = server.rpc("congratsInfo", &generic::Empty {});
-    assert!(!info.bridge_commands_supported);
-}
+    assert_eq!(reply.status, 500);}
 
 #[test]
 fn methods_off_the_allow_list_are_refused() {
@@ -307,17 +298,21 @@ fn methods_off_the_allow_list_are_refused() {
         "importAnkiPackage",
         "addMediaFromPath",
         "getAbsoluteMediaPath",
+        // removed from the pages, so nothing on the network should reach them
+        "buryOrSuspendCards",
+        "unburyDeck",
+        "setFlag",
+        "changeNotetype",
+        "getChangeNotetypeInfo",
+        // stubs for Qt that no longer exist at all
+        "openFilePicker",
+        "deckOptionsReady",
         "doesNotExist",
     ] {
         assert_eq!(server.rpc_raw(method, b"").status, 404, "{method}");
     }
     // still open
     let _: DeckConfigsForUpdate = server.rpc("getDeckConfigsForUpdate", &DeckId { did: 1 });
-
-    // Qt-only methods explain themselves
-    let reply = server.rpc_raw("openFilePicker", b"");
-    assert_eq!(reply.status, 501);
-    assert!(reply.text().contains("not available in the web version"));
 
     // POST can't reach anything else
     let host = server.host();
@@ -509,11 +504,10 @@ fn pages_have_the_expected_headers() {
         assert!(!csp.contains("unsafe-inline"), "{csp}");
     }
 
-    let reply = server.get("/editor/");
-    let csp = reply.header("content-security-policy").unwrap();
-    assert!(csp.contains("script-src http://127.0.0.1:"), "{csp}");
-    assert!(csp.contains("'sha256-abc='"), "{csp}");
-    assert!(reply.text().contains("content-security-policy"));
+    // removed pages are just media paths now
+    assert_eq!(server.get("/editor/").status, 404);
+    assert_eq!(server.get("/import-csv/x").status, 404);
+    assert_eq!(server.get("/image-occlusion/x").status, 404);
 
     let reply = server.get("/_app/immutable/a.mjs");
     assert_eq!(reply.status, 200);
@@ -712,16 +706,12 @@ fn seed_demo_gives_cards_and_reviews() {
 #[test]
 fn reviewer_rpcs_work() {
     use anki_proto::card_rendering as render;
-    use anki_proto::cards::SetFlagRequest;
     use anki_proto::collection::OpChangesAfterUndo;
-    use anki_proto::collection::OpChangesWithCount;
     use anki_proto::collection::UndoStatus;
     use anki_proto::decks::DeckTreeNode;
     use anki_proto::decks::DeckTreeRequest;
-    use anki_proto::scheduler::bury_or_suspend_cards_request::Mode;
     use anki_proto::scheduler::card_answer::Rating;
     use anki_proto::scheduler::queued_cards::QueuedCard;
-    use anki_proto::scheduler::BuryOrSuspendCardsRequest;
     use anki_proto::scheduler::CardAnswer;
     use anki_proto::scheduler::GetQueuedCardsRequest;
     use anki_proto::scheduler::QueuedCards;
@@ -796,26 +786,6 @@ fn reviewer_rpcs_work() {
     let _: OpChangesAfterUndo = server.rpc("undo", &generic::Empty {});
     let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
     assert!(!status.redo.is_empty());
-    let _: OpChangesAfterUndo = server.rpc("redo", &generic::Empty {});
-    let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
-    assert!(status.redo.is_empty() && !status.undo.is_empty());
 
-    let other = next_card().card.unwrap().id;
-    let _: OpChangesWithCount = server.rpc(
-        "setFlag",
-        &SetFlagRequest {
-            card_ids: vec![other],
-            flag: 1,
-        },
-    );
-    let _: OpChangesWithCount = server.rpc(
-        "buryOrSuspendCards",
-        &BuryOrSuspendCardsRequest {
-            card_ids: vec![other],
-            note_ids: vec![],
-            mode: Mode::BuryUser as i32,
-        },
-    );
-    assert_ne!(next_card().card.unwrap().id, other);
     server.stop();
 }

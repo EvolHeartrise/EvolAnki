@@ -191,10 +191,7 @@ fn hint_filter<'a>(text: &'a str, field_name: &str) -> Cow<'a, str> {
 
     format!(
         r##"
-<a class=hint href="#"
-onclick="this.style.display='none';
-document.getElementById('hint{id}').style.display='block';
-return false;" draggable=false>
+<a class=hint href="#" data-hint="hint{id}" draggable=false>
 {field_name}</a>
 <div id="hint{id}" class=hint style="display: none">{text}</div>
 "##
@@ -230,10 +227,7 @@ mod test {
         assert_eq!(
             hint_filter("foo", "field"),
             r##"
-<a class=hint href="#"
-onclick="this.style.display='none';
-document.getElementById('hint83fe48607f0f3a66').style.display='block';
-return false;" draggable=false>
+<a class=hint href="#" data-hint="hint83fe48607f0f3a66" draggable=false>
 field</a>
 <div id="hint83fe48607f0f3a66" class=hint style="display: none">foo</div>
 "##

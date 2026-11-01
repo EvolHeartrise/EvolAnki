@@ -191,7 +191,7 @@ message CongratsInfoResponse {
   bool have_sched_buried = 5;
   bool have_user_buried = 6;
   bool is_filtered_deck = 7;
-  bool bridge_commands_supported = 8;
+  reserved 8;  // bridge_commands_supported, for Qt
   string deck_description = 9;
 }
 

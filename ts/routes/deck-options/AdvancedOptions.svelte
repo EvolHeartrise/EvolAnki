@@ -15,8 +15,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
 
-    import { isWebApp } from "@tslib/webapp";
-    import CardStateCustomizer from "./CardStateCustomizer.svelte";
     import type { DeckOptionsState } from "./lib";
     import SpinBoxFloatRow from "./SpinBoxFloatRow.svelte";
     import SpinBoxRow from "./SpinBoxRow.svelte";
@@ -30,7 +28,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     const config = state.currentConfig;
     const defaults = state.defaults;
-    const cardStateCustomizer = state.cardStateCustomizer;
 
     const settings = {
         maximumInterval: {
@@ -46,17 +43,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             title: tr.deckConfigIgnoreBefore(),
             help: tr.deckConfigIgnoreBeforeTooltip2(),
         },
-        customScheduling: {
-            title: tr.deckConfigCustomScheduling(),
-            help: tr.deckConfigCustomSchedulingTooltip(),
-            url: "https://docs.ankiweb.net/faqs/the-2021-scheduler#add-ons-and-custom-scheduling",
-            global: true,
-        },
     };
-    // customScheduling is last, so this doesn't change any section's index
-    const helpSections: HelpItem[] = Object.values(settings).filter(
-        (item) => !isWebApp() || item !== settings.customScheduling,
-    );
+    const helpSections: HelpItem[] = Object.values(settings);
 
     $: maxIntervalWarningClass =
         $config.maximumReviewInterval < 50 ? "alert-danger" : "alert-warning";
@@ -207,18 +195,5 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             ></Warning>
         </Item>
 
-        {#if !isWebApp()}
-            <!-- the web app's reviewer doesn't run custom scheduling -->
-            <Item>
-                <CardStateCustomizer
-                    title={settings.customScheduling.title}
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("customScheduling"),
-                        )}
-                    bind:value={$cardStateCustomizer}
-                />
-            </Item>
-        {/if}
     </DynamicallySlottable>
 </TitledContainer>

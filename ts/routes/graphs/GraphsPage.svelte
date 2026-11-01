@@ -3,7 +3,6 @@ Copyright: Ankitects Pty Ltd and contributors
 License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
-    import { bridgeCommand, bridgeCommandsAvailable } from "@tslib/bridgecommand";
     import type { Component } from "svelte";
     import { writable } from "svelte/store";
 
@@ -21,13 +20,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let graphs: Component<any>[];
     /** See RangeBox */
     export let controller: Component<any> | null = RangeBox;
-
-    function browserSearch(event: CustomEvent) {
-        // there is no card browser in the web app yet
-        if (bridgeCommandsAvailable()) {
-            bridgeCommand(`browserSearch: ${$search} ${event.detail.query}`);
-        }
-    }
 </script>
 
 <WithGraphData {search} {days} let:sourceData let:loading let:prefs let:revlogRange>
@@ -44,7 +36,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                     {prefs}
                     {revlogRange}
                     nightMode={$pageTheme.isDark}
-                    on:search={browserSearch}
                 />
             {/each}
         {/if}
