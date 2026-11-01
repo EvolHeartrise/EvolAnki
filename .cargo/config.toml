@@ -1,3 +1,6 @@
+[build]
+rustc-wrapper = "tools/rustc-wrapper"
+
 [env]
 STRINGS_PY = { value = "out/pylib/anki/_fluent.py", relative = true }
 STRINGS_TS = { value = "out/ts/lib/generated/ftl.ts", relative = true }

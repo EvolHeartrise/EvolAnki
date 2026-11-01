@@ -1,0 +1,10 @@
+#!/bin/sh
+# Cargo's rustc wrapper (see .cargo/config.toml). Caches compiled dependencies in
+# sccache's per-user cache, so new worktrees and target dirs don't rebuild them.
+# Falls back to plain rustc on machines without sccache.
+if command -v sccache >/dev/null 2>&1; then
+    exec sccache "$@"
+elif [ -x "$HOME/.cargo/bin/sccache" ]; then
+    exec "$HOME/.cargo/bin/sccache" "$@"
+fi
+exec "$@"
