@@ -24,12 +24,6 @@ importing-processed-cards =
         [one] Processed { $count } card...
        *[other] Processed { $count } cards...
     }
-# "Existing notes: Duplicate" (verb)
-importing-duplicate = Duplicate
-# "Existing notes: Preserve" (verb)
-importing-preserve = Preserve
-# "Existing notes: Update" (verb)
-importing-update = Update
 importing-file-empty = The file you selected is empty.
 
 ## NO NEED TO TRANSLATE. This text is no longer used by Anki, and will be removed in the future.
