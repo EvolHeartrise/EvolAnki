@@ -51,10 +51,9 @@ except that:
   most likely desktop Anki, or another `evolanki-admin` run. Try again shortly.
 - `check.database` and importing a `.colpkg` clear the undo queue.
 
-The socket has mode 0600, as does everything made private by the kernel's file permissions;
-the server also checks that the connecting user is its own. There's no other way in, and
-no command here is reachable over HTTP or TCP. Anyone who is this user can do all of this
-anyway, by opening the files.
+The socket has mode 0600, which the kernel enforces, and the server also checks that the
+connecting user is its own. No command here is reachable over HTTP or TCP. Anyone who is
+this user could do all of this anyway, by opening the files.
 
 Paths in arguments are read by the server, as the same user. Relative ones are made
 absolute first, from where you ran the tool.
@@ -155,7 +154,8 @@ One way, into this collection. `import` takes `.apkg` or `.colpkg` by extension.
   scheduling or deck options, and keeps your notes if theirs aren't newer. `with_scheduling`
   brings reviews too, and any such cards lacking a memory state get one. `found_notes`,
   `new`, `updated` and others say what happened.
-- `.colpkg`: **replaces everything, media excepted**. Requires `"replace_collection":true`.
+- `.colpkg`: **replaces the whole collection**, and adds the package's media to what's
+  there. Requires `"replace_collection":true`.
   Pages get an error while that runs, for a few seconds, and work again afterwards. If the
   owner has been reviewing, those reviews are only in the backup that it takes first.
 

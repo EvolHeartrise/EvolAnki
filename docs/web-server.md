@@ -19,6 +19,13 @@ Leave out `--release` for a quicker debug build, and the path for a demo collect
 `out/web-dev`. It runs from any folder, and the repo path must not contain a space, as
 `./ninja` can't handle that.
 
+## Install to a stable path
+
+`tools/install-local` builds the release, then puts the server, `evolanki-admin` and the
+pages in `~/.local/share/evolanki`, and prints the command to run them. It works from a
+checkout whose path has a space, by building a clone of HEAD in `~/.cache/evolanki-build`.
+It touches no collection, and installs no service.
+
 ## Build by hand
 
 ```
@@ -42,6 +49,9 @@ out/rust/release/evolanki-server --collection /tmp/test/col.anki2 --create --see
 - `--backup-interval-secs N`: the least time between backups while reviewing; default
   1800.
 
+While it runs, `evolanki-admin` reaches the collection through a private Unix socket
+beside it, `collection.admin.sock`: see [admin-cli.md](admin-cli.md).
+
 ## No login: what that means
 
 **Anyone who can connect to this server can read and change everything in this
@@ -53,7 +63,8 @@ over a password, knowing that, and it prints a warning each time it starts.
 
 The server's API is narrow: it can only do what the pages do. It can't delete notes or
 reach files outside the collection's media, but it can answer and undo reviews, and
-change deck options.
+change deck options. Anything more goes through [`evolanki-admin`](admin-cli.md) over a
+Unix socket that only this user can open, and never over the network.
 
 ## Security
 
@@ -136,10 +147,14 @@ else in that folder is touched. Each is the size of the collection.
 **If a backup fails**, reviewing carries on, and it says `BACKUP FAILED` on stderr each
 time. Check that output if you run it unattended, for a full disk especially.
 
-**Media isn't included.** Nothing in this app changes media files, as there's no editor
-or importer, so one copy of the `.media` folder taken once is enough, until an admin
-tool adds some. Back it up then, along with these, to another disk. All of this is on
-one disk, so it doesn't protect you from losing that.
+**Media isn't included.** `evolanki-admin` can add media, overwrite it and import
+packages that bring more, so the `.media` folder needs its own copy, taken again after
+those. Copy it to another disk, along with these. All of this is on one disk, so it
+doesn't protect you from losing that. `media.replace` keeps what it overwrites in
+`backups/media-replaced`, which is never pruned.
+
+`evolanki-admin` also takes a backup before destructive or bulk commands, which count
+towards the same limits.
 
 ### Restoring
 
@@ -191,10 +206,11 @@ play is skipped.
 - English only.
 - `[latex]` isn't rendered. Marks, timeboxing, auto advance, `reviewExtra`, editing,
   burying, suspending and flags aren't in the reviewer. Automatic leech suspension and
-  its notice, undo, and type-in answers are.
+  its notice, undo, and type-in answers are. A card suspended or buried while it's on
+  screen refuses the answer, with a notice, and the next card shows.
 - No pages for: adding or editing cards, the browser, changing a notetype, importing,
-  filtered decks, custom study, or managing decks and tags. Their Rust code stays for an
-  admin tool to use. It isn't reachable over HTTP.
+  making filtered decks, custom study, or managing decks and tags. Agents do those with
+  [`evolanki-admin`](admin-cli.md). They aren't reachable over HTTP.
 - Deck options has no easy days section. Stored values are used as before; with none,
   every day counts as normal. The load balancer has no control either, and stays on
   unless the collection's config says otherwise.

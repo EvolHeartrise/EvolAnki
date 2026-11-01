@@ -32,6 +32,8 @@ upstream, as of November 2026, EvolAnki:
 - no longer runs JavaScript in cards
 - added `evolanki-server` (`rslib/web-server`), and web pages for the deck list, overview
   and reviewer, laid out for phones, with automatic backups
+- added `evolanki-admin`, a JSON command-line tool that agents use to manage cards, and to
+  convert a desktop profile ([docs](./docs/admin-cli.md))
 - always uses FSRS
 
 The full history of changes is in this repository's commits.

@@ -11,6 +11,7 @@ EvolAnki is a slim, FSRS-only spaced repetition web app, modified from Anki. Mai
 - Web frontend: Svelte/TypeScript in ts/
 - Core Rust layer in rslib/
 - `evolanki-server` in rslib/web-server, which serves the pages and backend (docs/web-server.md)
+- `evolanki-admin`, also there, the JSON command-line tool for managing cards (docs/admin-cli.md)
 - Protobuf definitions in proto/ that the layers use to talk to each other.
 
 ## Running
