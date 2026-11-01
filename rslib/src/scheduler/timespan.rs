@@ -152,5 +152,4 @@ mod test {
         assert_eq!(answer_button_time(70.0, &tr), "1m");
         assert_eq!(answer_button_time(1.1 * MONTH, &tr), "1.1mo");
     }
-
 }

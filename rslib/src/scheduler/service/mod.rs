@@ -305,8 +305,7 @@ impl crate::services::SchedulerService for Collection {
     }
 }
 
-impl crate::services::BackendSchedulerService for Backend {
-}
+impl crate::services::BackendSchedulerService for Backend {}
 
 impl From<crate::scheduler::timing::SchedTimingToday> for scheduler::SchedTimingTodayResponse {
     fn from(t: crate::scheduler::timing::SchedTimingToday) -> Self {
@@ -987,5 +986,4 @@ mod tests {
         let card = col.storage.get_card(card.id).unwrap().unwrap();
         assert_eq!(card.deck_id, DeckId(1), "card is returned to its home deck");
     }
-
 }

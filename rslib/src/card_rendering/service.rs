@@ -148,18 +148,10 @@ mod test {
     use anki_proto::card_rendering::CompareAnswerRequest;
     use anki_proto::card_rendering::ExtractAvTagsRequest;
     use anki_proto::card_rendering::ExtractClozeForTypingRequest;
-    
-    
     use anki_proto::card_rendering::RenderExistingCardRequest;
     use anki_proto::card_rendering::RenderMarkdownRequest;
-    
-    
-    
-    
-    
 
     use crate::error::AnkiError;
-    
     use crate::prelude::*;
     use crate::services::CardRenderingService;
     use crate::tests::NoteAdder;

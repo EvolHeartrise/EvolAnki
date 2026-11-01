@@ -148,7 +148,6 @@ impl Debug for Collection {
 }
 
 impl Collection {
-
     pub fn close(self, desired_version: Option<SchemaVersion>) -> Result<()> {
         self.storage.close(desired_version)
     }
@@ -178,5 +177,4 @@ impl Collection {
         })?;
         self.storage.optimize()
     }
-
 }

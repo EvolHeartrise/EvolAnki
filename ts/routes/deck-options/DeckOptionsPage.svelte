@@ -3,13 +3,9 @@ Copyright: Ankitects Pty Ltd and contributors
 License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
-    import type { Writable } from "svelte/store";
-
     import Container from "$lib/components/Container.svelte";
     import Row from "$lib/components/Row.svelte";
-    import type { DynamicSvelteComponent } from "$lib/sveltelib/dynamicComponent";
 
-    import Addons from "./Addons.svelte";
     import AdvancedOptions from "./AdvancedOptions.svelte";
     import AudioOptions from "./AudioOptions.svelte";
     import AutoAdvance from "./AutoAdvance.svelte";
@@ -17,42 +13,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import DeckOptionsHeader from "./DeckOptionsHeader.svelte";
     import DisplayOrder from "./DisplayOrder.svelte";
     import FsrsOptionsOuter from "./FsrsOptionsOuter.svelte";
-    import HtmlAddon from "./HtmlAddon.svelte";
     import LapseOptions from "./LapseOptions.svelte";
     import { type DeckOptionsState, saveInProgress } from "./lib";
     import NewOptions from "./NewOptions.svelte";
     import TimerOptions from "./TimerOptions.svelte";
 
     export let state: DeckOptionsState;
-    const addons = state.addonComponents;
-
-    export function auxData(): Writable<Record<string, unknown>> {
-        return state.currentAuxData;
-    }
-
-    export function addSvelteAddon(component: DynamicSvelteComponent): void {
-        $addons = [...$addons, component];
-    }
-
-    export function addHtmlAddon(html: string, mounted: () => void): void {
-        $addons = [
-            ...$addons,
-            {
-                component: HtmlAddon,
-                html,
-                mounted,
-            },
-        ];
-    }
-
-    export const options = {};
-    export const dailyLimits = {};
-    export const newOptions = {};
-    export const lapseOptions = {};
-    export const displayOrder = {};
-    export const timerOptions = {};
-    export const audioOptions = {};
-    export const advancedOptions = {};
 </script>
 
 <DeckOptionsHeader {state} />
@@ -66,47 +32,41 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     >
         <div>
             <Row class="row-columns">
-                <DailyLimits {state} api={dailyLimits} />
+                <DailyLimits {state} />
             </Row>
 
             <Row class="row-columns">
-                <NewOptions {state} api={newOptions} />
+                <NewOptions {state} />
             </Row>
 
             <Row class="row-columns">
-                <LapseOptions {state} api={lapseOptions} />
+                <LapseOptions {state} />
             </Row>
 
             <Row class="row-columns">
-                <DisplayOrder {state} api={displayOrder} />
+                <DisplayOrder {state} />
             </Row>
 
             <Row class="row-columns">
-                <FsrsOptionsOuter {state} api={{}} />
+                <FsrsOptionsOuter {state} />
             </Row>
         </div>
 
         <div>
             <Row class="row-columns">
-                <AudioOptions {state} api={audioOptions} />
+                <AudioOptions {state} />
             </Row>
 
             <Row class="row-columns">
-                <TimerOptions {state} api={timerOptions} />
+                <TimerOptions {state} />
             </Row>
 
             <Row class="row-columns">
-                <AutoAdvance {state} api={timerOptions} />
+                <AutoAdvance {state} />
             </Row>
 
-            {#if $addons.length}
-                <Row class="row-columns">
-                    <Addons {state} />
-                </Row>
-            {/if}
-
             <Row class="row-columns">
-                <AdvancedOptions {state} api={advancedOptions} />
+                <AdvancedOptions {state} />
             </Row>
         </div>
     </Container>

@@ -41,12 +41,11 @@ impl crate::services::TagsService for Collection {
         self.remove_tags_from_notes(&to_note_ids(input.note_ids), &input.tags)
             .map(Into::into)
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    
+
     use crate::prelude::*;
     use crate::services::TagsService;
 
@@ -168,5 +167,4 @@ mod tests {
         assert_eq!(registered_tags(&col)?, ["old"]);
         Ok(())
     }
-
 }

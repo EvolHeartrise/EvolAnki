@@ -198,13 +198,8 @@ pub struct MediaIterEntry {
 
 #[derive(Debug)]
 pub enum MediaIterError {
-    InvalidFilename {
-        filename: OsString,
-    },
-    IoError {
-        filename: String,
-        source: io::Error,
-    },
+    InvalidFilename { filename: OsString },
+    IoError { filename: String, source: io::Error },
 }
 
 impl TryFrom<&Path> for MediaIterEntry {

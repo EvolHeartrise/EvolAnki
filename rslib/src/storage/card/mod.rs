@@ -847,7 +847,6 @@ mod test {
     use crate::card::CardQueue;
     use crate::card::CardType;
     use crate::collection::Collection;
-    
     use crate::revlog::RevlogEntry;
     use crate::revlog::RevlogId;
     use crate::revlog::RevlogReviewKind;

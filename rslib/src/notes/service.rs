@@ -105,7 +105,6 @@ impl crate::services::NotesService for Collection {
                 cids: v.into_iter().map(Into::into).collect(),
             })
     }
-
 }
 
 pub(crate) fn to_note_ids(ids: Vec<i64>) -> Vec<NoteId> {
@@ -128,7 +127,6 @@ impl From<NoteId> for anki_proto::notes::NoteId {
 mod test {
 
     use std::assert_matches;
-    
 
     use anki_proto::notes::*;
 
@@ -233,5 +231,4 @@ mod test {
 
         Ok(())
     }
-
 }

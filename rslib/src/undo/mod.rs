@@ -129,7 +129,6 @@ impl UndoManager {
             changes,
         }
     }
-
 }
 
 impl Collection {
@@ -163,7 +162,6 @@ impl Collection {
             last_step: self.state.undo.counter,
         }
     }
-
 }
 
 impl Collection {
@@ -273,7 +271,7 @@ impl From<&[UndoableChange]> for StateChanges {
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::card::Card;
     use crate::prelude::*;
 

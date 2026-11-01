@@ -7,10 +7,7 @@
     import { HelpPage } from "@tslib/help-page";
     import type Carousel from "bootstrap/js/dist/carousel";
     import type Modal from "bootstrap/js/dist/modal";
-
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
-    import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import SwitchRow from "$lib/components/SwitchRow.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
@@ -24,7 +21,6 @@
     import Warning from "./Warning.svelte";
 
     export let state: DeckOptionsState;
-    export let api: Record<string, never>;
 
     const config = state.currentConfig;
     const limits = state.deckLimits;
@@ -151,59 +147,39 @@
             carousel = e.detail.carousel;
         }}
     />
-    <DynamicallySlottable slotHost={Item} {api}>
-        <Item>
-            <SpinBoxRow bind:value={newValue} defaultValue={defaults.newPerDay}>
-                <TabbedValue slot="tabs" tabs={newTabs} bind:value={newValue} />
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("newLimit"))}
-                >
-                    {settings.newLimit.title}
-                </SettingTitle>
-            </SpinBoxRow>
-        </Item>
-
-        <Item>
-            <SpinBoxRow bind:value={reviewsValue} defaultValue={defaults.reviewsPerDay}>
-                <TabbedValue slot="tabs" tabs={reviewTabs} bind:value={reviewsValue} />
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("reviewLimit"))}
-                >
-                    {settings.reviewLimit.title}
-                </SettingTitle>
-            </SpinBoxRow>
-        </Item>
-
-        <Item>
-            <Warning warning={reviewsTooLow} />
-        </Item>
-
-        <Item>
-            <SwitchRow bind:value={$newCardsIgnoreReviewLimit} defaultValue={false}>
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("newCardsIgnoreReviewLimit"),
-                        )}
-                >
-                    <GlobalLabel title={settings.newCardsIgnoreReviewLimit.title} />
-                </SettingTitle>
-            </SwitchRow>
-        </Item>
-
-        <Item>
-            <SwitchRow bind:value={$applyAllParentLimits} defaultValue={false}>
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("applyAllParentLimits"),
-                        )}
-                >
-                    <GlobalLabel title={settings.applyAllParentLimits.title} />
-                </SettingTitle>
-            </SwitchRow>
-        </Item>
-    </DynamicallySlottable>
+    <SpinBoxRow bind:value={newValue} defaultValue={defaults.newPerDay}>
+        <TabbedValue slot="tabs" tabs={newTabs} bind:value={newValue} />
+        <SettingTitle
+            on:click={() => openHelpModal(Object.keys(settings).indexOf("newLimit"))}
+        >
+            {settings.newLimit.title}
+        </SettingTitle>
+    </SpinBoxRow>
+    <SpinBoxRow bind:value={reviewsValue} defaultValue={defaults.reviewsPerDay}>
+        <TabbedValue slot="tabs" tabs={reviewTabs} bind:value={reviewsValue} />
+        <SettingTitle
+            on:click={() => openHelpModal(Object.keys(settings).indexOf("reviewLimit"))}
+        >
+            {settings.reviewLimit.title}
+        </SettingTitle>
+    </SpinBoxRow>
+    <Warning warning={reviewsTooLow} />
+    <SwitchRow bind:value={$newCardsIgnoreReviewLimit} defaultValue={false}>
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(
+                    Object.keys(settings).indexOf("newCardsIgnoreReviewLimit"),
+                )}
+        >
+            <GlobalLabel title={settings.newCardsIgnoreReviewLimit.title} />
+        </SettingTitle>
+    </SwitchRow>
+    <SwitchRow bind:value={$applyAllParentLimits} defaultValue={false}>
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("applyAllParentLimits"))}
+        >
+            <GlobalLabel title={settings.applyAllParentLimits.title} />
+        </SettingTitle>
+    </SwitchRow>
 </TitledContainer>

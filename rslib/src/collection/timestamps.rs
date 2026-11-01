@@ -28,5 +28,4 @@ impl Collection {
         let stamps = self.storage.get_collection_timestamps()?;
         self.set_schema_modified_time_undoable(TimestampMillis::now(), stamps.schema_change)
     }
-
 }

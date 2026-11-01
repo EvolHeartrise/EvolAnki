@@ -78,7 +78,6 @@ impl crate::services::NotetypesService for Collection {
             .and_then(|nt| nt.or_not_found(input.val))
             .map(|ntid| anki_proto::notetypes::NotetypeId { ntid: ntid.0 })
     }
-
 }
 
 impl From<anki_proto::notetypes::Notetype> for Notetype {
@@ -112,7 +111,6 @@ mod tests {
     use anki_proto::generic;
 
     use super::*;
-    
     use crate::services::NotetypesService;
     use crate::tests::NoteAdder;
 
@@ -360,5 +358,4 @@ mod tests {
     // --- Service: get_aux_notetype_config_key ---
 
     // --- Service: get_aux_template_config_key ---
-
 }

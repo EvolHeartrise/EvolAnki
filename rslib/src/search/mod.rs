@@ -7,7 +7,6 @@ mod service;
 mod sqlwriter;
 pub(crate) mod writer;
 
-
 pub use builder::JoinSearches;
 pub use builder::Negated;
 pub use builder::SearchBuilder;

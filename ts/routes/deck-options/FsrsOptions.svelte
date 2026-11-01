@@ -38,8 +38,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         UpdateDeckConfigsMode,
     } from "@generated/anki/deck_config_pb";
     import type Modal from "bootstrap/js/dist/modal";
-    import Item from "$lib/components/Item.svelte";
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
 
     export let state: DeckOptionsState;
     export let openHelpModal: (String) => void;
@@ -334,22 +332,18 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     let workloadModal: Modal;
 </script>
 
-<DynamicallySlottable slotHost={Item} api={{}}>
-    <Item>
-        <SpinBoxFloatRow
-            bind:value={$config.desiredRetention}
-            defaultValue={defaults.desiredRetention}
-            min={0.7}
-            max={0.99}
-            percentage={true}
-            bind:focused={desiredRetentionFocused}
-        >
-            <SettingTitle on:click={() => openHelpModal("desiredRetention")}>
-                {tr.deckConfigDesiredRetention()}
-            </SettingTitle>
-        </SpinBoxFloatRow>
-    </Item>
-</DynamicallySlottable>
+<SpinBoxFloatRow
+    bind:value={$config.desiredRetention}
+    defaultValue={defaults.desiredRetention}
+    min={0.7}
+    max={0.99}
+    percentage={true}
+    bind:focused={desiredRetentionFocused}
+>
+    <SettingTitle on:click={() => openHelpModal("desiredRetention")}>
+        {tr.deckConfigDesiredRetention()}
+    </SettingTitle>
+</SpinBoxFloatRow>
 
 <button
     class="btn btn-primary"

@@ -155,7 +155,6 @@ impl Collection {
             self.storage.get_all_deck_names()
         }
     }
-
 }
 
 fn invalid_char_for_deck_component(c: char) -> bool {
@@ -225,5 +224,4 @@ mod test {
         );
         assert_eq!(normalize_res("fo\u{a}obar"), (true, "foobar".into()));
     }
-
 }

@@ -364,5 +364,4 @@ impl SqliteStorage {
         self.db.execute("update col set models = ?", [json])?;
         Ok(())
     }
-
 }

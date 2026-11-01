@@ -18,8 +18,8 @@ anki_proto_gen.workspace = true
 anyhow.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 anki.workspace = true
+anyhow.workspace = true
 evolanki-server = { path = "../web-server" }
 prost.workspace = true
 prost-reflect.workspace = true

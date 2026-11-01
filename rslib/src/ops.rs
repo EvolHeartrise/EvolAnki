@@ -148,9 +148,7 @@ impl OpChanges {
             || (c.config
                 && matches!(
                     self.op,
-                    Op::SetCurrentDeck
-                        | Op::UpdateDeckConfig
-                        | Op::ToggleLoadBalancer
+                    Op::SetCurrentDeck | Op::UpdateDeckConfig | Op::ToggleLoadBalancer
                 ))
             || c.deck_config
     }

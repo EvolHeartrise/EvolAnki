@@ -92,36 +92,6 @@ test("saving sends the deck's settings", () => {
     expect(out.mode).toBe(UpdateDeckConfigsMode.COMPUTE_ALL_PARAMS);
 });
 
-test("aux data", () => {
-    const state = startingState();
-    expect(get(state.currentAuxData)).toStrictEqual({
-        new: {
-            separate: true,
-        },
-        rev: {
-            fuzz: 0.05,
-            minSpace: 1,
-        },
-    });
-    state.currentAuxData.update((val) => {
-        return { ...val, hello: "world" };
-    });
-
-    // ensure changes serialize
-    const out = state.dataForSaving(UpdateDeckConfigsMode.NORMAL);
-    const json = JSON.parse(new TextDecoder().decode(out.config!.config!.other));
-    expect(json).toStrictEqual({
-        hello: "world",
-        new: {
-            separate: true,
-        },
-        rev: {
-            fuzz: 0.05,
-            minSpace: 1,
-        },
-    });
-});
-
 test("a save becomes the baseline for later changes", async () => {
     const fetchMock = vi.fn(async () => new Response(new Uint8Array(), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

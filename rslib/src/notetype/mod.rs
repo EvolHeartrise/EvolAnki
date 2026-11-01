@@ -33,9 +33,9 @@ pub use anki_proto::notetypes::Notetype as NotetypeProto;
 pub(crate) use cardgen::AlreadyGeneratedCardInfo;
 pub(crate) use cardgen::CardGenContext;
 pub use fields::NoteField;
+pub use notetypechange::ChangeNotetypeInput;
 use regex::Regex;
 pub(crate) use render::RenderCardOutput;
-pub use notetypechange::ChangeNotetypeInput;
 pub use schema11::NotetypeSchema11;
 pub use stock::all_stock_notetypes;
 pub use templates::CardTemplate;
@@ -202,7 +202,6 @@ impl Collection {
             .filter_map(|ntid| self.get_notetype(ntid).transpose())
             .collect()
     }
-
 }
 
 impl Notetype {

@@ -62,5 +62,4 @@ impl crate::services::ConfigService for Collection {
             val: Collection::get_config_bool(self, input.key().into()),
         })
     }
-
 }

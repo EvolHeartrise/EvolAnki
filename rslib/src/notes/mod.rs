@@ -97,7 +97,6 @@ impl Collection {
         let usn = self.usn()?;
         self.transact(Op::RemoveNote, |col| col.remove_notes_inner(nids, usn))
     }
-
 }
 
 /// Information required for updating tags while leaving note content alone.
@@ -596,14 +595,11 @@ mod test {
     use super::anki_base91;
     use super::field_checksum;
     use super::NoteFieldsState;
-    
-    
     use crate::config::BoolKey;
     use crate::decks::DeckId;
     use crate::error::Result;
     use crate::prelude::*;
     use crate::search::SortMode;
-    
 
     #[test]
     fn test_base91() {
@@ -942,5 +938,4 @@ mod test {
 
         Ok(())
     }
-
 }

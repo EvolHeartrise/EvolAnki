@@ -7,10 +7,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { HelpPage } from "@tslib/help-page";
     import type Carousel from "bootstrap/js/dist/carousel";
     import type Modal from "bootstrap/js/dist/modal";
-
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
-    import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import SwitchRow from "$lib/components/SwitchRow.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
@@ -21,7 +18,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import Warning from "./Warning.svelte";
 
     export let state: DeckOptionsState;
-    export let api: Record<string, never>;
 
     const config = state.currentConfig;
     const defaults = state.defaults;
@@ -67,64 +63,42 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             carousel = e.detail.carousel;
         }}
     />
-    <DynamicallySlottable slotHost={Item} {api}>
-        <Item>
-            <SpinBoxRow
-                bind:value={$config.capAnswerTimeToSecs}
-                defaultValue={defaults.capAnswerTimeToSecs}
-                min={1}
-                max={7200}
+    <SpinBoxRow
+        bind:value={$config.capAnswerTimeToSecs}
+        defaultValue={defaults.capAnswerTimeToSecs}
+        min={1}
+        max={7200}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("maximumAnswerSecs"))}
+        >
+            {settings.maximumAnswerSecs.title}
+        </SettingTitle>
+    </SpinBoxRow>
+    <Warning warning={maximumAnswerSecondsAboveRecommended} />
+    <!-- AnkiMobile hides this -->
+    <div class="show-timer-switch" style="display: contents;">
+        <SwitchRow bind:value={$config.showTimer} defaultValue={defaults.showTimer}>
+            <SettingTitle
+                on:click={() =>
+                    openHelpModal(Object.keys(settings).indexOf("showAnswerTimer"))}
             >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("maximumAnswerSecs"),
-                        )}
-                >
-                    {settings.maximumAnswerSecs.title}
-                </SettingTitle>
-            </SpinBoxRow>
-        </Item>
-
-        <Item>
-            <Warning warning={maximumAnswerSecondsAboveRecommended} />
-        </Item>
-
-        <Item>
-            <!-- AnkiMobile hides this -->
-            <div class="show-timer-switch" style="display: contents;">
-                <SwitchRow
-                    bind:value={$config.showTimer}
-                    defaultValue={defaults.showTimer}
-                >
-                    <SettingTitle
-                        on:click={() =>
-                            openHelpModal(
-                                Object.keys(settings).indexOf("showAnswerTimer"),
-                            )}
-                    >
-                        {settings.showAnswerTimer.title}
-                    </SettingTitle>
-                </SwitchRow>
-            </div>
-        </Item>
-
-        <Item>
-            <div class="show-timer-switch" style="display: contents;">
-                <SwitchRow
-                    bind:value={$config.stopTimerOnAnswer}
-                    defaultValue={defaults.stopTimerOnAnswer}
-                >
-                    <SettingTitle
-                        on:click={() =>
-                            openHelpModal(
-                                Object.keys(settings).indexOf("stopTimerOnAnswer"),
-                            )}
-                    >
-                        {settings.stopTimerOnAnswer.title}
-                    </SettingTitle>
-                </SwitchRow>
-            </div>
-        </Item>
-    </DynamicallySlottable>
+                {settings.showAnswerTimer.title}
+            </SettingTitle>
+        </SwitchRow>
+    </div>
+    <div class="show-timer-switch" style="display: contents;">
+        <SwitchRow
+            bind:value={$config.stopTimerOnAnswer}
+            defaultValue={defaults.stopTimerOnAnswer}
+        >
+            <SettingTitle
+                on:click={() =>
+                    openHelpModal(Object.keys(settings).indexOf("stopTimerOnAnswer"))}
+            >
+                {settings.stopTimerOnAnswer.title}
+            </SettingTitle>
+        </SwitchRow>
+    </div>
 </TitledContainer>

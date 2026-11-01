@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-
 use super::DeckCommon;
 use super::FilteredDeck;
 use super::FilteredSearchOrder;
@@ -46,4 +45,3 @@ impl Deck {
         matches!(self.kind, DeckKind::Filtered(_))
     }
 }
-

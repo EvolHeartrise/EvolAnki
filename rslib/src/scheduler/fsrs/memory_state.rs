@@ -838,11 +838,10 @@ mod tests {
     }
 
     mod always_on {
-        
+
         use serde_json::Value;
 
         use super::*;
-        use crate::services::ConfigService;
         use crate::tests::NoteAdder;
 
         /// As sync does: replaces all config, with the provided value for FSRS.

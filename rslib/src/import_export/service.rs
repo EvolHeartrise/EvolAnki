@@ -51,7 +51,6 @@ impl crate::services::ImportExportService for Collection {
         self.import_csv(&input.path, input.metadata.unwrap_or_default())
             .map(Into::into)
     }
-
 }
 
 impl From<OpOutput<NoteLog>> for anki_proto::import_export::ImportResponse {
@@ -80,18 +79,15 @@ impl From<ExportLimit> for SearchNode {
 
 #[cfg(test)]
 mod tests {
-    
+
     use anki_proto::import_export::export_limit::Limit;
     use anki_proto::import_export::import_response::Log as NoteLog;
     use anki_proto::import_export::CsvMetadataRequest;
     use anki_proto::import_export::ExportAnkiPackageRequest;
-    
     use anki_proto::import_export::ExportLimit;
-    
     use anki_proto::import_export::ImportAnkiPackageRequest;
     use anki_proto::import_export::ImportCsvRequest;
     use tempfile::tempdir;
-    
 
     use super::*;
     use crate::ops::Op;
@@ -99,7 +95,6 @@ mod tests {
     use crate::ops::OpOutput;
     use crate::ops::StateChanges;
     use crate::services::ImportExportService;
-    
 
     // --- From<ExportLimit> for SearchNode ---
 

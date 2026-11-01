@@ -254,7 +254,6 @@ impl Collection {
 }
 
 impl Collection {
-
     pub(crate) fn add_missing_deck_names(&mut self, names: &[(DeckId, String)]) -> Result<usize> {
         let mut parents = HashSet::new();
         let mut missing = 0;

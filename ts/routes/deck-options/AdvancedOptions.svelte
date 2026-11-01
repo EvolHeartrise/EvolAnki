@@ -7,10 +7,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { HelpPage } from "@tslib/help-page";
     import type Carousel from "bootstrap/js/dist/carousel";
     import type Modal from "bootstrap/js/dist/modal";
-
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
-    import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
@@ -24,7 +21,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import type { GetIgnoredBeforeCountResponse } from "@generated/anki/deck_config_pb";
 
     export let state: DeckOptionsState;
-    export let api: Record<string, never>;
 
     const config = state.currentConfig;
     const defaults = state.defaults;
@@ -133,64 +129,48 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             carousel = e.detail.carousel;
         }}
     />
-    <DynamicallySlottable slotHost={Item} {api}>
-        <Item>
-            <SpinBoxRow
-                bind:value={$config.maximumReviewInterval}
-                defaultValue={defaults.maximumReviewInterval}
-                min={1}
-                max={365 * 100}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("maximumInterval"))}
-                >
-                    {settings.maximumInterval.title}
-                </SettingTitle>
-            </SpinBoxRow>
-        </Item>
-
-        <Item>
-            <Warning warning={maxIntervalWarning} className={maxIntervalWarningClass}
-            ></Warning>
-        </Item>
-
-        <SpinBoxFloatRow
-            bind:value={$config.historicalRetention}
-            defaultValue={defaults.historicalRetention}
-            min={0.5}
-            max={1.0}
-            percentage={true}
+    <SpinBoxRow
+        bind:value={$config.maximumReviewInterval}
+        defaultValue={defaults.maximumReviewInterval}
+        min={1}
+        max={365 * 100}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("maximumInterval"))}
         >
-            <SettingTitle
-                on:click={() =>
-                    openHelpModal(Object.keys(settings).indexOf("historicalRetention"))}
-            >
-                {tr.deckConfigHistoricalRetention()}
-            </SettingTitle>
-        </SpinBoxFloatRow>
+            {settings.maximumInterval.title}
+        </SettingTitle>
+    </SpinBoxRow>
+    <Warning warning={maxIntervalWarning} className={maxIntervalWarningClass}></Warning>
 
-        <Item>
-            <DateInput
-                bind:date={$config.ignoreRevlogsBeforeDate}
-                max={new Date().toLocaleDateString("en-CA")}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("ignoreRevlogsBeforeMs"),
-                        )}
-                >
-                    {tr.deckConfigIgnoreBefore()}
-                </SettingTitle>
-            </DateInput>
-        </Item>
-
-        <Item>
-            <Warning
-                warning={ignoreRevlogsBeforeWarning}
-                className={ignoreRevlogsBeforeWarningClass}
-            ></Warning>
-        </Item>
-    </DynamicallySlottable>
+    <SpinBoxFloatRow
+        bind:value={$config.historicalRetention}
+        defaultValue={defaults.historicalRetention}
+        min={0.5}
+        max={1.0}
+        percentage={true}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("historicalRetention"))}
+        >
+            {tr.deckConfigHistoricalRetention()}
+        </SettingTitle>
+    </SpinBoxFloatRow>
+    <DateInput
+        bind:date={$config.ignoreRevlogsBeforeDate}
+        max={new Date().toLocaleDateString("en-CA")}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("ignoreRevlogsBeforeMs"))}
+        >
+            {tr.deckConfigIgnoreBefore()}
+        </SettingTitle>
+    </DateInput>
+    <Warning
+        warning={ignoreRevlogsBeforeWarning}
+        className={ignoreRevlogsBeforeWarningClass}
+    ></Warning>
 </TitledContainer>

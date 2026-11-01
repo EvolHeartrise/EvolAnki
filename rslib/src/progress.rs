@@ -292,5 +292,4 @@ impl<'f, F: 'f + FnMut(usize) -> Result<()>> Incrementor<'f, F> {
         }
         (self.update_fn)(self.count)
     }
-
 }

@@ -7,10 +7,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { HelpPage } from "@tslib/help-page";
     import type Carousel from "bootstrap/js/dist/carousel";
     import type Modal from "bootstrap/js/dist/modal";
-
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
-    import Item from "$lib/components/Item.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
 
@@ -18,7 +15,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import type { DeckOptionsState } from "./lib";
 
     export let state: DeckOptionsState;
-    export let api: Record<string, never>;
 
     const settings = {
         fsrs: {
@@ -79,10 +75,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             carousel = e.detail.carousel;
         }}
     />
-    <DynamicallySlottable slotHost={Item} {api}>
-        <FsrsOptions
-            {state}
-            openHelpModal={(key) => openHelpModal(Object.keys(settings).indexOf(key))}
-        />
-    </DynamicallySlottable>
+    <FsrsOptions
+        {state}
+        openHelpModal={(key) => openHelpModal(Object.keys(settings).indexOf(key))}
+    />
 </TitledContainer>

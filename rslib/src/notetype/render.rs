@@ -21,9 +21,7 @@ pub struct RenderCardOutput {
     pub is_empty: bool,
 }
 
-impl RenderCardOutput {
-
-}
+impl RenderCardOutput {}
 
 impl Collection {
     /// Render an existing card saved in the database.

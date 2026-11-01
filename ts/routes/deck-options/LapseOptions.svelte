@@ -7,10 +7,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { HelpPage } from "@tslib/help-page";
     import type Carousel from "bootstrap/js/dist/carousel";
     import type Modal from "bootstrap/js/dist/modal";
-
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
-    import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
@@ -20,7 +17,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import Warning from "./Warning.svelte";
 
     export let state: DeckOptionsState;
-    export let api = {};
 
     const config = state.currentConfig;
     const defaults = state.defaults;
@@ -63,23 +59,16 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             carousel = e.detail.carousel;
         }}
     />
-    <DynamicallySlottable slotHost={Item} {api}>
-        <Item>
-            <StepsInputRow
-                bind:value={$config.relearnSteps}
-                defaultValue={defaults.relearnSteps}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("relearningSteps"))}
-                >
-                    {settings.relearningSteps.title}
-                </SettingTitle>
-            </StepsInputRow>
-        </Item>
-
-        <Item>
-            <Warning warning={stepsTooLargeForFsrs} />
-        </Item>
-    </DynamicallySlottable>
+    <StepsInputRow
+        bind:value={$config.relearnSteps}
+        defaultValue={defaults.relearnSteps}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("relearningSteps"))}
+        >
+            {settings.relearningSteps.title}
+        </SettingTitle>
+    </StepsInputRow>
+    <Warning warning={stepsTooLargeForFsrs} />
 </TitledContainer>

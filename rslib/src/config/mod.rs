@@ -70,9 +70,7 @@ pub enum SchedulerVersion {
     V2 = 2,
 }
 
-impl Collection {
-
-}
+impl Collection {}
 
 impl Collection {
     /// Get config item, returning None if missing/invalid.
@@ -206,7 +204,6 @@ impl Collection {
         self.set_config(ConfigKey::FirstDayOfWeek, &weekday)
             .map(|_| ())
     }
-
 }
 
 #[derive(PartialEq, Eq, Serialize_repr, Deserialize_repr, Clone, Copy)]

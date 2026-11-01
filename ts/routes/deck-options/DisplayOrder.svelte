@@ -11,11 +11,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { HelpPage } from "@tslib/help-page";
     import type Carousel from "bootstrap/js/dist/carousel";
     import type Modal from "bootstrap/js/dist/modal";
-
-    import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
     import EnumSelectorRow from "$lib/components/EnumSelectorRow.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
-    import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
@@ -29,7 +26,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import type { DeckOptionsState } from "./lib";
 
     export let state: DeckOptionsState;
-    export let api: Record<string, never>;
 
     const config = state.currentConfig;
     const defaults = state.defaults;
@@ -118,89 +114,65 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             carousel = e.detail.carousel;
         }}
     />
-    <DynamicallySlottable slotHost={Item} {api}>
-        <Item>
-            <EnumSelectorRow
-                bind:value={$config.newCardGatherPriority}
-                defaultValue={defaults.newCardGatherPriority}
-                choices={newGatherPriorityChoices()}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("newGatherPriority"),
-                        )}
-                >
-                    {settings.newGatherPriority.title}
-                </SettingTitle>
-            </EnumSelectorRow>
-        </Item>
-
-        <Item>
-            <EnumSelectorRow
-                bind:value={$config.newCardSortOrder}
-                defaultValue={defaults.newCardSortOrder}
-                choices={newSortOrderChoices()}
-                disabledChoices={disabledNewSortOrders}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("newCardSortOrder"),
-                        )}
-                >
-                    {settings.newCardSortOrder.title}
-                </SettingTitle>
-            </EnumSelectorRow>
-        </Item>
-
-        <Item>
-            <EnumSelectorRow
-                bind:value={$config.newMix}
-                defaultValue={defaults.newMix}
-                choices={reviewMixChoices()}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("newReviewPriority"),
-                        )}
-                >
-                    {settings.newReviewPriority.title}
-                </SettingTitle>
-            </EnumSelectorRow>
-        </Item>
-
-        <Item>
-            <EnumSelectorRow
-                bind:value={$config.interdayLearningMix}
-                defaultValue={defaults.interdayLearningMix}
-                choices={reviewMixChoices()}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(
-                            Object.keys(settings).indexOf("interdayStepPriority"),
-                        )}
-                >
-                    {settings.interdayStepPriority.title}
-                </SettingTitle>
-            </EnumSelectorRow>
-        </Item>
-
-        <Item>
-            <EnumSelectorRow
-                bind:value={$config.reviewOrder}
-                defaultValue={defaults.reviewOrder}
-                choices={reviewOrderChoices()}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("reviewSortOrder"))}
-                >
-                    {settings.reviewSortOrder.title}
-                </SettingTitle>
-            </EnumSelectorRow>
-        </Item>
-    </DynamicallySlottable>
+    <EnumSelectorRow
+        bind:value={$config.newCardGatherPriority}
+        defaultValue={defaults.newCardGatherPriority}
+        choices={newGatherPriorityChoices()}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("newGatherPriority"))}
+        >
+            {settings.newGatherPriority.title}
+        </SettingTitle>
+    </EnumSelectorRow>
+    <EnumSelectorRow
+        bind:value={$config.newCardSortOrder}
+        defaultValue={defaults.newCardSortOrder}
+        choices={newSortOrderChoices()}
+        disabledChoices={disabledNewSortOrders}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("newCardSortOrder"))}
+        >
+            {settings.newCardSortOrder.title}
+        </SettingTitle>
+    </EnumSelectorRow>
+    <EnumSelectorRow
+        bind:value={$config.newMix}
+        defaultValue={defaults.newMix}
+        choices={reviewMixChoices()}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("newReviewPriority"))}
+        >
+            {settings.newReviewPriority.title}
+        </SettingTitle>
+    </EnumSelectorRow>
+    <EnumSelectorRow
+        bind:value={$config.interdayLearningMix}
+        defaultValue={defaults.interdayLearningMix}
+        choices={reviewMixChoices()}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("interdayStepPriority"))}
+        >
+            {settings.interdayStepPriority.title}
+        </SettingTitle>
+    </EnumSelectorRow>
+    <EnumSelectorRow
+        bind:value={$config.reviewOrder}
+        defaultValue={defaults.reviewOrder}
+        choices={reviewOrderChoices()}
+    >
+        <SettingTitle
+            on:click={() =>
+                openHelpModal(Object.keys(settings).indexOf("reviewSortOrder"))}
+        >
+            {settings.reviewSortOrder.title}
+        </SettingTitle>
+    </EnumSelectorRow>
 </TitledContainer>

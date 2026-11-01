@@ -179,8 +179,6 @@ pub(crate) fn normalize_search(input: &str) -> Result<String> {
 #[cfg(test)]
 mod test {
     use super::*;
-    
-    
 
     #[test]
     fn normalizing() {
@@ -206,5 +204,4 @@ mod test {
         // normalize numbers
         assert_eq!("prop:ease>1", normalize_search("prop:ease>1.0").unwrap());
     }
-
 }

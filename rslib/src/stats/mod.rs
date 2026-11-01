@@ -5,4 +5,3 @@ mod card;
 mod graphs;
 mod service;
 mod today;
-

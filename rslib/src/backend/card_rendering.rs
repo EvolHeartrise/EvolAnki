@@ -4,5 +4,4 @@
 use crate::backend::Backend;
 use crate::services::BackendCardRenderingService;
 
-impl BackendCardRenderingService for Backend {
-}
+impl BackendCardRenderingService for Backend {}

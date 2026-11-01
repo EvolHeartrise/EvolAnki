@@ -193,7 +193,6 @@ impl Default for Card {
 }
 
 impl Card {
-
     pub fn set_modified(&mut self, usn: Usn) {
         self.mtime = TimestampSecs::now();
         self.usn = usn;
@@ -277,7 +276,6 @@ impl Card {
 }
 
 impl Collection {
-
     #[cfg(test)]
     pub(crate) fn get_and_update_card<F, T>(&mut self, cid: CardId, func: F) -> Result<Card>
     where

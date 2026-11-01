@@ -10,7 +10,6 @@ mod rename;
 mod service;
 pub(crate) mod undo;
 
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,7 +27,6 @@ impl Tag {
             expanded: false,
         }
     }
-
 }
 
 pub(crate) fn split_tags(tags: &str) -> impl Iterator<Item = &str> {

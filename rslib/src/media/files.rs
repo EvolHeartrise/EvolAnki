@@ -363,9 +363,6 @@ pub(crate) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<V
 mod test {
     use std::borrow::Cow;
 
-    
-
-    
     use crate::media::files::add_hash_suffix_to_file_stem;
     use crate::media::files::normalize_filename;
     use crate::media::files::sha1_of_data;

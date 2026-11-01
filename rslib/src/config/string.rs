@@ -24,7 +24,6 @@ impl Collection {
         self.get_config_optional(key)
             .unwrap_or_else(|| default.to_string())
     }
-
 }
 
 impl Collection {

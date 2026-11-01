@@ -50,5 +50,4 @@ impl crate::services::CollectionService for Collection {
         })
         .map(Into::into)
     }
-
 }

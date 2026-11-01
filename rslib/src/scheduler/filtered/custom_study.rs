@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-
 use anki_proto::scheduler::custom_study_request::cram::CramKind;
 use anki_proto::scheduler::custom_study_request::Cram;
 use anki_proto::scheduler::custom_study_request::Value as CustomStudyValue;
@@ -28,7 +27,6 @@ impl Collection {
     ) -> Result<OpOutput<()>> {
         self.transact(Op::CreateCustomStudy, |col| col.custom_study_inner(input))
     }
-
 }
 
 impl Collection {
@@ -228,10 +226,8 @@ fn tags_to_nodes(tags_to_include: &[String], tags_to_exclude: &[String]) -> Sear
 
 #[cfg(test)]
 mod test {
-    
+
     use anki_proto::scheduler::custom_study_request::Cram;
-    
-    
 
     use super::*;
 

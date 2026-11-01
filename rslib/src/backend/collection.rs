@@ -78,7 +78,6 @@ impl Backend {
             .then_some(guard)
             .ok_or(AnkiError::CollectionAlreadyOpen)
     }
-
 }
 
 #[cfg(test)]

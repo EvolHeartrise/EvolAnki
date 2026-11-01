@@ -207,5 +207,4 @@ mod test {
             Node::Not(Box::new(Node::Search(SearchNode::State(StateKind::Due))))
         )
     }
-
 }

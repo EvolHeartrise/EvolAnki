@@ -18,8 +18,6 @@ import { tick } from "svelte";
 import type { Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
 
-import type { DynamicSvelteComponent } from "$lib/sveltelib/dynamicComponent";
-
 export type DeckOptionsId = bigint;
 
 type AllConfigs =
@@ -37,12 +35,10 @@ type AllConfigs =
 
 export class DeckOptionsState {
     readonly currentConfig: Writable<DeckConfig_Config>;
-    readonly currentAuxData: Writable<Record<string, unknown>>;
     readonly cardStateCustomizer: Writable<string>;
     readonly currentDeck: DeckConfigsForUpdate_CurrentDeck;
     readonly deckLimits: Writable<DeckConfigsForUpdate_CurrentDeck_Limits>;
     readonly defaults: DeckConfig_Config;
-    readonly addonComponents: Writable<DynamicSvelteComponent[]>;
     readonly newCardsIgnoreReviewLimit: Writable<boolean>;
     readonly applyAllParentLimits: Writable<boolean>;
     readonly fsrs: Writable<boolean>;
@@ -72,12 +68,9 @@ export class DeckOptionsState {
         this.daysSinceLastOptimization = writable(data.daysSinceLastFsrsOptimize);
 
         this.currentConfig = writable(cloneDeep(this.config.config!));
-        this.currentAuxData = writable(bytesToObject(this.config.config!.other));
-        this.addonComponents = writable([]);
 
         // update our state when the current config is changed
         this.currentConfig.subscribe((val) => this.onCurrentConfigChanged(val));
-        this.currentAuxData.subscribe((val) => this.onCurrentAuxDataChanged(val));
 
         // Must be resolved after all components are mounted, as some components
         // may modify the config during their initialization.
@@ -120,17 +113,6 @@ export class DeckOptionsState {
         }
     }
 
-    private onCurrentAuxDataChanged(data: Record<string, unknown>): void {
-        const current = bytesToObject(this.config.config!.other);
-        if (!isEqual(current, data)) {
-            this.currentConfig.update((config) => {
-                const asBytes = new TextEncoder().encode(JSON.stringify(data));
-                config.other = asBytes;
-                return config;
-            });
-        }
-    }
-
     private getAllConfigs(): AllConfigs {
         return cloneDeep({
             config: this.config,
@@ -161,28 +143,6 @@ export class DeckOptionsState {
     resolveOriginalConfigs(): void {
         this.originalConfigsResolve(this.getAllConfigs());
     }
-}
-
-function bytesToObject(bytes: Uint8Array): Record<string, unknown> {
-    if (!bytes.length) {
-        return {};
-    }
-
-    let obj: Record<string, unknown>;
-
-    try {
-        obj = JSON.parse(new TextDecoder().decode(bytes));
-    } catch (err) {
-        console.log(`invalid json in deck config`);
-        return {};
-    }
-
-    if (obj.constructor !== Object) {
-        console.log(`invalid object in deck config`);
-        return {};
-    }
-
-    return obj;
 }
 
 export function createLimits(): DeckConfigsForUpdate_CurrentDeck_Limits {

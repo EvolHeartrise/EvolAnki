@@ -23,4 +23,3 @@ pub(crate) fn i18n_resources(
         .map(Into::into)
         .map_err(Into::into)
 }
-

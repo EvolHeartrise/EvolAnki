@@ -1,4 +1,3 @@
-
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 use anki_proto::generic;
@@ -35,5 +34,4 @@ impl crate::services::MediaService for Collection {
             .to_string()
             .into())
     }
-
 }
