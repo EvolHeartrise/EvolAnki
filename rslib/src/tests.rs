@@ -165,7 +165,9 @@ impl DeckAdder {
         let mut deck = self.deck();
         col.add_or_update_deck(&mut deck).unwrap();
         if let Some(mut config) = config_opt {
-            config.id = deck.config_id().expect("can't set config for filtered deck");
+            config.id = deck
+                .config_id()
+                .expect("can't set config for filtered deck");
             col.add_or_update_deck_config(&mut config).unwrap();
         }
         deck

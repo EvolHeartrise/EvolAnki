@@ -670,8 +670,8 @@ pub(crate) mod tests {
         let mut col = Collection::new();
         // far too optimistic for what follows, so that optimizing helps
         let params = vec![
-            50.0, 60.0, 70.0, 80.0, 7.0114, 0.57, 2.0966, 0.0069, 1.5261, 0.112, 1.0178,
-            1.849, 0.1133, 0.3127, 2.2934, 0.2191, 3.0004, 0.7536, 0.3332, 0.1437, 0.2,
+            50.0, 60.0, 70.0, 80.0, 7.0114, 0.57, 2.0966, 0.0069, 1.5261, 0.112, 1.0178, 1.849,
+            0.1133, 0.3127, 2.2934, 0.2191, 3.0004, 0.7536, 0.3332, 0.1437, 0.2,
         ];
         let big = DeckAdder::new("big")
             .with_config(|c| c.inner.fsrs_params_6 = params.clone())
@@ -714,7 +714,10 @@ pub(crate) mod tests {
         assert_ne!(before(&col, &big).inner.fsrs_params_6, params);
         // the same parameters in the same places, nothing cleared or filled in
         let small_after = before(&col, &small);
-        assert_eq!(small_after.inner.fsrs_params_5, small_before.inner.fsrs_params_5);
+        assert_eq!(
+            small_after.inner.fsrs_params_5,
+            small_before.inner.fsrs_params_5
+        );
         assert_eq!(small_after.fsrs_params(), small_before.fsrs_params());
         assert_eq!(before(&col, &empty).inner, empty_before.inner);
         Ok(())

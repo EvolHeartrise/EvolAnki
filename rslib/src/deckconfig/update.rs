@@ -198,9 +198,8 @@ impl Collection {
             // if params differ, memory state needs to be recomputed
             let params_of = |c: Option<&DeckConfig>| c.map(|c| c.fsrs_params().clone());
             let retention_of = |c: Option<&DeckConfig>| c.map(|c| c.inner.desired_retention);
-            let easy_days_of = |c: Option<&DeckConfig>| {
-                c.map(|c| c.inner.easy_days_percentages.clone())
-            };
+            let easy_days_of =
+                |c: Option<&DeckConfig>| c.map(|c| c.inner.easy_days_percentages.clone());
             if fsrs_toggled
                 || params_of(previous) != params_of(current)
                 || retention_of(previous) != retention_of(current)
@@ -497,9 +496,14 @@ mod test {
         input.config.id = first.config_id().unwrap();
         col.update_deck_configs(input)?;
 
-        assert_eq!(col.get_deck_config(first.config_id().unwrap(), false)?, first_before);
+        assert_eq!(
+            col.get_deck_config(first.config_id().unwrap(), false)?,
+            first_before
+        );
         assert_eq!(col.get_deck_config(DeckConfigId(1), false)?, default_before);
-        let second_after = col.get_deck_config(second.config_id().unwrap(), false)?.unwrap();
+        let second_after = col
+            .get_deck_config(second.config_id().unwrap(), false)?
+            .unwrap();
         assert_eq!(second_after.inner.new_per_day, 3);
         Ok(())
     }
@@ -559,10 +563,7 @@ mod test {
         suspended.queue = CardQueue::Suspended;
         col.storage.update_card(&suspended)?;
 
-        let found = col.search_cards(
-            default_param_search(&parent)?.as_str(),
-            SortMode::NoOrder,
-        )?;
+        let found = col.search_cards(default_param_search(&parent)?.as_str(), SortMode::NoOrder)?;
         assert!(found.contains(&in_parent.id));
         assert!(found.contains(&in_child.id));
         assert!(!found.contains(&in_other.id));

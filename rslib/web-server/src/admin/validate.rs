@@ -648,9 +648,10 @@ struct DeckSettingsInfo {
 /// What a deck had in the snapshot, by the rules from before settings belonged
 /// to decks: the row it pointed at, or row 1, with its overrides.
 fn settings_in_snapshot(snapshot: &Connection, did: i64) -> Result<Option<Config>> {
-    let kind: Vec<u8> = snapshot.query_row("select kind from decks where id = ?", [did], |row| {
-        row.get(0)
-    })?;
+    let kind: Vec<u8> =
+        snapshot.query_row("select kind from decks where id = ?", [did], |row| {
+            row.get(0)
+        })?;
     let Some(deck::kind_container::Kind::Normal(normal)) =
         deck::KindContainer::decode(kind.as_slice())?.kind
     else {
@@ -707,7 +708,8 @@ fn decks_section(
             continue;
         }
         let name = deck.name;
-        let settings: DeckConfig = call_typed(backend, "getDeckConfig", &DeckConfigId { dcid: did })?;
+        let settings: DeckConfig =
+            call_typed(backend, "getDeckConfig", &DeckConfigId { dcid: did })?;
         let config = settings.config.clone().context("deck has no settings")?;
         if settings_in_snapshot(snapshot, did)?
             .as_ref()

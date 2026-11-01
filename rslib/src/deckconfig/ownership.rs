@@ -167,8 +167,8 @@ mod test {
 
     use super::*;
     use crate::collection::CollectionBuilder;
-    use crate::decks::NormalDeck;
     use crate::deckconfig::DeckConfigInner;
+    use crate::decks::NormalDeck;
     use crate::tests::CardAdder;
     use crate::tests::DeckAdder;
     use crate::tests::NoteAdder;
@@ -187,8 +187,14 @@ mod test {
             .unwrap();
     }
 
-    /// As an older version would have left it, bypassing what keeps decks apart.
-    fn point_deck_at(col: &mut Collection, deck: DeckId, row: i64, modify: impl FnOnce(&mut NormalDeck)) {
+    /// As an older version would have left it, bypassing what keeps decks
+    /// apart.
+    fn point_deck_at(
+        col: &mut Collection,
+        deck: DeckId,
+        row: i64,
+        modify: impl FnOnce(&mut NormalDeck),
+    ) {
         let mut deck = col.storage.get_deck(deck).unwrap().unwrap();
         let normal = deck.normal_mut().unwrap();
         normal.config_id = row;
@@ -305,7 +311,14 @@ mod test {
     fn legacy_collection() -> (Collection, HashMap<&'static str, DeckId>) {
         let mut col = Collection::new();
         let mut decks = HashMap::new();
-        for name in ["Geography", "Citizenship", "Yomitan", "Kaishi", "Info", "Parent::Child"] {
+        for name in [
+            "Geography",
+            "Citizenship",
+            "Yomitan",
+            "Kaishi",
+            "Info",
+            "Parent::Child",
+        ] {
             decks.insert(name, DeckAdder::new(name).add(&mut col).id);
         }
         decks.insert("Parent", col.get_deck_id("Parent").unwrap().unwrap());
@@ -332,9 +345,14 @@ mod test {
             c.fsrs_params_5 = vec![0.9; 19];
             c.other = b"{}".to_vec();
         });
-        add_row(&col, decks["Parent"].0, "Same id as a deck, used by another", |c| {
-            c.new_per_day = 3;
-        });
+        add_row(
+            &col,
+            decks["Parent"].0,
+            "Same id as a deck, used by another",
+            |c| {
+                c.new_per_day = 3;
+            },
+        );
 
         point_deck_at(&mut col, decks["Geography"], 1, |_| ());
         point_deck_at(&mut col, decks["Citizenship"], 1, |_| ());
@@ -386,8 +404,13 @@ mod test {
         );
 
         // the row's own history comes along
-        let info = col.get_deck_config(DeckConfigId(decks["Info"].0), false).unwrap();
-        assert_eq!(info.unwrap().mtime_secs, TimestampSecs(1000 + 1742871113067));
+        let info = col
+            .get_deck_config(DeckConfigId(decks["Info"].0), false)
+            .unwrap();
+        assert_eq!(
+            info.unwrap().mtime_secs,
+            TimestampSecs(1000 + 1742871113067)
+        );
     }
 
     #[test]
@@ -441,7 +464,10 @@ mod test {
         assert_eq!(col.storage.all_deck_config_unchecked().unwrap(), rows);
         assert_eq!(col.storage.get_all_decks().unwrap(), decks);
         assert_eq!(
-            col.storage.get_collection_timestamps().unwrap().collection_change,
+            col.storage
+                .get_collection_timestamps()
+                .unwrap()
+                .collection_change,
             changed.collection_change
         );
     }
@@ -525,7 +551,10 @@ mod test {
         let mut col = Collection::new();
         assert_one_row_per_normal_deck(&col);
         assert!(col.settings_repairs().unwrap().is_empty());
-        let row = col.get_deck_config(DeckConfigId(1), false).unwrap().unwrap();
+        let row = col
+            .get_deck_config(DeckConfigId(1), false)
+            .unwrap()
+            .unwrap();
         assert_eq!(row.name, "1");
         assert_eq!(row.inner, DeckConfig::default().inner);
         col.ensure_decks_own_settings().unwrap();
@@ -539,7 +568,9 @@ mod test {
         let deck = DeckAdder::new("one::two::three").add(&mut col);
 
         assert_one_row_per_normal_deck(&col);
-        let row = col.get_deck_config(deck.config_id().unwrap(), false).unwrap();
+        let row = col
+            .get_deck_config(deck.config_id().unwrap(), false)
+            .unwrap();
         assert_eq!(row.unwrap().inner, DeckConfig::default().inner);
         // parents made along the way too
         let parent = col.get_deck_id("one::two").unwrap().unwrap();
@@ -551,7 +582,10 @@ mod test {
         let mut another = Deck::new_normal();
         another.name = NativeDeckName::from_human_name("another");
         col.add_deck(&mut another).unwrap();
-        assert_eq!(col.storage.all_deck_config().unwrap().len(), rows_before + 1);
+        assert_eq!(
+            col.storage.all_deck_config().unwrap().len(),
+            rows_before + 1
+        );
         col.undo().unwrap();
         assert_eq!(col.storage.all_deck_config().unwrap().len(), rows_before);
     }
@@ -590,7 +624,9 @@ mod test {
 
         col.undo().unwrap();
         assert_one_row_per_normal_deck(&col);
-        let row = col.get_deck_config(parent.config_id().unwrap(), false).unwrap();
+        let row = col
+            .get_deck_config(parent.config_id().unwrap(), false)
+            .unwrap();
         assert_eq!(row.unwrap().inner.new_per_day, 3);
     }
 
@@ -604,8 +640,14 @@ mod test {
 
         assert!(col.storage.get_deck(DeckId(1)).unwrap().is_some());
         assert_one_row_per_normal_deck(&col);
-        let row = col.get_deck_config(DeckConfigId(1), false).unwrap().unwrap();
-        assert_eq!(row.inner.new_per_day, DeckConfig::default().inner.new_per_day);
+        let row = col
+            .get_deck_config(DeckConfigId(1), false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            row.inner.new_per_day,
+            DeckConfig::default().inner.new_per_day
+        );
     }
 
     #[test]
@@ -616,7 +658,9 @@ mod test {
             .add(&mut col);
         col.rename_deck(deck.id, "after").unwrap();
         assert_one_row_per_normal_deck(&col);
-        let row = col.get_deck_config(deck.config_id().unwrap(), false).unwrap();
+        let row = col
+            .get_deck_config(deck.config_id().unwrap(), false)
+            .unwrap();
         assert_eq!(row.unwrap().inner.new_per_day, 3);
     }
 
@@ -638,7 +682,10 @@ mod test {
             n.desired_retention = Some(0.995);
         });
         col.ensure_decks_own_settings().unwrap();
-        let row = col.get_deck_config(deck.config_id().unwrap(), false).unwrap().unwrap();
+        let row = col
+            .get_deck_config(deck.config_id().unwrap(), false)
+            .unwrap()
+            .unwrap();
         assert_eq!(row.inner.new_per_day, MAX_DAILY_LIMIT);
         assert_eq!(row.inner.desired_retention, MAX_DESIRED_RETENTION);
     }

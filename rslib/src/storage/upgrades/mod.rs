@@ -111,7 +111,9 @@ mod test {
         let mut deck = Deck::new_normal();
         deck.name = NativeDeckName::from_human_name("Migration deck");
         col.add_or_update_deck(&mut deck)?;
-        let mut deck_config = col.get_deck_config(deck.config_id().unwrap(), false)?.unwrap();
+        let mut deck_config = col
+            .get_deck_config(deck.config_id().unwrap(), false)?
+            .unwrap();
         deck_config.inner.learn_steps = vec![2.0, 20.0];
         col.add_or_update_deck_config(&mut deck_config)?;
         let original_deck_config = col

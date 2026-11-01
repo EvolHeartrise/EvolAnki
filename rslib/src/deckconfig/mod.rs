@@ -16,10 +16,10 @@ pub use anki_proto::deck_config::deck_config::config::ReviewCardOrder;
 pub use anki_proto::deck_config::deck_config::config::ReviewMix;
 pub use anki_proto::deck_config::deck_config::Config as DeckConfigInner;
 pub use ownership::settings_repair_needed;
-#[cfg(test)]
-pub(crate) use update::default_param_search;
 pub use schema11::DeckConfSchema11;
 pub use schema11::NewCardOrderSchema11;
+#[cfg(test)]
+pub(crate) use update::default_param_search;
 pub use update::UpdateDeckConfigsRequest;
 
 /// Old deck config and cards table store 250% as 2500.
@@ -310,7 +310,10 @@ mod tests {
         let dcid = DeckConfigId(TimestampMillis::now().0);
         let config = col.get_deck_config(dcid, true)?.unwrap();
         assert_eq!(config.id, dcid);
-        assert_eq!(config.inner.new_per_day, DeckConfig::default().inner.new_per_day);
+        assert_eq!(
+            config.inner.new_per_day,
+            DeckConfig::default().inner.new_per_day
+        );
         assert_matches!(col.get_deck_config(dcid, false)?, None);
 
         Ok(())

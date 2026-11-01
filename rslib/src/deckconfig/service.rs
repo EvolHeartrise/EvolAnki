@@ -237,7 +237,14 @@ mod tests {
     fn update_deck_configs_saves_config_from_request() -> Result<()> {
         let mut col = Collection::new();
         let mut request = update_request_for_deck(&mut col, DeckId(1))?;
-        request.config.as_mut().unwrap().config.as_mut().unwrap().new_per_day = 7;
+        request
+            .config
+            .as_mut()
+            .unwrap()
+            .config
+            .as_mut()
+            .unwrap()
+            .new_per_day = 7;
 
         let changes = DeckConfigService::update_deck_configs(&mut col, request)?;
 

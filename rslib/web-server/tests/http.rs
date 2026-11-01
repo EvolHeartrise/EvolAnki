@@ -212,7 +212,14 @@ impl Server {
 
 fn new_per_day(server: &Server) -> (DeckConfigsForUpdate, u32) {
     let info: DeckConfigsForUpdate = server.rpc("getDeckConfigsForUpdate", &DeckId { did: 1 });
-    let value = info.config.as_ref().unwrap().config.as_ref().unwrap().new_per_day;
+    let value = info
+        .config
+        .as_ref()
+        .unwrap()
+        .config
+        .as_ref()
+        .unwrap()
+        .new_per_day;
     (info, value)
 }
 

@@ -214,14 +214,15 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                     }
                     let alreadyOptimalMessage = "";
                     if (alreadyOptimal) {
-                        alreadyOptimalMessage =
-                            resp.fsrsItems >= MIN_ITEMS_TO_OPTIMIZE
-                                ? tr.deckConfigFsrsParamsOptimal()
-                                : resp.fsrsItems
-                                  ? tr.deckConfigMustHave400Reviews({
-                                        count: resp.fsrsItems,
-                                    })
-                                  : tr.deckConfigFsrsParamsNoReviews();
+                        if (resp.fsrsItems >= MIN_ITEMS_TO_OPTIMIZE) {
+                            alreadyOptimalMessage = tr.deckConfigFsrsParamsOptimal();
+                        } else if (resp.fsrsItems) {
+                            alreadyOptimalMessage = tr.deckConfigMustHave400Reviews({
+                                count: resp.fsrsItems,
+                            });
+                        } else {
+                            alreadyOptimalMessage = tr.deckConfigFsrsParamsNoReviews();
+                        }
                     }
                     const message = [alreadyOptimalMessage, healthCheckMessage]
                         .filter((a) => a)

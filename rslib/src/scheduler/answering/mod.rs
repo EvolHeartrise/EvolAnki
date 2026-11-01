@@ -698,7 +698,9 @@ pub(crate) mod test {
 
         // Create a deck with specific desired retention
         let deck_id = DeckId(1);
-        let mut config = col.get_deck_config(DeckConfigId(deck_id.0), false)?.unwrap();
+        let mut config = col
+            .get_deck_config(DeckConfigId(deck_id.0), false)?
+            .unwrap();
         config.inner.desired_retention = 0.85;
         col.add_or_update_deck_config(&mut config)?;
 

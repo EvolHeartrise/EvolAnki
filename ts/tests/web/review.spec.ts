@@ -361,6 +361,37 @@ test("the keyboard drives the reviewer, and undo restores card and count", async
     expect(revlog).toEqual([{ ease: 4 }]);
 });
 
+test("each deck's options are its own, down to subdecks and new ones", async ({ page }) => {
+    await start({
+        decks: [{ name: "First" }, { name: "Second" }, { name: "Second::Sub" }],
+        notes: [BASIC("one", "a", "First"), BASIC("two", "a", "Second"), BASIC("three", "a", "Second::Sub")],
+    });
+    const problems = failOnPageProblems(page);
+    const open = async (name: string) => {
+        await page.goto(`${server.url}/`);
+        await page.locator(`tr[data-deck="${name}"] .options a`).click();
+        const title = page.locator(".setting-title", { hasText: "New cards/day" });
+        const input = page.locator(".row", { has: title }).locator("input").first();
+        await expect(input).toBeVisible();
+        return input;
+    };
+    await expect(await open("First")).toHaveValue("20");
+    const input = await open("Second");
+    await input.fill("33");
+    await input.blur();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page).toHaveURL(/\/overview\//);
+
+    await expect(await open("Second")).toHaveValue("33");
+    await expect(await open("First")).toHaveValue("20");
+    await expect(await open("Second::Sub")).toHaveValue("20");
+    expect(problems).toEqual([]);
+
+    const rows = await query<{ count: number }>("select count() as count from deck_config");
+    const decks = await query<{ count: number }>("select count() as count from decks");
+    expect(rows).toEqual(decks);
+});
+
 test("failing a card leaves it unsuspended and untagged, with no leech controls", async ({ page }) => {
     await start({
         decks: [{ name: "Lapses" }],

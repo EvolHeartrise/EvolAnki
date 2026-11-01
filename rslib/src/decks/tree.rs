@@ -426,7 +426,10 @@ mod test {
     fn nested_counts_v3() -> Result<()> {
         fn create_deck_with_new_limit(col: &mut Collection, name: &str, new_limit: u32) -> Deck {
             let deck = col.get_or_create_normal_deck(name).unwrap();
-            let mut conf = col.get_deck_config(deck.config_id().unwrap(), false).unwrap().unwrap();
+            let mut conf = col
+                .get_deck_config(deck.config_id().unwrap(), false)
+                .unwrap()
+                .unwrap();
             conf.inner.new_per_day = new_limit;
             col.add_or_update_deck_config(&mut conf).unwrap();
             deck

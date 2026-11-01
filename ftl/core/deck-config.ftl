@@ -348,7 +348,6 @@ deck-config-compute-optimal-weights-tooltip2 =
     reviews, a deck keeps the parameters it has. You can
     optionally adjust the search before calculating the parameters, if you'd like to alter which cards are used for
     optimizing the parameters.
-deck-config-please-save-your-changes-first = Please save your changes first.
 deck-config-workload-factor-change =
     Approximate workload: { $factor }x
     (compared to { $previousDR }% desired retention)

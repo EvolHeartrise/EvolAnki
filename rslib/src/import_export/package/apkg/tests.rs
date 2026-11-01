@@ -418,7 +418,10 @@ fn a_package_imported_without_settings_gives_built_in_values_or_keeps_the_decks_
         settings_of(&mut target_col, "b").inner.new_per_day,
         DeckConfig::default().inner.new_per_day
     );
-    assert_eq!(settings_of(&mut target_col, "Default").inner.new_per_day, 55);
+    assert_eq!(
+        settings_of(&mut target_col, "Default").inner.new_per_day,
+        55
+    );
 }
 
 #[test]

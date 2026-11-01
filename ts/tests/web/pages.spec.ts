@@ -160,9 +160,7 @@ test("deck options has settings for this deck, and nothing about sharing them", 
     expect(text).not.toMatch(/preset/i);
     expect(text).not.toMatch(/used by/i);
     expect(text).not.toMatch(/subdecks/i);
-    for (const name of ["This deck"]) {
-        await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
-    }
+    await expect(page.getByRole("button", { name: "This deck", exact: true })).toHaveCount(0);
     // the daily limits have a regular value, and one for today
     const everyDay = page.getByRole("button", { name: "Every day", exact: true });
     const today = page.getByRole("button", { name: "Today only", exact: true });
@@ -189,6 +187,31 @@ test("a today-only limit is saved separately from the regular one", async ({ pag
     await expect(newCardsInput(page)).toHaveValue("3");
     await page.getByRole("button", { name: "Every day", exact: true }).first().click();
     await expect(newCardsInput(page)).toHaveValue("20");
+    expect(problems).toEqual([]);
+});
+
+test("saving from the simulator changes what the page shows", async ({ page }) => {
+    const problems: string[] = [];
+    page.on("pageerror", (error) => problems.push(error.message));
+    page.on("dialog", (dialog) => void dialog.accept());
+    await page.goto(`${server.url}/deck-options/1`);
+    await expect(newCardsInput(page)).toHaveValue("20");
+    await page.getByRole("button", { name: "FSRS Simulator (Experimental)" }).click();
+    const modal = page.locator(".modal.show");
+    await expect(modal).toBeVisible();
+    const inModal = modal.locator(".row", { has: page.locator(".setting-title", { hasText: NEW_CARDS_LABEL }) })
+        .last().locator("input").first();
+    await inModal.fill("7");
+    await inModal.blur();
+    await modal.getByRole("button", { name: "Save Changes to Deck" }).click();
+    await modal.getByRole("button", { name: "Close" }).first().click();
+    await expect(newCardsInput(page)).toHaveValue("7");
+
+    const saved = page.waitForResponse((r) => r.url().endsWith("/_anki/updateDeckConfigs"));
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    expect((await saved).status()).toBe(200);
+    await page.goto(`${server.url}/deck-options/1`);
+    await expect(newCardsInput(page)).toHaveValue("7");
     expect(problems).toEqual([]);
 });
 

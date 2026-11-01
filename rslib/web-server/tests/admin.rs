@@ -167,7 +167,9 @@ impl Fixture {
 
 fn deck_kind(db: &rusqlite::Connection, did: i64) -> Normal {
     let kind: Vec<u8> = db
-        .query_row("select kind from decks where id = ?", [did], |row| row.get(0))
+        .query_row("select kind from decks where id = ?", [did], |row| {
+            row.get(0)
+        })
         .unwrap();
     match KindContainer::decode(kind.as_slice()).unwrap().kind {
         Some(kind_container::Kind::Normal(normal)) => normal,
@@ -190,10 +192,8 @@ fn make_deck_share_settings(fx: &Fixture, did: i64) {
         rusqlite::params![container.encode_to_vec(), did],
     )
     .unwrap();
-    db.execute(
-        "delete from deck_config where id = ?", [did]
-    )
-    .unwrap();
+    db.execute("delete from deck_config where id = ?", [did])
+        .unwrap();
     db.execute(
         "insert into deck_config select 12345, 'Unused', mtime_secs, usn, config
          from deck_config where id = 1",
@@ -204,7 +204,9 @@ fn make_deck_share_settings(fx: &Fixture, did: i64) {
 
 fn settings_rows(path: &Path) -> Vec<i64> {
     let db = rusqlite::Connection::open(path).unwrap();
-    let mut statement = db.prepare("select id from deck_config order by id").unwrap();
+    let mut statement = db
+        .prepare("select id from deck_config order by id")
+        .unwrap();
     let rows = statement.query_map([], |row| row.get(0)).unwrap();
     rows.map(|row| row.unwrap()).collect()
 }
@@ -233,7 +235,10 @@ fn opening_directly_backs_up_a_collection_about_to_be_migrated() {
     assert_eq!(fx.backups(), backups_before + 1);
     // from before it changed
     let backup = backup_from_before_migrating(&fx).unwrap();
-    assert_eq!(deck_kind(&rusqlite::Connection::open(&backup).unwrap(), did).config_id, 1);
+    assert_eq!(
+        deck_kind(&rusqlite::Connection::open(&backup).unwrap(), did).config_id,
+        1
+    );
     // and it has now
     assert_eq!(settings_rows(&fx.collection()), vec![1, did]);
     let db = rusqlite::Connection::open(fx.collection()).unwrap();
@@ -241,7 +246,11 @@ fn opening_directly_backs_up_a_collection_about_to_be_migrated() {
     assert_eq!(normal.config_id, did);
     assert_eq!(normal.new_limit, None);
     let bytes: Vec<u8> = db
-        .query_row("select config from deck_config where id = ?", [did], |row| row.get(0))
+        .query_row(
+            "select config from deck_config where id = ?",
+            [did],
+            |row| row.get(0),
+        )
         .unwrap();
     assert_eq!(Config::decode(bytes.as_slice()).unwrap().new_per_day, 7);
     drop(db);

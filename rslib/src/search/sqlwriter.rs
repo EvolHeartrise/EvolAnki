@@ -939,7 +939,6 @@ impl SqlWriter<'_> {
             self.col.get_config_bool(BoolKey::IgnoreAccentsInSearch),
         )
     }
-
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
