@@ -8,10 +8,14 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { getCurrentDeck, setCurrentDeck } from "@generated/backend";
     import * as tr from "@generated/ftl";
 
+    import { pendingNotice } from "./review/lib";
     import DeckNode from "./DeckNode.svelte";
     import type { PageData } from "./$types";
 
     export let data: PageData;
+
+    const notice = pendingNotice.text;
+    pendingNotice.text = "";
 
     /** Like Qt, leave out the default deck when it's empty and others exist. */
     function shown(root: DeckTreeNode): DeckTreeNode[] {
@@ -36,6 +40,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 </script>
 
 <main class="decks">
+    {#if notice}
+        <p class="notice" role="status">{notice}</p>
+    {/if}
     <table>
         <thead>
             <tr>
@@ -63,6 +70,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         padding-left: max(1em, env(safe-area-inset-left));
         padding-right: max(1em, env(safe-area-inset-right));
         padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .notice {
+        color: var(--fg-subtle);
     }
 
     @media (pointer: coarse) {

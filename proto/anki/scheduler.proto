@@ -23,7 +23,6 @@ service SchedulerService {
   rpc UpdateStats(UpdateStatsRequest) returns (generic.Empty);
   rpc ExtendLimits(ExtendLimitsRequest) returns (generic.Empty);
   rpc CountsForDeckToday(decks.DeckId) returns (CountsForDeckTodayResponse);
-  rpc CongratsInfo(generic.Empty) returns (CongratsInfoResponse);
   rpc UnsuspendCards(cards.CardIds) returns (collection.OpChanges);
   rpc SuspendCards(SuspendCardsRequest) returns (collection.OpChangesWithCount);
   rpc EmptyFilteredDeck(decks.DeckId) returns (collection.OpChanges);
@@ -176,16 +175,6 @@ message ExtendLimitsRequest {
 message CountsForDeckTodayResponse {
   int32 new = 1;
   int32 review = 2;
-}
-
-message CongratsInfoResponse {
-  uint32 learn_remaining = 1;
-  uint32 secs_until_next_learn = 2;
-  bool review_remaining = 3;
-  bool new_remaining = 4;
-  bool is_filtered_deck = 7;
-  reserved 8;  // bridge_commands_supported, for Qt
-  string deck_description = 9;
 }
 
 message SuspendCardsRequest {

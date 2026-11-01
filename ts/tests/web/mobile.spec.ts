@@ -139,7 +139,7 @@ for (
                 expect(box!.y + box!.height).toBeGreaterThan(viewport.height - 60);
             }
             await rating.tap();
-            await expect(page).toHaveURL(/\/review$|\/overview\/\d+$/);
+            await expect(page).toHaveURL(/\/review$|\/$/);
 
             await page.goto(`${server.url}/deck-options/1`);
             await page.locator(".setting-title", { hasText: "New cards/day" }).first().waitFor();

@@ -217,6 +217,9 @@ Safari 18.4. A file that can't play is skipped.
   in a template is empty.
 - There are no leeches. However many lapses a card has, it isn't tagged or suspended, and
   the simulator doesn't model that. A `leech` tag is just a tag.
+- There's no congratulations page. When a deck runs out, the reviewer returns to the deck
+  list, showing it with nothing left. Its overview page shows zero counts and no Study Now,
+  and doesn't say when the next learning card is due, or that a daily limit was reached.
 - No pages for: adding or editing cards, the browser, changing a notetype, importing,
   making filtered decks, custom study, or managing decks and tags. Agents do those with
   [`evolanki-admin`](admin-cli.md). They aren't reachable over HTTP.

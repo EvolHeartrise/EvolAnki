@@ -34,9 +34,7 @@ pub use schema11::DeckSchema11;
 use crate::deckconfig::DeckConfig;
 use crate::define_newtype;
 use crate::error::FilteredDeckError;
-use crate::markdown::render_markdown;
 use crate::prelude::*;
-use crate::text::sanitize_html_no_images;
 
 define_newtype!(DeckId, i64);
 
@@ -138,21 +136,6 @@ impl Deck {
     pub(crate) fn set_modified(&mut self, usn: Usn) {
         self.mtime_secs = TimestampSecs::now();
         self.usn = usn;
-    }
-
-    pub fn rendered_description(&self) -> String {
-        if let DeckKind::Normal(normal) = &self.kind {
-            if normal.markdown_description {
-                let description = render_markdown(&normal.description);
-                // before allowing images, we'll need to handle relative image
-                // links on the various platforms
-                sanitize_html_no_images(&description)
-            } else {
-                String::new()
-            }
-        } else {
-            String::new()
-        }
     }
 }
 

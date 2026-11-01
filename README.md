@@ -31,6 +31,7 @@ upstream, as of November 2026, EvolAnki:
 - removed card flags
 - removed leeches
 - removed the card info page and its forgetting curve
+- removed the congratulations page
 - removed burying: cards of one note are shown on the same day
 - removed translations other than English, and upstream's manual
 - no longer runs JavaScript in cards

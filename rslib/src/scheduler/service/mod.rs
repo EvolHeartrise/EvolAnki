@@ -76,10 +76,6 @@ impl crate::services::SchedulerService for Collection {
         self.counts_for_deck_today(input.did.into())
     }
 
-    fn congrats_info(&mut self) -> Result<scheduler::CongratsInfoResponse> {
-        self.congrats_info()
-    }
-
     fn unsuspend_cards(
         &mut self,
         input: anki_proto::cards::CardIds,
@@ -1218,60 +1214,6 @@ mod tests {
             SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
                 .unwrap();
         assert_eq!(after.new, 1, "studying a new card increments the new count");
-    }
-
-    #[test]
-    fn congrats_info_reports_nothing_remaining_for_empty_collection() {
-        let mut col = Collection::new();
-
-        let info = SchedulerService::congrats_info(&mut col).unwrap();
-
-        // An empty default deck has no work left and is not a filtered deck.
-        assert!(!info.new_remaining);
-        assert!(!info.review_remaining);
-        assert_eq!(info.learn_remaining, 0);
-        assert!(!info.is_filtered_deck);
-    }
-
-    #[test]
-    fn congrats_info_shows_new_remaining_when_new_cards_exist() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-
-        let info = SchedulerService::congrats_info(&mut col).unwrap();
-
-        assert!(
-            info.new_remaining,
-            "new card should be reported as remaining"
-        );
-        assert!(!info.review_remaining);
-        assert_eq!(info.learn_remaining, 0);
-    }
-
-    #[test]
-    fn congrats_info_shows_review_remaining_when_review_card_is_due_today() {
-        let mut col = Collection::new();
-        let cid = add_basic_card(&mut col);
-
-        // days="0" schedules the card as a review card due today (offset 0 from
-        // the collection's days_elapsed, which is 0 for a fresh collection).
-        let _ = SchedulerService::set_due_date(
-            &mut col,
-            anki_proto::scheduler::SetDueDateRequest {
-                card_ids: vec![cid.0],
-                days: "0".to_string(),
-                config_key: None,
-            },
-        )
-        .unwrap();
-
-        let info = SchedulerService::congrats_info(&mut col).unwrap();
-
-        assert!(
-            info.review_remaining,
-            "review card due today should be reported"
-        );
-        assert!(!info.new_remaining, "card is no longer in the new queue");
     }
 
     #[test]

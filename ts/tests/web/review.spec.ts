@@ -245,10 +245,31 @@ test("a deck can be studied to the end, and the database reflects it", async ({ 
     await page.getByRole("button", { name: "Show Answer" }).click();
     await page.locator("button[data-rating='4']").click();
 
+    // finishing goes to the deck list, where the deck has nothing left
+    await expect(page).toHaveURL(new RegExp(`^${server.url}/$`));
+    const row = page.locator("main.decks tbody tr").first();
+    await expect(row).toBeVisible();
+    await expect(row.locator("td").nth(1)).toHaveText("0");
+    await expect(row.locator("td").nth(2)).toHaveText("0");
+    await expect(row.locator("td").nth(3)).toHaveText("0");
+    expect(problems).toEqual([]);
+
+    // going back doesn't return to the empty reviewer
+    await page.goBack();
     await expect(page).toHaveURL(/\/overview\/\d+$/);
-    await expect(page.locator(".congrats h1")).toBeVisible();
-    // the way back replaces the links that Qt handled
-    await expect(page.getByRole("link", { name: "Decks" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Study Now" })).toHaveCount(0);
+    await expect(page.locator(".finished")).toBeVisible();
+    await expect(page.locator(".new-count")).toHaveText("0");
+
+    // opening the finished deck stays on its overview, and the reviewer sends you on
+    await page.getByRole("main").getByRole("link", { name: "Decks" }).click();
+    await row.locator(".name a").click();
+    await expect(page).toHaveURL(/\/overview\/\d+$/);
+    await expect(page.locator(".finished")).toBeVisible();
+    await page.waitForTimeout(300);
+    await expect(page).toHaveURL(/\/overview\/\d+$/);
+    await page.goto(`${server.url}/review`);
+    await expect(page).toHaveURL(new RegExp(`^${server.url}/$`));
     expect(problems).toEqual([]);
 
     const revlog = await query<
@@ -696,17 +717,14 @@ test("a deck description can't run scripts", async ({ page }) => {
     const sandbox = await page.locator(".description iframe").getAttribute("sandbox");
     expect(sandbox).toBe("allow-scripts");
 
-    // The congratulations screen shows it too, as does /congrats.
+    // A deck with nothing left shows it too.
     await openDeck(page, "Done");
-    await expect(page.locator(".congrats h1")).toBeVisible();
-    for (const url of [page.url(), `${server.url}/congrats`]) {
-        await page.goto(url);
-        const description = page.frameLocator(".congrats iframe");
-        await expect(description.locator("strong")).toHaveText("kept");
-        await page.waitForTimeout(200);
-        expect(await page.evaluate(() => "hacked" in window)).toBe(false);
-        await expect(page.locator(".congrats .description img")).toHaveCount(0);
-    }
+    await expect(page.locator(".finished")).toBeVisible();
+    const description = page.frameLocator(".description iframe");
+    await expect(description.locator("strong")).toHaveText("kept");
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => "hacked" in window)).toBe(false);
+    await expect(page.locator(".description img")).toHaveCount(0);
     expect(problems).toEqual([]);
 });
 

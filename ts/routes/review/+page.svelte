@@ -281,8 +281,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             await refreshUndo();
             current = queued.cards[0] ?? null;
             if (!current) {
+                // Replacing this page, as going back to it would only come straight back.
                 pendingNotice.text = notice;
-                await goto(`/overview/${data.deckId}`);
+                await goto("/", { replaceState: true });
                 return;
             }
             navigations = 0;

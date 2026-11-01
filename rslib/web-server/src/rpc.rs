@@ -50,7 +50,6 @@ pub const ALLOWED: &[&str] = &[
     "getQueuedCards",
     "answerCard",
     "describeNextStates",
-    "congratsInfo",
     "studiedToday",
     // SchedulerService: FSRS tools on the deck options page
     "computeFsrsParams",

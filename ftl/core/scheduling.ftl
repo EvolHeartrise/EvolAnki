@@ -46,43 +46,6 @@ scheduling-time-span-years =
        *[other] { $amount } years
     }
 
-## Shown in the "Congratulations!" message after study finishes.
-
-# eg "The next learning card will be ready in 5 minutes."
-scheduling-next-learn-due =
-    The next learning card will be ready in { $unit ->
-        [seconds]
-            { $amount ->
-                [one] { $amount } second
-               *[other] { $amount } seconds
-            }
-        [minutes]
-            { $amount ->
-                [one] { $amount } minute
-               *[other] { $amount } minutes
-            }
-       *[hours]
-            { $amount ->
-                [one] { $amount } hour
-               *[other] { $amount } hours
-            }
-    }.
-scheduling-learn-remaining =
-    { $remaining ->
-        [one] There is one remaining learning card due later today.
-       *[other] There are { $remaining } learning cards due later today.
-    }
-scheduling-congratulations-finished = Congratulations! You have finished this deck for now.
-scheduling-today-review-limit-reached =
-    Today's review limit has been reached, but there are still cards
-    waiting to be reviewed. For optimum memory, consider increasing
-    the daily limit in the options.
-scheduling-today-new-limit-reached =
-    There are more new cards available, but the daily limit has been
-    reached. You can increase the limit in the options, but please
-    bear in mind that the more new cards you introduce, the higher
-    your short-term review workload will become.
-
 ## Scheduler upgrade
 
 scheduling-update-more-info-button = Learn More

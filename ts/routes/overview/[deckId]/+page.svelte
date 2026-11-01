@@ -11,7 +11,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     import { pendingNotice } from "../../review/lib";
     import { unlockMedia } from "../../review/media";
-    import CongratsPage from "../../congrats/CongratsPage.svelte";
     import type { PageData } from "./$types";
 
     export let data: PageData;
@@ -47,32 +46,32 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         <p class="saved" role="status">{notice}</p>
     {/if}
 
+    <table class="counts">
+        <tbody>
+            <tr>
+                <td>{tr.actionsNew()}:</td>
+                <td class="new-count">{data.queued.newCount}</td>
+            </tr>
+            <tr>
+                <td>{tr.schedulingLearning()}:</td>
+                <td class="learn-count">{data.queued.learningCount}</td>
+            </tr>
+            <tr>
+                <td>{tr.studyingToReview()}:</td>
+                <td class="review-count">{data.queued.reviewCount}</td>
+            </tr>
+        </tbody>
+    </table>
     {#if finished}
-        <CongratsPage info={data.congrats} />
+        <p class="finished">Nothing left to study here for now.</p>
     {:else}
-        <table class="counts">
-            <tbody>
-                <tr>
-                    <td>{tr.actionsNew()}:</td>
-                    <td class="new-count">{data.queued.newCount}</td>
-                </tr>
-                <tr>
-                    <td>{tr.schedulingLearning()}:</td>
-                    <td class="learn-count">{data.queued.learningCount}</td>
-                </tr>
-                <tr>
-                    <td>{tr.studyingToReview()}:</td>
-                    <td class="review-count">{data.queued.reviewCount}</td>
-                </tr>
-            </tbody>
-        </table>
         <!-- svelte-ignore a11y-autofocus -->
         <button class="btn btn-primary study" autofocus on:click={study}>
             {tr.studyingStudyNow()}
         </button>
-        {#if data.description}
-            <div class="description"><UntrustedHtml html={data.description} /></div>
-        {/if}
+    {/if}
+    {#if data.description}
+        <div class="description"><UntrustedHtml html={data.description} /></div>
     {/if}
 
     <nav data-sveltekit-reload>
@@ -102,7 +101,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         overflow-wrap: anywhere;
     }
 
-    .saved {
+    .saved,
+    .finished {
         color: var(--fg-subtle);
     }
 

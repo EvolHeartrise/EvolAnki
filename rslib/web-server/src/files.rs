@@ -37,18 +37,12 @@ const UNTRUSTED_MEDIA_CSP: &str = "default-src 'none'; script-src 'none'; connec
 const TRUSTED_PAGE_CSP: &str = "frame-ancestors 'none'";
 
 /// Top-level paths handled by the single-page app; see get_sveltekit_route().
-const SVELTEKIT_ROUTES: &[&str] = &[
-    "graphs",
-    "congrats",
-    "deck-options",
-    "overview",
-    "review",
-];
+const SVELTEKIT_ROUTES: &[&str] = &["graphs", "deck-options", "overview", "review"];
 
 /// These embed untrusted content in the frames from frame.rs, and have no
 /// scripts of their own to allow for. "" is the deck list. Limiting frame-src
 /// also stops a card from navigating its frame to another site.
-const FRAMING_SVELTEKIT_ROUTES: &[&str] = &["", "overview", "review", "congrats"];
+const FRAMING_SVELTEKIT_ROUTES: &[&str] = &["", "overview", "review"];
 
 /// Runs before the page first paints, and before its load event. Without it the
 /// theme is only known once the page's modules have loaded and started, which

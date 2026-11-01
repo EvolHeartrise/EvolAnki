@@ -10,7 +10,6 @@ use std::fmt;
 use std::result;
 
 use anki_proto::stats::CardEntry;
-use rusqlite::named_params;
 use rusqlite::params;
 use rusqlite::types::FromSql;
 use rusqlite::types::FromSqlError;
@@ -27,12 +26,10 @@ use crate::card::CardQueue;
 use crate::card::CardType;
 use crate::deckconfig::DeckConfigId;
 use crate::deckconfig::ReviewCardOrder;
-use crate::decks::Deck;
 use crate::decks::DeckId;
 use crate::decks::DeckKind;
 use crate::error::Result;
 use crate::notes::NoteId;
-use crate::scheduler::congrats::CongratsInfo;
 use crate::scheduler::fsrs::memory_state::get_last_revlog_info;
 use crate::scheduler::queue::DueCard;
 use crate::scheduler::queue::DueCardKind;
@@ -619,33 +616,6 @@ impl super::SqliteStorage {
                 Ok((DeckId(row.get(0)?), row.get(1)?, row.get(2)?))
             })?
             .collect()
-    }
-
-    pub(crate) fn congrats_info(&self, current: &Deck, today: u32) -> Result<CongratsInfo> {
-        // NOTE: this line is obsolete in v3 as it's run on queue build, but kept to
-        // prevent errors for v1/v2 users before they upgrade
-        self.update_active_decks(current)?;
-        self.db
-            .prepare(include_str!("congrats.sql"))?
-            .query_and_then(
-                named_params! {
-                    ":review_queue": CardQueue::Review as i8,
-                    ":day_learn_queue": CardQueue::DayLearn as i8,
-                    ":new_queue": CardQueue::New as i8,
-                    ":learn_queue": CardQueue::Learn as i8,
-                    ":today": today,
-                },
-                |row| {
-                    Ok(CongratsInfo {
-                        review_remaining: row.get::<_, u32>(0)? > 0,
-                        new_remaining: row.get::<_, u32>(1)? > 0,
-                        learn_count: row.get(2)?,
-                        next_learn_due: row.get(3)?,
-                    })
-                },
-            )?
-            .next()
-            .unwrap()
     }
 
     pub(crate) fn all_cards_at_or_above_position(&self, start: u32) -> Result<Vec<Card>> {

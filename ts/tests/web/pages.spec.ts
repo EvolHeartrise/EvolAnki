@@ -51,11 +51,9 @@ function newCardsInput(page: Page) {
     return page.locator(".row", { has: title }).locator("input").first();
 }
 
-test("the favicon and congrats page are served", async ({ page }) => {
+test("the favicon is served", async ({ page }) => {
     const response = await page.goto(`${server.url}/favicon.ico`);
     expect(response?.status()).toBe(200);
-    await page.goto(`${server.url}/congrats`);
-    await expect(page.locator("body")).toBeAttached();
 });
 
 test("FSRS controls are always shown, with no on/off toggle", async ({ page }) => {
@@ -158,14 +156,6 @@ test("graphs renders with data", async ({ page }) => {
     // 5 demo reviews were answered today
     await expect(page.getByText(/Studied \P{L}*5\P{L}* cards/u)).toBeVisible();
     await expect(page.locator("svg").first()).toBeVisible();
-    expect(problems).toEqual([]);
-});
-
-test("congrats renders without Qt-only links", async ({ page }) => {
-    const problems = failOnPageProblems(page);
-    await page.goto(`${server.url}/congrats`);
-    await expect(page.locator(".congrats h1")).toBeVisible();
-    await expect(page.locator(".congrats a[href^='javascript']")).toHaveCount(0);
     expect(problems).toEqual([]);
 });
 

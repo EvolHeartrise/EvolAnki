@@ -7,7 +7,6 @@ use crate::error::Result;
 use crate::prelude::*;
 
 pub mod answering;
-pub(crate) mod congrats;
 pub(crate) mod filtered;
 pub mod fsrs;
 pub mod new;
