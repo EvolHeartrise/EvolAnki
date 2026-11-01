@@ -18,10 +18,8 @@ use strum::IntoStaticStr;
 
 pub use self::bool::BoolKey;
 pub use self::deck::DeckConfigKey;
-pub use self::notetype::get_aux_notetype_config_key;
 pub use self::number::I32ConfigKey;
 pub use self::string::StringKey;
-use crate::import_export::package::UpdateCondition;
 use crate::prelude::*;
 
 /// Only used when updating/undoing.
@@ -69,7 +67,6 @@ pub(crate) enum ConfigKey {
     NextNewCardPosition,
     #[strum(to_string = "schedVer")]
     SchedulerVersion,
-    CustomColorPickerPalette,
 }
 
 #[derive(PartialEq, Eq, Serialize_repr, Deserialize_repr, Clone, Copy, Debug)]
@@ -233,24 +230,6 @@ impl Collection {
             .unwrap_or(1200)
     }
 
-    pub(crate) fn set_learn_ahead_secs(&mut self, secs: u32) -> Result<()> {
-        self.set_config(ConfigKey::LearnAheadSecs, &secs)
-            .map(|_| ())
-    }
-
-    pub(crate) fn get_new_review_mix(&self) -> NewReviewMix {
-        match self.get_config_default::<u8, _>(ConfigKey::NewReviewMix) {
-            1 => NewReviewMix::ReviewsFirst,
-            2 => NewReviewMix::NewFirst,
-            _ => NewReviewMix::Mix,
-        }
-    }
-
-    pub(crate) fn set_new_review_mix(&mut self, mix: NewReviewMix) -> Result<()> {
-        self.set_config(ConfigKey::NewReviewMix, &(mix as u8))
-            .map(|_| ())
-    }
-
     pub(crate) fn get_first_day_of_week(&self) -> Weekday {
         self.get_config_optional(ConfigKey::FirstDayOfWeek)
             .unwrap_or(Weekday::Sunday)
@@ -287,24 +266,6 @@ impl Collection {
         self.set_config(ConfigKey::Backups, &limits).map(|_| ())
     }
 
-    pub(crate) fn get_update_notes(&self) -> UpdateCondition {
-        self.get_config_optional(ConfigKey::UpdateNotes)
-            .unwrap_or_default()
-    }
-
-    pub(crate) fn get_update_notetypes(&self) -> UpdateCondition {
-        self.get_config_optional(ConfigKey::UpdateNotetypes)
-            .unwrap_or_default()
-    }
-}
-
-// 2021 scheduler moves this into deck config
-#[derive(Default)]
-pub(crate) enum NewReviewMix {
-    #[default]
-    Mix = 0,
-    ReviewsFirst = 1,
-    NewFirst = 2,
 }
 
 #[derive(PartialEq, Eq, Serialize_repr, Deserialize_repr, Clone, Copy)]

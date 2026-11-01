@@ -22,12 +22,6 @@ pub fn extract_av_tags<S: Into<String> + AsRef<str>>(
         .unwrap_or_else(|| (txt.into(), vec![]))
 }
 
-pub fn prettify_av_tags<S: Into<String> + AsRef<str>>(txt: S) -> String {
-    nodes_or_text_only(txt.as_ref())
-        .map(|nodes| nodes.write_with_pretty_av_tags())
-        .unwrap_or_else(|| txt.into())
-}
-
 /// Parse `txt` into [CardNodes] and return the result,
 /// or [None] if it only contains text nodes.
 fn nodes_or_text_only(txt: &str) -> Option<CardNodes<'_>> {
@@ -118,7 +112,6 @@ mod test {
             let input = format!("a{tag}b");
             assert_eq!(extract_av_tags(&input, true), ("ab".to_string(), vec![]));
             assert_eq!(strip_av_tags(input.as_str()), "ab");
-            assert_eq!(prettify_av_tags(input.as_str()), "ab");
         }
     }
 }

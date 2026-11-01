@@ -17,7 +17,6 @@ use std::sync::Mutex;
 use anki_i18n::I18n;
 use anki_io::create_dir_all;
 
-use crate::browser_table;
 use crate::decks::Deck;
 use crate::decks::DeckId;
 use crate::error::Result;
@@ -130,7 +129,6 @@ pub struct CollectionState {
     pub(crate) deck_cache: HashMap<DeckId, Arc<Deck>>,
     pub(crate) scheduler_info: Option<SchedulerInfo>,
     pub(crate) card_queues: Option<CardQueues>,
-    pub(crate) active_browser_columns: Option<Arc<Vec<browser_table::Column>>>,
     /// The modification time at the last backup, so we don't create multiple
     /// identical backups.
     pub(crate) last_backup_modified: Option<TimestampMillis>,

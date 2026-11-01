@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use strum::IntoEnumIterator;
 
 use super::DeckCommon;
 use super::FilteredDeck;
@@ -48,29 +47,3 @@ impl Deck {
     }
 }
 
-pub fn search_order_labels(tr: &I18n) -> Vec<String> {
-    FilteredSearchOrder::iter()
-        .map(|v| search_order_label(v, tr))
-        .collect()
-}
-
-fn search_order_label(order: FilteredSearchOrder, tr: &I18n) -> String {
-    match order {
-        FilteredSearchOrder::OldestReviewedFirst => tr.decks_oldest_seen_first(),
-        FilteredSearchOrder::Random => tr.decks_random(),
-        FilteredSearchOrder::IntervalsAscending => tr.decks_increasing_intervals(),
-        FilteredSearchOrder::IntervalsDescending => tr.decks_decreasing_intervals(),
-        FilteredSearchOrder::Lapses => tr.decks_most_lapses(),
-        FilteredSearchOrder::Added => tr.decks_order_added(),
-        FilteredSearchOrder::Due => tr.decks_order_due(),
-        FilteredSearchOrder::ReverseAdded => tr.decks_latest_added_first(),
-        FilteredSearchOrder::RetrievabilityAscending => {
-            tr.deck_config_sort_order_retrievability_ascending()
-        }
-        FilteredSearchOrder::RetrievabilityDescending => {
-            tr.deck_config_sort_order_retrievability_descending()
-        }
-        FilteredSearchOrder::RelativeOverdueness => tr.decks_relative_overdueness(),
-    }
-    .into()
-}

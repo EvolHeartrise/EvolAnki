@@ -15,8 +15,6 @@ use anki_proto::scheduler::GetOptimalRetentionParametersResponse;
 use anki_proto::scheduler::SimulateFsrsReviewRequest;
 use anki_proto::scheduler::SimulateFsrsReviewResponse;
 use anki_proto::scheduler::SimulateFsrsWorkloadResponse;
-use fsrs::FSRSItem;
-use fsrs::FSRSReview;
 
 use crate::backend::Backend;
 use crate::prelude::*;
@@ -308,23 +306,6 @@ impl crate::services::SchedulerService for Collection {
 }
 
 impl crate::services::BackendSchedulerService for Backend {
-}
-
-fn fsrs_item_proto_to_fsrs(item: anki_proto::scheduler::FsrsItem) -> FSRSItem {
-    FSRSItem {
-        reviews: item
-            .reviews
-            .into_iter()
-            .map(fsrs_review_proto_to_fsrs)
-            .collect(),
-    }
-}
-
-fn fsrs_review_proto_to_fsrs(review: anki_proto::scheduler::FsrsReview) -> FSRSReview {
-    FSRSReview {
-        delta_t: review.delta_t,
-        rating: review.rating,
-    }
 }
 
 impl From<crate::scheduler::timing::SchedTimingToday> for scheduler::SchedTimingTodayResponse {

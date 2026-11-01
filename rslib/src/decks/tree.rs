@@ -8,7 +8,6 @@ use std::ops::AddAssign;
 
 pub use anki_proto::decks::set_deck_collapsed_request::Scope as DeckCollapseScope;
 use anki_proto::decks::DeckTreeNode;
-use serde_tuple::Serialize_tuple;
 use unicase::UniCase;
 
 use super::limits::remaining_limits_map;
@@ -219,29 +218,6 @@ pub(crate) fn sum_deck_tree_node<T: AddAssign>(
     output
 }
 
-#[derive(Serialize_tuple)]
-pub(crate) struct LegacyDueCounts {
-    name: String,
-    deck_id: i64,
-    review: u32,
-    learn: u32,
-    new: u32,
-    children: Vec<LegacyDueCounts>,
-}
-
-impl From<DeckTreeNode> for LegacyDueCounts {
-    fn from(n: DeckTreeNode) -> Self {
-        LegacyDueCounts {
-            name: n.name,
-            deck_id: n.deck_id,
-            review: n.review_count,
-            learn: n.learn_count,
-            new: n.new_count,
-            children: n.children.into_iter().map(From::from).collect(),
-        }
-    }
-}
-
 impl Collection {
     /// Get the deck tree.
     /// If `timestamp` is provided, due counts for the provided timestamp will
@@ -309,10 +285,6 @@ impl Collection {
 }
 
 impl Collection {
-    pub(crate) fn legacy_deck_tree(&mut self) -> Result<LegacyDueCounts> {
-        let tree = self.deck_tree(Some(TimestampSecs::now()))?;
-        Ok(LegacyDueCounts::from(tree))
-    }
 
     pub(crate) fn add_missing_deck_names(&mut self, names: &[(DeckId, String)]) -> Result<usize> {
         let mut parents = HashSet::new();

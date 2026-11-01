@@ -5,7 +5,6 @@
 
 pub mod adding;
 pub mod backend;
-pub mod browser_table;
 pub mod card;
 pub mod card_rendering;
 pub mod cloze;
@@ -15,7 +14,6 @@ pub mod dbcheck;
 pub mod deckconfig;
 pub mod decks;
 pub mod error;
-pub mod findreplace;
 pub mod i18n;
 pub mod import_export;
 pub mod latex;
@@ -25,7 +23,6 @@ pub mod media;
 pub mod notes;
 pub mod notetype;
 pub mod ops;
-mod preferences;
 pub mod prelude;
 mod progress;
 pub mod revlog;

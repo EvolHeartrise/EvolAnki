@@ -22,11 +22,11 @@ use crate::error::AnkiError;
 use crate::error::FilteredDeckError;
 use crate::error::Result;
 use crate::notes::NoteId;
-use crate::ops::StateChanges;
 use crate::prelude::*;
 use crate::scheduler::fsrs::memory_state::UpdateMemoryStateEntry;
 use crate::scheduler::fsrs::memory_state::UpdateMemoryStateRequest;
 use crate::scheduler::fsrs::params::ignore_revlogs_before_ms_from_config;
+use crate::scheduler::timing::SchedTimingToday;
 use crate::search::Negated;
 use crate::timestamp::TimestampSecs;
 use crate::types::Usn;
@@ -110,6 +110,53 @@ pub struct FsrsMemoryState {
     /// A number in the range 1.0-10.0. Use difficulty() for a normalized
     /// number.
     pub difficulty: f32,
+}
+
+impl Card {
+    /// Returns true if the card can not be due as it's suspended.
+    fn is_undue_queue(&self) -> bool {
+        (self.queue as i8) < 0
+    }
+
+    /// Returns true if the card has a due date in terms of days.
+    fn is_due_in_days(&self) -> bool {
+        self.ctype != CardType::New && self.original_or_current_due() <= 365_000 // keep consistent with SQL
+            || matches!(self.queue, CardQueue::DayLearn | CardQueue::Review)
+            || (self.ctype == CardType::Review && self.is_undue_queue())
+    }
+
+    /// Returns the card's due date as a timestamp if it has one.
+    fn due_time(&self, timing: &SchedTimingToday) -> Option<TimestampSecs> {
+        if self.queue == CardQueue::Learn {
+            Some(TimestampSecs(self.original_or_current_due() as i64))
+        } else if self.is_due_in_days() {
+            Some(
+                TimestampSecs::now().adding_secs(
+                    (self.original_or_current_due() as i64 - timing.days_elapsed as i64)
+                        .saturating_mul(86400),
+                ),
+            )
+        } else {
+            None
+        }
+    }
+
+    /// If last_review_date isn't stored in the card, this uses card.due and
+    /// card.ivl to infer the elapsed time, which won't be accurate if
+    /// 'set due date' has changed the due date.
+    pub(crate) fn seconds_since_last_review(&self, timing: &SchedTimingToday) -> Option<u32> {
+        if let Some(last_review_time) = self.last_review_time {
+            Some(timing.now.elapsed_secs_since(last_review_time) as u32)
+        } else if self.is_due_in_days() {
+            self.due_time(timing).map(|due| {
+                (due.adding_secs(-86_400 * self.interval as i64)
+                    .elapsed_secs()) as u32
+            })
+        } else {
+            let last_review_time = TimestampSecs(self.original_or_current_due() as i64);
+            Some(timing.now.elapsed_secs_since(last_review_time) as u32)
+        }
+    }
 }
 
 impl FsrsMemoryState {
@@ -263,38 +310,6 @@ impl Card {
 }
 
 impl Collection {
-    pub(crate) fn update_cards_maybe_undoable(
-        &mut self,
-        cards: Vec<Card>,
-        undoable: bool,
-    ) -> Result<OpOutput<()>> {
-        if undoable {
-            self.transact(Op::UpdateCard, |col| {
-                for mut card in cards {
-                    let existing = col.storage.get_card(card.id)?.or_not_found(card.id)?;
-                    col.update_card_inner(&mut card, existing, col.usn()?)?
-                }
-                Ok(())
-            })
-        } else {
-            self.transact_no_undo(|col| {
-                for mut card in cards {
-                    let existing = col.storage.get_card(card.id)?.or_not_found(card.id)?;
-                    col.update_card_inner(&mut card, existing, col.usn()?)?;
-                }
-                Ok(OpOutput {
-                    output: (),
-                    changes: OpChanges {
-                        op: Op::UpdateCard,
-                        changes: StateChanges {
-                            card: true,
-                            ..Default::default()
-                        },
-                    },
-                })
-            })
-        }
-    }
 
     #[cfg(test)]
     pub(crate) fn get_and_update_card<F, T>(&mut self, cid: CardId, func: F) -> Result<Card>

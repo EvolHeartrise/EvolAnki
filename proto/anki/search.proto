@@ -99,14 +99,9 @@ message SearchResponse {
 }
 
 message SortOrder {
-  message Builtin {
-    string column = 1;
-    bool reverse = 2;
-  }
   oneof value {
     generic.Empty none = 1;
     string custom = 2;
-    Builtin builtin = 3;
   }
 }
 

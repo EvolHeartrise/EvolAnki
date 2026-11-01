@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::mem;
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -17,30 +16,6 @@ use crate::search::parser::SearchNode;
 use crate::search::parser::StateKind;
 use crate::search::parser::TemplateKind;
 use crate::text::escape_anki_wildcards;
-
-/// Given an existing parsed search, if the provided `replacement` is a single
-/// search node such as a deck:xxx search, replace any instances of that search
-/// in `existing` with the new value. Then return the possibly modified first
-/// search as a string.
-pub fn replace_search_node(mut existing: Vec<Node>, replacement: Node) -> String {
-    if let Node::Search(search_node) = replacement {
-        fn update_node_vec(old_nodes: &mut [Node], new_node: &SearchNode) {
-            fn update_node(old_node: &mut Node, new_node: &SearchNode) {
-                match old_node {
-                    Node::Not(n) => update_node(n, new_node),
-                    Node::Group(ns) => update_node_vec(ns, new_node),
-                    Node::Search(n) if mem::discriminant(n) == mem::discriminant(new_node) => {
-                        *n = new_node.clone();
-                    }
-                    _ => (),
-                }
-            }
-            old_nodes.iter_mut().for_each(|n| update_node(n, new_node));
-        }
-        update_node_vec(&mut existing, &search_node);
-    }
-    write_nodes(&existing)
-}
 
 pub(super) fn write_nodes(nodes: &[Node]) -> String {
     nodes.iter().map(write_node).collect()
@@ -204,8 +179,8 @@ pub(crate) fn normalize_search(input: &str) -> Result<String> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::error::Result;
-    use crate::search::parse_search as parse;
+    
+    
 
     #[test]
     fn normalizing() {
@@ -232,35 +207,4 @@ mod test {
         assert_eq!("prop:ease>1", normalize_search("prop:ease>1.0").unwrap());
     }
 
-    #[test]
-    fn replacing() -> Result<()> {
-        assert_eq!(
-            replace_search_node(parse("deck:baz bar")?, parse("deck:foo")?.pop().unwrap()),
-            "deck:foo bar",
-        );
-        assert_eq!(
-            replace_search_node(
-                parse("tag:foo Or tag:bar")?,
-                parse("tag:baz")?.pop().unwrap()
-            ),
-            "tag:baz OR tag:baz",
-        );
-        assert_eq!(
-            replace_search_node(
-                parse("foo or (-foo tag:baz)")?,
-                parse("bar")?.pop().unwrap()
-            ),
-            "bar OR (-bar tag:baz)",
-        );
-        assert_eq!(
-            replace_search_node(parse("is:due")?, parse("-is:new")?.pop().unwrap()),
-            "is:due"
-        );
-        assert_eq!(
-            replace_search_node(parse("added:1")?, parse("is:due")?.pop().unwrap()),
-            "added:1"
-        );
-
-        Ok(())
-    }
 }

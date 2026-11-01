@@ -17,7 +17,6 @@ pub use anki_proto::deck_config::deck_config::config::ReviewMix;
 pub use anki_proto::deck_config::deck_config::Config as DeckConfigInner;
 pub use ownership::settings_repair_needed;
 pub use schema11::DeckConfSchema11;
-pub use schema11::NewCardOrderSchema11;
 #[cfg(test)]
 pub(crate) use update::default_param_search;
 pub use update::UpdateDeckConfigsRequest;

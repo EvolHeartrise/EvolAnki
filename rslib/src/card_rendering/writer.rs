@@ -20,10 +20,6 @@ impl CardNodes<'_> {
         let mut extractor = AvExtractor::new(question_side);
         (extractor.write(self), extractor.tags)
     }
-
-    pub(super) fn write_with_pretty_av_tags(&self) -> String {
-        AvPrettifier::new().write(self)
-    }
 }
 
 trait Write {
@@ -114,20 +110,6 @@ impl Write for AvExtractor {
         self.tags.push(anki_proto::card_rendering::AvTag {
             sound: decode_entities(resource).into(),
         });
-    }
-}
-
-struct AvPrettifier;
-
-impl AvPrettifier {
-    fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Write for AvPrettifier {
-    fn write_sound(&mut self, buf: &mut String, resource: &str) {
-        write!(buf, "🔉{resource}🔉").unwrap();
     }
 }
 

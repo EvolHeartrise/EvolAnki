@@ -469,7 +469,9 @@ mod test {
             card.last_review_time = Some(now.adding_secs(t.0 as i64 * 86_400));
             cards.push(card);
         }
-        col.update_cards_maybe_undoable(cards, false)?;
+        for card in &cards {
+            col.storage.update_card(card)?;
+        }
         col.set_deck_review_order(&mut deck, ReviewCardOrder::RelativeOverdueness);
         assert_eq!(col.queue_as_due_and_ivl(deck.id), expected_queue);
 

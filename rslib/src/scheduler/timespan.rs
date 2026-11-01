@@ -31,28 +31,6 @@ pub fn answer_button_time_collapsible(seconds: u32, collapse_secs: u32, tr: &I18
     }
 }
 
-/// Describe the given seconds using the largest appropriate unit.
-/// If precise is true, show to two decimal places, eg
-/// eg 70 seconds -> "1.17 minutes"
-/// If false, seconds and days are shown without decimals.
-pub fn time_span(seconds: f32, tr: &I18n, precise: bool) -> String {
-    let span = Timespan::from_secs(seconds).natural_span();
-    let amount = if precise {
-        span.as_unit()
-    } else {
-        span.as_rounded_unit()
-    };
-    match span.unit() {
-        TimespanUnit::Seconds => tr.scheduling_time_span_seconds(amount),
-        TimespanUnit::Minutes => tr.scheduling_time_span_minutes(amount),
-        TimespanUnit::Hours => tr.scheduling_time_span_hours(amount),
-        TimespanUnit::Days => tr.scheduling_time_span_days(amount),
-        TimespanUnit::Months => tr.scheduling_time_span_months(amount),
-        TimespanUnit::Years => tr.scheduling_time_span_years(amount),
-    }
-    .into()
-}
-
 const SECOND: f32 = 1.0;
 const MINUTE: f32 = 60.0 * SECOND;
 const HOUR: f32 = 60.0 * MINUTE;
@@ -118,17 +96,6 @@ impl Timespan {
         }
     }
 
-    /// Round seconds and days to integers, otherwise
-    /// truncates to one decimal place.
-    pub fn as_rounded_unit(self) -> f32 {
-        match self.unit {
-            // seconds/minutes/days as integer
-            TimespanUnit::Seconds | TimespanUnit::Days => self.as_unit().round(),
-            // other values shown to 1 decimal place
-            _ => (self.as_unit() * 10.0).round() / 10.0,
-        }
-    }
-
     /// Round seconds, minutes and days to integers, otherwise
     /// truncates to one decimal place.
     pub fn as_rounded_unit_for_answer_buttons(self) -> f32 {
@@ -176,7 +143,6 @@ mod test {
     use anki_i18n::I18n;
 
     use crate::scheduler::timespan::answer_button_time;
-    use crate::scheduler::timespan::time_span;
     use crate::scheduler::timespan::MONTH;
 
     #[test]
@@ -187,18 +153,4 @@ mod test {
         assert_eq!(answer_button_time(1.1 * MONTH, &tr), "1.1mo");
     }
 
-    #[test]
-    fn time_spans() {
-        let tr = I18n::template_only();
-        assert_eq!(time_span(1.0, &tr, false), "1 second");
-        assert_eq!(time_span(30.3, &tr, false), "30 seconds");
-        assert_eq!(time_span(30.3, &tr, true), "30.3 seconds");
-        assert_eq!(time_span(90.0, &tr, false), "1.5 minutes");
-        assert_eq!(time_span(45.0 * 86_400.0, &tr, false), "1.5 months");
-        assert_eq!(time_span(364.0 * 86_400.0, &tr, false), "12 months");
-        assert_eq!(time_span(364.0 * 86_400.0, &tr, true), "11.97 months");
-        assert_eq!(time_span(365.0 * 86_400.0, &tr, false), "1 year");
-        assert_eq!(time_span(365.0 * 86_400.0, &tr, true), "1 year");
-        assert_eq!(time_span(365.0 * 86_400.0 * 1.5, &tr, false), "1.5 years");
-    }
 }

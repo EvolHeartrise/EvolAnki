@@ -79,12 +79,6 @@ impl Backend {
             .ok_or(AnkiError::CollectionAlreadyOpen)
     }
 
-    fn await_backup_completion(&self) -> Result<()> {
-        if let Some(task) = self.backup_task.lock().unwrap().take() {
-            task.join().unwrap()?;
-        }
-        Ok(())
-    }
 }
 
 #[cfg(test)]

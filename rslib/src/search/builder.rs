@@ -12,7 +12,6 @@ use super::SearchNode;
 use super::StateKind;
 use super::TemplateKind;
 use crate::prelude::*;
-use crate::storage::comma_separated_ids;
 use crate::text::escape_anki_wildcards_for_search_node;
 
 pub trait Negated {
@@ -23,15 +22,9 @@ pub trait JoinSearches {
     /// Concatenates two sets of [Node]s, inserting [Node::And], and grouping,
     /// if appropriate.
     fn and(self, other: impl Into<SearchBuilder>) -> SearchBuilder;
-    /// Concatenates two sets of [Node]s, inserting [Node::Or], and grouping, if
-    /// appropriate.
-    fn or(self, other: impl Into<SearchBuilder>) -> SearchBuilder;
     /// Concatenates two sets of [Node]s, inserting [Node::And] if appropriate,
     /// but without grouping either set.
     fn and_flat(self, other: impl Into<SearchBuilder>) -> SearchBuilder;
-    /// Concatenates two sets of [Node]s, inserting [Node::Or] if appropriate,
-    /// but without grouping either set.
-    fn or_flat(self, other: impl Into<SearchBuilder>) -> SearchBuilder;
 }
 
 impl<T: Into<Node>> Negated for T {
@@ -50,16 +43,8 @@ impl<T: Into<SearchBuilder>> JoinSearches for T {
         self.into().join_other(other.into(), Node::And, true)
     }
 
-    fn or(self, other: impl Into<SearchBuilder>) -> SearchBuilder {
-        self.into().join_other(other.into(), Node::Or, true)
-    }
-
     fn and_flat(self, other: impl Into<SearchBuilder>) -> SearchBuilder {
         self.into().join_other(other.into(), Node::And, false)
-    }
-
-    fn or_flat(self, other: impl Into<SearchBuilder>) -> SearchBuilder {
-        self.into().join_other(other.into(), Node::Or, false)
     }
 }
 
@@ -70,15 +55,6 @@ pub struct SearchBuilder(Vec<Node>);
 impl SearchBuilder {
     pub fn new() -> Self {
         Self(vec![])
-    }
-
-    /// Construct [SearchBuilder] with this [Node], or its inner [Node]s,
-    /// if it is a [Node::Group]
-    pub fn from_root(node: Node) -> Self {
-        match node {
-            Node::Group(nodes) => Self(nodes),
-            _ => Self(vec![node]),
-        }
     }
 
     /// Construct [SearchBuilder] where given [Node]s are joined by [Node::And].
@@ -121,11 +97,6 @@ impl SearchBuilder {
 
     pub fn write(&self) -> String {
         write_nodes(&self.0)
-    }
-
-    /// Construct [SearchBuilder] matching any given deck, excluding children.
-    pub fn from_decks(decks: &[DeckId]) -> Self {
-        SearchNode::DeckIdsWithoutChildren(comma_separated_ids(decks)).into()
     }
 
     /// Construct [SearchBuilder] matching learning, but not relearning cards.
@@ -249,37 +220,4 @@ mod test {
         )
     }
 
-    #[test]
-    fn joining() {
-        assert_eq!(
-            StateKind::Due
-                .or(StateKind::New)
-                .and(SearchBuilder::any((1..4).map(SearchNode::AddedInDays)))
-                .write(),
-            "(is:due OR is:new) (added:1 OR added:2 OR added:3)"
-        );
-        assert_eq!(
-            StateKind::Due
-                .or(StateKind::New)
-                .and_flat(SearchBuilder::any((1..4).map(SearchNode::AddedInDays)))
-                .write(),
-            "is:due OR is:new added:1 OR added:2 OR added:3"
-        );
-        assert_eq!(
-            StateKind::Due
-                .or(StateKind::New)
-                .or(StateKind::Learning)
-                .or(StateKind::Review)
-                .write(),
-            "((is:due OR is:new) OR is:learn) OR is:review"
-        );
-        assert_eq!(
-            StateKind::Due
-                .or_flat(StateKind::New)
-                .or_flat(StateKind::Learning)
-                .or_flat(StateKind::Review)
-                .write(),
-            "is:due OR is:new OR is:learn OR is:review"
-        );
-    }
 }

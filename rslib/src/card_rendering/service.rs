@@ -14,8 +14,6 @@ use crate::notetype::RenderCardOutput;
 use crate::template::RenderedNode;
 use crate::text::encode_iri_paths;
 use crate::text::sanitize_html_no_images;
-use crate::text::strip_html;
-use crate::text::strip_html_preserving_media_filenames;
 use crate::typeanswer::compare_answer;
 
 /// While the majority of these methods do not actually require a collection,
@@ -142,19 +140,6 @@ impl From<RenderCardOutput> for anki_proto::card_rendering::RenderCardResponse {
             is_empty: o.is_empty,
         }
     }
-}
-
-pub(crate) fn strip_html_proto(
-    input: anki_proto::card_rendering::StripHtmlRequest,
-) -> Result<generic::String> {
-    Ok(match input.mode() {
-        anki_proto::card_rendering::strip_html_request::Mode::Normal => strip_html(&input.text),
-        anki_proto::card_rendering::strip_html_request::Mode::PreserveMediaFilenames => {
-            strip_html_preserving_media_filenames(&input.text)
-        }
-    }
-    .to_string()
-    .into())
 }
 
 #[cfg(test)]

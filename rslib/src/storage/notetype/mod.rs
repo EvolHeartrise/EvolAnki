@@ -172,19 +172,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    /// A sorted list of all field names used by provided notes, for use with
-    /// the find&replace feature.
-    pub(crate) fn field_names_for_notes(&self, nids: &[NoteId]) -> Result<Vec<String>> {
-        let mut sql = include_str!("field_names_for_notes.sql").to_string();
-        sql.push(' ');
-        ids_to_string(&mut sql, nids);
-        sql += ") order by name";
-        self.db
-            .prepare(&sql)?
-            .query_and_then([], |r| r.get(0).map_err(Into::into))?
-            .collect()
-    }
-
     pub(crate) fn note_ids_by_notetype(
         &self,
         nids: &[NoteId],
@@ -401,10 +388,4 @@ impl SqliteStorage {
         Ok(())
     }
 
-    pub(crate) fn get_field_names(&self, notetype_id: NotetypeId) -> Result<Vec<String>> {
-        self.db
-            .prepare_cached("SELECT name FROM fields WHERE ntid = ? ORDER BY ord")?
-            .query_and_then([notetype_id], |row| Ok(row.get(0)?))?
-            .collect()
-    }
 }

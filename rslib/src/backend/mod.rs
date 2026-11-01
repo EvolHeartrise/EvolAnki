@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-mod adding;
 mod card_rendering;
 mod collection;
 mod config;
@@ -14,7 +13,6 @@ use std::ops::Deref;
 use std::result;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread::JoinHandle;
 
 use prost::Message;
 
@@ -40,7 +38,6 @@ pub struct BackendInner {
     pub(crate) tr: I18n,
     server: bool,
     progress_state: Arc<Mutex<ProgressState>>,
-    backup_task: Mutex<Option<JoinHandle<Result<()>>>>,
 }
 
 pub fn init_backend(init_msg: &[u8]) -> result::Result<Backend, String> {
@@ -65,7 +62,6 @@ impl Backend {
                 want_abort: false,
                 last_progress: None,
             })),
-            backup_task: Mutex::new(None),
         }))
     }
 

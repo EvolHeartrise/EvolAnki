@@ -1,15 +1,12 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-mod browser_table;
 mod search_node;
 
-use std::str::FromStr;
 
 use anki_proto::generic;
 use anki_proto::search::sort_order::Value as SortOrderProto;
 
-use crate::browser_table::Column;
 use crate::prelude::*;
 use crate::search::SortMode;
 
@@ -44,10 +41,6 @@ impl From<Option<SortOrderProto>> for SortMode {
         match order.unwrap_or(V::None(generic::Empty {})) {
             V::None(_) => SortMode::NoOrder,
             V::Custom(s) => SortMode::Custom(s),
-            V::Builtin(b) => SortMode::Builtin {
-                column: Column::from_str(&b.column).unwrap_or_default(),
-                reverse: b.reverse,
-            },
         }
     }
 }
@@ -57,8 +50,7 @@ mod tests {
     
     
 
-    use crate::browser_table::Column;
-    use crate::collection::Collection;
+        use crate::collection::Collection;
     
     use crate::search::service::SortOrderProto;
     use crate::search::SortMode;
@@ -241,22 +233,6 @@ mod tests {
             matches!(mode, SortMode::Custom(ref s) if s == "due desc"),
             "expected Custom(\"due desc\")"
         );
-    }
-
-    #[test]
-    fn sort_order_builtin_maps_column_and_reverse() {
-        use anki_proto::search::sort_order::Builtin;
-        let mode = SortMode::from(Some(SortOrderProto::Builtin(Builtin {
-            column: "noteFld".to_string(),
-            reverse: true,
-        })));
-        match mode {
-            SortMode::Builtin { column, reverse } => {
-                assert_eq!(column, Column::SortField);
-                assert!(reverse, "reverse flag should be true");
-            }
-            other => panic!("expected Builtin, got {other:?}"),
-        }
     }
 
 }

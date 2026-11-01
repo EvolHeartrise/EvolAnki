@@ -3,8 +3,6 @@
 
 use anki_i18n::I18n;
 use anki_proto::notetypes::notetype::config::Kind as NotetypeKind;
-use anki_proto::notetypes::stock_notetype::Kind;
-pub(crate) use anki_proto::notetypes::stock_notetype::Kind as StockKind;
 use anki_proto::notetypes::stock_notetype::OriginalStockKind;
 use anki_proto::notetypes::ClozeField;
 
@@ -12,7 +10,6 @@ use super::NotetypeConfig;
 use crate::config::ConfigEntry;
 use crate::config::ConfigKey;
 use crate::error::Result;
-use crate::invalid_input;
 use crate::notetype::Notetype;
 use crate::storage::SqliteStorage;
 use crate::timestamp::TimestampSecs;
@@ -71,27 +68,6 @@ pub(crate) fn empty_stock(
         },
         ..Default::default()
     }
-}
-
-pub(crate) fn get_stock_notetype(kind: StockKind, tr: &I18n) -> Notetype {
-    match kind {
-        Kind::Basic => basic(tr),
-        Kind::BasicAndReversed => basic_forward_reverse(tr),
-        Kind::BasicOptionalReversed => basic_optional_reverse(tr),
-        Kind::BasicTyping => basic_typing(tr),
-        Kind::Cloze => cloze(tr),
-    }
-}
-
-pub(crate) fn get_original_stock_notetype(kind: OriginalStockKind, tr: &I18n) -> Result<Notetype> {
-    Ok(match kind {
-        OriginalStockKind::Unknown => invalid_input!("original stock kind not provided"),
-        OriginalStockKind::Basic => basic(tr),
-        OriginalStockKind::BasicAndReversed => basic_forward_reverse(tr),
-        OriginalStockKind::BasicOptionalReversed => basic_optional_reverse(tr),
-        OriginalStockKind::BasicTyping => basic_typing(tr),
-        OriginalStockKind::Cloze => cloze(tr),
-    })
 }
 
 pub(crate) fn basic(tr: &I18n) -> Notetype {
@@ -208,8 +184,6 @@ mod test {
             stored.config.original_stock_kind(),
             OriginalStockKind::Unknown
         );
-        // an error, as for any notetype without a known stock kind
-        assert!(col.restore_notetype_to_stock(nt.id, None).is_err());
         col.remove_notetype(nt.id)?;
         Ok(())
     }

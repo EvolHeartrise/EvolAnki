@@ -392,13 +392,6 @@ pub(super) fn trash_folder(media_folder: &Path) -> Result<PathBuf> {
     }
 }
 
-pub struct AddedFile {
-    pub fname: String,
-    pub sha1: Sha1Hash,
-    pub mtime: i64,
-    pub renamed_from: Option<String>,
-}
-
 pub(crate) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<Vec<u8>>> {
     let mut file = match open_file(media_folder.join(fname)) {
         Err(e) if e.is_not_found() => return Ok(None),

@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::sync::LazyLock;
 
-use percent_encoding_iri::percent_decode_str;
 use percent_encoding_iri::utf8_percent_encode;
 use percent_encoding_iri::AsciiSet;
 use percent_encoding_iri::CONTROLS;
@@ -329,10 +328,6 @@ pub fn strip_html_preserving_media_filenames(html: &str) -> Cow<'_, str> {
         .map_cow(strip_html)
 }
 
-pub fn contains_media_tag(html: &str) -> bool {
-    HTML_MEDIA_TAGS.is_match(html)
-}
-
 #[allow(dead_code)]
 pub(crate) fn sanitize_html(html: &str) -> String {
     ammonia::clean(html)
@@ -524,13 +519,6 @@ const FRAGMENT_QUERY_UNION: &AsciiSet = &CONTROLS
 pub(crate) fn encode_iri_paths(unescaped_html: &str) -> Cow<'_, str> {
     transform_html_paths(unescaped_html, |fname| {
         utf8_percent_encode(fname, FRAGMENT_QUERY_UNION).into()
-    })
-}
-
-/// URI-decode escaped local paths in HTML fragment.
-pub(crate) fn decode_iri_paths(escaped_html: &str) -> Cow<'_, str> {
-    transform_html_paths(escaped_html, |fname| {
-        percent_decode_str(fname).decode_utf8_lossy()
     })
 }
 

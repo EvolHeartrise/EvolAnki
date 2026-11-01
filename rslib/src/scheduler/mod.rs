@@ -20,7 +20,6 @@ pub mod timing;
 mod upgrade;
 
 use chrono::FixedOffset;
-pub use reviews::parse_due_date_str;
 use timing::sched_timing_today;
 use timing::SchedTimingToday;
 
@@ -117,13 +116,6 @@ impl Collection {
         match self.scheduler_version() {
             SchedulerVersion::V1 => Err(AnkiError::SchedulerUpgradeRequired),
             SchedulerVersion::V2 => Ok(self.get_v2_rollover().unwrap_or(4)),
-        }
-    }
-
-    pub(crate) fn set_rollover_for_current_scheduler(&mut self, hour: u8) -> Result<()> {
-        match self.scheduler_version() {
-            SchedulerVersion::V1 => Err(AnkiError::SchedulerUpgradeRequired),
-            SchedulerVersion::V2 => self.set_v2_rollover(hour as u32),
         }
     }
 

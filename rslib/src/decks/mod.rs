@@ -25,7 +25,6 @@ pub use anki_proto::decks::deck::Common as DeckCommon;
 pub use anki_proto::decks::deck::Filtered as FilteredDeck;
 pub use anki_proto::decks::deck::KindContainer as DeckKindContainer;
 pub use anki_proto::decks::deck::Normal as NormalDeck;
-pub use anki_proto::decks::Deck as DeckProto;
 pub(crate) use counts::DueCounts;
 pub(crate) use name::immediate_parent_name;
 pub use name::NativeDeckName;
