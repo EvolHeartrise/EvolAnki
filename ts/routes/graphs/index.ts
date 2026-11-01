@@ -42,7 +42,6 @@ import ButtonsGraph from "./ButtonsGraph.svelte";
 import CalendarGraph from "./CalendarGraph.svelte";
 import CardCounts from "./CardCounts.svelte";
 import DifficultyGraph from "./DifficultyGraph.svelte";
-import EaseGraph from "./EaseGraph.svelte";
 import FutureDue from "./FutureDue.svelte";
 import { RevlogRange } from "./graph-helpers";
 import HourGraph from "./HourGraph.svelte";
@@ -61,7 +60,6 @@ export const graphComponents = {
     CardCounts,
     IntervalsGraph,
     StabilityGraph,
-    EaseGraph,
     DifficultyGraph,
     RetrievabilityGraph,
     HourGraph,

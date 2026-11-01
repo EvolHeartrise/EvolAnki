@@ -8,7 +8,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import CalendarGraph from "./CalendarGraph.svelte";
     import CardCounts from "./CardCounts.svelte";
     import DifficultyGraph from "./DifficultyGraph.svelte";
-    import EaseGraph from "./EaseGraph.svelte";
     import FutureDue from "./FutureDue.svelte";
     import GraphsPage from "./GraphsPage.svelte";
     import HourGraph from "./HourGraph.svelte";
@@ -28,7 +27,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         CardCounts,
         IntervalsGraph,
         StabilityGraph,
-        EaseGraph,
         DifficultyGraph,
         RetrievabilityGraph,
         TrueRetention,

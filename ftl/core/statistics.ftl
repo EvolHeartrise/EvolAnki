@@ -145,21 +145,13 @@ statistics-range-all-history = all history
 statistics-range-deck = deck
 statistics-range-collection = collection
 statistics-range-search = Search
-statistics-card-ease-title = Card Ease
 statistics-card-difficulty-title = Card Difficulty
 statistics-card-stability-title = Card Stability
 statistics-card-stability-subtitle = The delay at which retrievability falls to 90%.
 statistics-median-stability = Median stability
 statistics-card-retrievability-title = Card Retrievability
-statistics-card-ease-subtitle = The lower the ease, the more frequently a card will appear.
 statistics-card-difficulty-subtitle2 = The higher the difficulty, the slower stability will increase.
 statistics-retrievability-subtitle = The probability of recalling a card today.
-# eg "3 cards with 150-170% ease"
-statistics-card-ease-tooltip =
-    { $cards ->
-        [one] { $cards } card with { $percent } ease
-       *[other] { $cards } cards with { $percent } ease
-    }
 statistics-card-difficulty-tooltip =
     { $cards ->
         [one] { $cards } card with { $percent } difficulty
@@ -289,7 +281,6 @@ statistics-cards-per-day =
         [one] { $count } card/day
        *[other] { $count } cards/day
     }
-statistics-median-ease = Median ease
 statistics-median-difficulty = Median difficulty
 statistics-average-retrievability = Average retrievability
 statistics-estimated-total-knowledge = Estimated total knowledge

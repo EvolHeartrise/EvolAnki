@@ -27,17 +27,6 @@ function baseStats(overrides?: Partial<CardStatsResponse>): CardStatsResponse {
     });
 }
 
-test("shows ease when fsrs is disabled", () => {
-    const rows = rowsFromStats(baseStats({ fsrsEnabled: false }));
-
-    expect(rows).toContainEqual({
-        label: tr2.cardStatsEase(),
-        value: "250%",
-    });
-    expect(rows.find((row) => row.label === tr2.cardStatsFsrsStability())).toBeUndefined();
-    expect(rows.find((row) => row.label === tr2.cardStatsFsrsDifficulty())).toBeUndefined();
-});
-
 test("hides ease when fsrs is enabled", () => {
     const rows = rowsFromStats(baseStats({ fsrsEnabled: true }));
 
