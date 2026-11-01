@@ -3,10 +3,9 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, web-local]
   pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, labeled]
+    branches: [main, web-local]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,57 +13,40 @@ concurrency:
 
 env:
   N2_OUTPUT_PROGRESS: "1"
-  N2_OUTPUT_SUCCESS: "1"
 
 jobs:
-  check-linux:
+  check:
     runs-on: ubuntu-24.04
-    name: check (linux)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v4
 
-      - name: Restore cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 #v6.1.0
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ninja-build rsync
+
+      # Reads the version from rust-toolchain.toml.
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 #v1
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            ~/.cargo/bin
-            ~/.cargo/.crates.toml
-            ~/.cargo/.crates2.json
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-${{ runner.os }}-
+          components: clippy
+          cache: true
+          rustflags: "" # don't inject -D warnings; the build handles that
 
-      - name: Setup build environment
-        uses: ./.github/actions/setup-anki
-
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 #v4
-
-      - name: Install cargo-llvm-cov and cargo-nextest
-        uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 #v2.85.7
-        with:
-          tool: |
-            cargo-llvm-cov@0.8.4
-            cargo-nextest@0.9.99
-
-      - name: Symlink node_modules
-        run: ln -sf out/node_modules .
-
+      # check:format needs the nightly in cargo/format, which rustup installs by itself.
       - name: Check formatting
-        run: just fmt
+        run: ./ninja check:format
 
-      # These can't share a ninja invocation with the build, whose output
-      # check:svelte can break.
+      # Separately from the checks, as check:svelte can break a web build it overlaps.
       - name: Build
-        run: just build
+        run: ./ninja web
 
       - name: Lint
-        run: just lint
+        run: ./ninja check:clippy check:eslint check:svelte
 
       - name: Test
-        run: just test --coverage
+        run: ./ninja check:rust_test check:vitest
 
       - name: Browser tests
-        run: just test-e2e
+        run: |
+          CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
+          out/extracted/node/bin/yarn playwright install --with-deps chromium webkit
+          out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts

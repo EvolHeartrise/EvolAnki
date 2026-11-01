@@ -1,5 +1,3 @@
-set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
-
 # Show available commands
 default:
     @just --list
@@ -8,7 +6,7 @@ default:
 build:
     {{ ninja }} web
 
-# Build and serve a collection; with no path, a demo one (macOS/Linux)
+# Build and serve a collection; with no path, a demo one
 run *args:
     ./tools/run-web {{ args }}
 
@@ -44,7 +42,7 @@ test-ts coverage='' html='':
 [arg("ui", long="ui", value="--ui")]
 test-e2e ui='': _install-playwright-browsers
     {{ ninja }} web
-    {{ if os_family() == "windows" { "$env:CARGO_TARGET_DIR='out\\rust'; cargo" } else { "CARGO_TARGET_DIR=$PWD/out/rust cargo" } }} build -p evolanki-server
+    CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
     {{ playwright_env }} {{ yarn }} test:e2e {{ ui }}
 
 [private]
@@ -61,12 +59,12 @@ _test-ts:
 
 [private]
 _coverage-rust html='':
-    {{ if os_family() == "windows" { "tools\\coverage\\coverage-rust" } else { "tools/coverage/coverage-rust" } }} {{ html }}
+    tools/coverage/coverage-rust {{ html }}
 
 [private]
 _coverage-ts html='':
     {{ ninja }} node_modules ts:generated
-    {{ if os_family() == "windows" { "tools\\coverage\\coverage-ts" } else { "tools/coverage/coverage-ts" } }} {{ html }}
+    tools/coverage/coverage-ts {{ html }}
 
 [private]
 _install-playwright-browsers:
@@ -109,12 +107,10 @@ docs-rust:
 ci branch:
     gh workflow run ci.yml --ref {{ branch }}
 
-# Remove build outputs from out/ (pass keep-env to keep node_modules); macOS/Linux
+# Remove build outputs from out/ (pass keep-env to keep node_modules)
 clean *args:
     ./tools/clean {{ args }}
 
-# Helpers to get the right commands for the platform
-
-ninja := if os() == "windows" { "tools\\ninja" } else { "./ninja" }
-playwright_env := if os() == "windows" { "set PLAYWRIGHT_BROWSERS_PATH=out\\playwright-browsers&&" } else { "PLAYWRIGHT_BROWSERS_PATH=out/playwright-browsers" }
-yarn := if os() == "windows" { "out\\extracted\\node\\yarn.cmd" } else { "out/extracted/node/bin/yarn" }
+ninja := "./ninja"
+playwright_env := "PLAYWRIGHT_BROWSERS_PATH=out/playwright-browsers"
+yarn := "out/extracted/node/bin/yarn"
