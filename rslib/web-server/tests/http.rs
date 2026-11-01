@@ -77,7 +77,15 @@ impl Fixture {
     }
 
     fn start(&self) -> Server {
-        let mut child = self.command().args(["--create"]).spawn().unwrap();
+        self.start_with(&["--create"])
+    }
+
+    fn start_seeded(&self) -> Server {
+        self.start_with(&["--create", "--seed-demo"])
+    }
+
+    fn start_with(&self, args: &[&str]) -> Server {
+        let mut child = self.command().args(args).spawn().unwrap();
         let mut stdout = BufReader::new(child.stdout.take().unwrap());
         let mut line = String::new();
         stdout.read_line(&mut line).unwrap();
@@ -554,19 +562,7 @@ fn a_collection_can_only_be_served_once() {
 #[test]
 fn seed_demo_gives_cards_and_reviews() {
     let fixture = Fixture::new();
-    let mut child = fixture
-        .command()
-        .args(["--create", "--seed-demo"])
-        .spawn()
-        .unwrap();
-    let mut stdout = BufReader::new(child.stdout.take().unwrap());
-    let mut line = String::new();
-    stdout.read_line(&mut line).unwrap();
-    let server = Server {
-        port: line.trim().rsplit(':').next().unwrap().parse().unwrap(),
-        child,
-        stdout,
-    };
+    let server = fixture.start_seeded();
     let graphs: anki_proto::stats::GraphsResponse = server.rpc(
         "graphs",
         &anki_proto::stats::GraphsRequest {
@@ -575,5 +571,117 @@ fn seed_demo_gives_cards_and_reviews() {
         },
     );
     assert_eq!(graphs.today.unwrap().answer_count, 5);
+    server.stop();
+}
+
+/// Everything the next milestone's reviewer needs, in the order it'd use it.
+#[test]
+fn reviewer_rpcs_work() {
+    use anki_proto::card_rendering as render;
+    use anki_proto::cards::SetFlagRequest;
+    use anki_proto::collection::OpChangesAfterUndo;
+    use anki_proto::collection::OpChangesWithCount;
+    use anki_proto::collection::UndoStatus;
+    use anki_proto::decks::DeckTreeNode;
+    use anki_proto::decks::DeckTreeRequest;
+    use anki_proto::scheduler::bury_or_suspend_cards_request::Mode;
+    use anki_proto::scheduler::card_answer::Rating;
+    use anki_proto::scheduler::queued_cards::QueuedCard;
+    use anki_proto::scheduler::BuryOrSuspendCardsRequest;
+    use anki_proto::scheduler::CardAnswer;
+    use anki_proto::scheduler::GetQueuedCardsRequest;
+    use anki_proto::scheduler::QueuedCards;
+
+    let fixture = Fixture::new();
+    let server = fixture.start_seeded();
+
+    let tree: DeckTreeNode = server.rpc("deckTree", &DeckTreeRequest { now: 1 });
+    assert_eq!(tree.children[0].name, "Default");
+    let _: OpChanges = server.rpc("setCurrentDeck", &DeckId { did: 1 });
+
+    let next_card = || -> QueuedCard {
+        let queued: QueuedCards = server.rpc(
+            "getQueuedCards",
+            &GetQueuedCardsRequest {
+                fetch_limit: 1,
+                intraday_learning_only: false,
+            },
+        );
+        queued.cards.into_iter().next().unwrap()
+    };
+    let queued = next_card();
+    let card_id = queued.card.as_ref().unwrap().id;
+
+    let rendered: render::RenderCardResponse = server.rpc(
+        "renderExistingCard",
+        &render::RenderExistingCardRequest {
+            card_id,
+            browser: false,
+            partial_render: false,
+        },
+    );
+    assert!(format!("{:?}", rendered.question_nodes).contains("Question"));
+    let tags: render::ExtractAvTagsResponse = server.rpc(
+        "extractAvTags",
+        &render::ExtractAvTagsRequest {
+            text: "x[sound:a.mp3]".into(),
+            question_side: true,
+        },
+    );
+    assert_eq!(tags.av_tags.len(), 1);
+    let compared: generic::String = server.rpc(
+        "compareAnswer",
+        &render::CompareAnswerRequest {
+            expected: "abc".into(),
+            provided: "abd".into(),
+            combining: true,
+            ignore_case: false,
+        },
+    );
+    assert!(!compared.val.is_empty());
+
+    let states = queued.states.unwrap();
+    let described: generic::StringList = server.rpc("describeNextStates", &states);
+    assert_eq!(described.vals.len(), 4);
+    let leech: generic::Bool = server.rpc("stateIsLeech", states.good.as_ref().unwrap());
+    assert!(!leech.val);
+
+    let _: OpChanges = server.rpc(
+        "answerCard",
+        &CardAnswer {
+            card_id,
+            current_state: states.current,
+            new_state: states.good,
+            rating: Rating::Good as i32,
+            answered_at_millis: 1_700_000_000_000,
+            milliseconds_taken: 1000,
+        },
+    );
+    let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
+    assert!(!status.undo.is_empty());
+    let _: OpChangesAfterUndo = server.rpc("undo", &generic::Empty {});
+    let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
+    assert!(!status.redo.is_empty());
+    let _: OpChangesAfterUndo = server.rpc("redo", &generic::Empty {});
+    let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
+    assert!(status.redo.is_empty() && !status.undo.is_empty());
+
+    let other = next_card().card.unwrap().id;
+    let _: OpChangesWithCount = server.rpc(
+        "setFlag",
+        &SetFlagRequest {
+            card_ids: vec![other],
+            flag: 1,
+        },
+    );
+    let _: OpChangesWithCount = server.rpc(
+        "buryOrSuspendCards",
+        &BuryOrSuspendCardsRequest {
+            card_ids: vec![other],
+            note_ids: vec![],
+            mode: Mode::BuryUser as i32,
+        },
+    );
+    assert_ne!(next_card().card.unwrap().id, other);
     server.stop();
 }

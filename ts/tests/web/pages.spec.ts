@@ -76,6 +76,25 @@ test("deck options saves, and the change survives a restart", async ({ page }) =
     expect(problems).toEqual([]);
 });
 
+test("FSRS optimize runs with progress polling", async ({ page }) => {
+    const problems: string[] = [];
+    page.on("pageerror", (error) => problems.push(error.message));
+    const messages: string[] = [];
+    page.on("dialog", (dialog) => {
+        messages.push(dialog.message());
+        void dialog.accept();
+    });
+    await page.goto(`${server.url}/deck-options/1`);
+    const polled = page.waitForResponse((r) => r.url().endsWith("/_anki/latestProgress"));
+    const computed = page.waitForResponse((r) => r.url().endsWith("/_anki/computeFsrsParams"));
+    await page.getByRole("button", { name: "Optimize Current Preset" }).click();
+    expect((await computed).ok()).toBe(true);
+    expect((await polled).ok()).toBe(true);
+    // too few reviews to optimize, so it reports that its parameters are already best
+    await expect.poll(() => messages.length).toBe(1);
+    expect(problems).toEqual([]);
+});
+
 test("graphs renders with data", async ({ page }) => {
     const problems = failOnPageProblems(page);
     await page.goto(`${server.url}/graphs`);

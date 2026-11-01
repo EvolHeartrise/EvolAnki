@@ -57,10 +57,7 @@ pub async fn check_request(
     response
 }
 
-fn single_header<'a>(
-    headers: &'a HeaderMap,
-    name: header::HeaderName,
-) -> Result<Option<&'a str>, String> {
+fn single_header(headers: &HeaderMap, name: header::HeaderName) -> Result<Option<&str>, String> {
     let mut values = headers.get_all(&name).iter();
     let Some(value) = values.next() else {
         return Ok(None);
