@@ -244,11 +244,8 @@ impl From<DeckTreeNode> for LegacyDueCounts {
 
 impl Collection {
     /// Get the deck tree.
-    /// - If `timestamp` is provided, due counts for the provided timestamp will
-    ///   be populated.
-    /// - Buried cards from previous days will be unburied if necessary. Because
-    ///   this does not happen for future stamps, future due numbers may not be
-    ///   accurate.
+    /// If `timestamp` is provided, due counts for the provided timestamp will
+    /// be populated.
     pub fn deck_tree(&mut self, timestamp: Option<TimestampSecs>) -> Result<DeckTreeNode> {
         let names = self.storage.get_all_deck_names()?;
         let mut tree = deck_names_to_tree(names.into_iter());
@@ -261,11 +258,6 @@ impl Collection {
         }
 
         if let Some(timestamp) = timestamp {
-            // cards buried on previous days need to be unburied for the current
-            // day's counts to be accurate
-            let timing_today = self.timing_today()?;
-            self.unbury_if_day_rolled_over(timing_today)?;
-
             let timing_at_stamp = self.timing_for_timestamp(timestamp)?;
             let days_elapsed = timing_at_stamp.days_elapsed;
             let learn_cutoff = (timestamp.0 as u32) + self.learn_ahead_secs();

@@ -61,8 +61,6 @@ pub(crate) enum ConfigKey {
     CurrentDeckId,
     #[strum(to_string = "curModel")]
     CurrentNotetypeId,
-    #[strum(to_string = "lastUnburied")]
-    LastUnburiedDay,
     #[strum(to_string = "collapseTime")]
     LearnAheadSecs,
     #[strum(to_string = "newSpread")]
@@ -270,16 +268,6 @@ impl Collection {
 
     pub(crate) fn set_answer_time_limit_secs(&mut self, secs: u32) -> Result<()> {
         self.set_config(ConfigKey::AnswerTimeLimitSecs, &secs)
-            .map(|_| ())
-    }
-
-    pub(crate) fn get_last_unburied_day(&self) -> u32 {
-        self.get_config_optional(ConfigKey::LastUnburiedDay)
-            .unwrap_or_default()
-    }
-
-    pub(crate) fn set_last_unburied_day(&mut self, day: u32) -> Result<()> {
-        self.set_config(ConfigKey::LastUnburiedDay, &day)
             .map(|_| ())
     }
 

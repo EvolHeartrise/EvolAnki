@@ -311,17 +311,14 @@ impl Collection {
         })
     }
 
-    /// A card can be suspended or buried from elsewhere while it's on screen.
+    /// A card can be suspended from elsewhere while it's on screen.
     /// Its state is unchanged, so without this the answer would be taken, and
     /// quietly bring the card back.
     fn require_card_still_in_study(&mut self, card_id: CardId) -> Result<()> {
         let card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
         require!(
-            !matches!(
-                card.queue,
-                CardQueue::Suspended | CardQueue::SchedBuried | CardQueue::UserBuried
-            ),
-            "This card was suspended or buried while it was showing, so that answer wasn't recorded."
+            card.queue != CardQueue::Suspended,
+            "This card was suspended while it was showing, so that answer wasn't recorded."
         );
         Ok(())
     }

@@ -1,5 +1,4 @@
 studying-again = Again
-studying-bury = Bury
 studying-card-was-a-leech = Card was a leech.
 studying-delete-note = Delete Note
 studying-easy = Easy

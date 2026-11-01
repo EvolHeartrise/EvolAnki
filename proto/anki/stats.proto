@@ -151,12 +151,10 @@ message GraphsResponse {
       uint32 young = 4;
       uint32 mature = 5;
       uint32 suspended = 6;
-      uint32 buried = 7;
     }
-    // Buried/suspended cards are included in counts; suspended/buried counts
-    // are 0.
+    // Suspended cards are included in counts; the suspended count is 0.
     Counts including_inactive = 1;
-    // Buried/suspended cards are counted separately.
+    // Suspended cards are counted separately.
     Counts excluding_inactive = 2;
   }
   message TrueRetentionStats {

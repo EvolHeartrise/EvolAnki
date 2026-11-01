@@ -60,9 +60,7 @@ impl From<&Card> for QueueEntry {
             }
             CardQueue::New => MainQueueEntryKind::New,
             CardQueue::Review | CardQueue::DayLearn => MainQueueEntryKind::Review,
-            CardQueue::Suspended | CardQueue::SchedBuried | CardQueue::UserBuried => {
-                unreachable!()
-            }
+            CardQueue::Suspended => unreachable!(),
         };
         QueueEntry::Main(MainQueueEntry {
             id: card.id,

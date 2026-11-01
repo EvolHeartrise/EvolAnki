@@ -24,11 +24,8 @@ service SchedulerService {
   rpc ExtendLimits(ExtendLimitsRequest) returns (generic.Empty);
   rpc CountsForDeckToday(decks.DeckId) returns (CountsForDeckTodayResponse);
   rpc CongratsInfo(generic.Empty) returns (CongratsInfoResponse);
-  rpc RestoreBuriedAndSuspendedCards(cards.CardIds)
-      returns (collection.OpChanges);
-  rpc UnburyDeck(UnburyDeckRequest) returns (collection.OpChanges);
-  rpc BuryOrSuspendCards(BuryOrSuspendCardsRequest)
-      returns (collection.OpChangesWithCount);
+  rpc UnsuspendCards(cards.CardIds) returns (collection.OpChanges);
+  rpc SuspendCards(SuspendCardsRequest) returns (collection.OpChangesWithCount);
   rpc EmptyFilteredDeck(decks.DeckId) returns (collection.OpChanges);
   rpc RebuildFilteredDeck(decks.DeckId) returns (collection.OpChangesWithCount);
   rpc ScheduleCardsAsNew(ScheduleCardsAsNewRequest)
@@ -188,32 +185,14 @@ message CongratsInfoResponse {
   uint32 secs_until_next_learn = 2;
   bool review_remaining = 3;
   bool new_remaining = 4;
-  bool have_sched_buried = 5;
-  bool have_user_buried = 6;
   bool is_filtered_deck = 7;
   reserved 8;  // bridge_commands_supported, for Qt
   string deck_description = 9;
 }
 
-message UnburyDeckRequest {
-  enum Mode {
-    ALL = 0;
-    SCHED_ONLY = 1;
-    USER_ONLY = 2;
-  }
-  int64 deck_id = 1;
-  Mode mode = 2;
-}
-
-message BuryOrSuspendCardsRequest {
-  enum Mode {
-    SUSPEND = 0;
-    BURY_SCHED = 1;
-    BURY_USER = 2;
-  }
+message SuspendCardsRequest {
   repeated int64 card_ids = 1;
   repeated int64 note_ids = 2;
-  Mode mode = 3;
 }
 
 message ScheduleCardsAsNewRequest {

@@ -97,7 +97,7 @@ impl Card {
         self.original_deck_id != DeckId(0)
     }
 
-    /// Returns true if the card can not be due as it's buried or suspended.
+    /// Returns true if the card can not be due as it's suspended.
     fn is_undue_queue(&self) -> bool {
         (self.queue as i8) < 0
     }
@@ -552,7 +552,7 @@ impl RowContext {
     }
 
     /// Returns the due date of the next due card that is not in a filtered
-    /// deck, new, suspended or buried or the empty string if there is no
+    /// deck, new or suspended, or the empty string if there is no
     /// such card.
     fn note_due_str(&self) -> String {
         self.cards
@@ -674,7 +674,6 @@ impl RowContext {
                     } else {
                         match self.cards[0].queue {
                             CardQueue::Suspended => Color::Suspended,
-                            CardQueue::UserBuried | CardQueue::SchedBuried => Color::Buried,
                             _ => Color::Default,
                         }
                     }

@@ -15,6 +15,7 @@ use std::path::Path;
 use std::process::Command;
 
 use anki::backend::Backend;
+use anki::storage::QUEUE_ONCE_OPENED_SQL;
 use anki_proto::card_rendering::RenderCardResponse;
 use anki_proto::card_rendering::RenderExistingCardRequest;
 use anki_proto::cards::CardId;
@@ -418,7 +419,11 @@ fn validate_with_work_dir(
         "due", "ivl", "queue", "type", "reps", "lapses", "factor", "left", "odue", "odid", "flags",
         "did", "ord", "nid", "mod", "usn", "data",
     ];
-    let cards_before = rows_by_id(snapshot, card_sql)?;
+    // opening a collection returns buried cards to normal, which isn't a loss
+    let cards_before = rows_by_id(
+        snapshot,
+        &card_sql.replacen("queue", QUEUE_ONCE_OPENED_SQL, 1),
+    )?;
     let cards_after = rows_by_id(converted, card_sql)?;
     let card_result = compare(&cards_before, &cards_after, &card_columns);
     out.line(format!(
@@ -428,6 +433,13 @@ fn validate_with_work_dir(
     if !card_result.2.is_empty() || note_result.0 + note_result.1 + revlog_result.0 > 0 {
         problems.push("notes, cards or revlog differ".to_string());
     }
+    out.line(format!(
+        "Cards in queue -2 or -3 in the source, now normal: {}",
+        scalar(
+            snapshot,
+            "select count() from cards where queue in (-2, -3)"
+        )?
+    ));
     out.line("");
     let rows: Vec<Vec<String>> = {
         let mut statement = snapshot.prepare(
@@ -833,10 +845,11 @@ fn due_section(
                 &format!("select count() from cards where did = {did} and {clause}"),
             )
         };
-        let new = count("queue = 0".into())?;
-        let intraday = count(format!("queue = 1 and due < {cutoff}"))?;
-        let interday = count(format!("queue = 3 and due <= {today}"))?;
-        let review = count(format!("queue = 2 and due <= {today}"))?;
+        let queue = QUEUE_ONCE_OPENED_SQL;
+        let new = count(format!("{queue} = 0"))?;
+        let intraday = count(format!("{queue} = 1 and due < {cutoff}"))?;
+        let interday = count(format!("{queue} = 3 and due <= {today}"))?;
+        let review = count(format!("{queue} = 2 and due <= {today}"))?;
         let proto: Deck = call_typed(backend, "getDeck", &DeckId { did })?;
         let (new_stock, learn_stock, review_stock) = match proto.kind {
             Some(Kind::Normal(normal)) => {
@@ -1412,7 +1425,9 @@ fn settings_section(
 fn retrievability_section(out: &mut Out, backend: &Backend, snapshot: &Connection) -> Result<()> {
     out.head("How overdue this collection is");
     let ids: Vec<i64> = {
-        let mut statement = snapshot.prepare("select id from cards where queue = 2")?;
+        let mut statement = snapshot.prepare(&format!(
+            "select id from cards where {QUEUE_ONCE_OPENED_SQL} = 2"
+        ))?;
         let rows = statement.query_map([], |row| row.get(0))?;
         rows.collect::<rusqlite::Result<_>>()?
     };

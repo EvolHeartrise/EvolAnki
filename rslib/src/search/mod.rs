@@ -281,18 +281,6 @@ impl Collection {
         })
     }
 
-    pub(crate) fn for_each_card_in_search(
-        &mut self,
-        search: impl TryIntoSearch,
-        mut func: impl FnMut(&Collection, Card) -> Result<()>,
-    ) -> Result<()> {
-        let guard = self.search_cards_into_table(search, SortMode::NoOrder)?;
-        guard
-            .col
-            .storage
-            .for_each_card_in_search(|card| func(guard.col, card))
-    }
-
     /// Place the matched card ids into a temporary 'search_nids' table
     /// instead of returning them. Returns a guard with a collection reference
     /// and the number of added notes. When the guard is dropped, the temporary

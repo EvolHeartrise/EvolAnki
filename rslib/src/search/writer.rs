@@ -164,9 +164,6 @@ fn write_state(kind: &StateKind) -> String {
             Review => "review",
             Learning => "learn",
             Due => "due",
-            Buried => "buried",
-            UserBuried => "buried-manually",
-            SchedBuried => "buried-sibling",
             Suspended => "suspended",
         }
     )

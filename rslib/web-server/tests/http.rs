@@ -285,8 +285,7 @@ fn methods_off_the_allow_list_are_refused() {
         "addMediaFromPath",
         "getAbsoluteMediaPath",
         // removed from the pages, so nothing on the network should reach them
-        "buryOrSuspendCards",
-        "unburyDeck",
+        "suspendCards",
         "setFlag",
         "changeNotetype",
         "getChangeNotetypeInfo",

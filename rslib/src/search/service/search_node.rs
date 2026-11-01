@@ -142,7 +142,6 @@ impl From<anki_proto::search::search_node::CardState> for StateKind {
             anki_proto::search::search_node::CardState::Review => StateKind::Review,
             anki_proto::search::search_node::CardState::Due => StateKind::Due,
             anki_proto::search::search_node::CardState::Suspended => StateKind::Suspended,
-            anki_proto::search::search_node::CardState::Buried => StateKind::Buried,
         }
     }
 }
@@ -445,7 +444,6 @@ mod tests {
             (CardState::Review, StateKind::Review),
             (CardState::Due, StateKind::Due),
             (CardState::Suspended, StateKind::Suspended),
-            (CardState::Buried, StateKind::Buried),
         ];
         for (card_state, expected) in cases {
             let proto = ProtoSearchNode {

@@ -106,12 +106,17 @@ longer applies is left for `cards.empty`.
 
 You rarely need these. FSRS decides when cards are due, and the owner reviews.
 
-- `card.suspend` and `card.bury`, and their opposites. `card.unsuspend` and `card.unbury`
-  only change cards in that state, and say how many they changed.
+- `card.suspend` and `card.unsuspend`. `card.unsuspend` only changes suspended cards, and
+  says how many it changed.
 - `card.set-due`: `"days":"0"` is today, `"1-7"` a random day in that range, and `"3!"` also
   sets the interval to 3. It logs an entry in the card's history, as desktop Anki does.
-- A card suspended or buried while it's on the owner's screen refuses the answer they
+- A card suspended while it's on the owner's screen refuses the answer they
   then give: they see a notice and the next card. A note edit doesn't get in the way.
+
+There is no burying. All the cards of a note can come up on the same day, and nothing
+spaces them apart. Cards that were buried elsewhere become normal when a collection is
+opened, so also in `convert` and when importing: see
+[web-server.md](web-server.md#differences-from-desktop-anki).
 
 ## Decks, tags and note types
 

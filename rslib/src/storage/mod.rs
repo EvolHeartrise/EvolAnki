@@ -18,6 +18,19 @@ mod upgrades;
 
 use std::fmt::Write;
 
+/// What a card's queue is once the collection has been opened, as an SQL
+/// expression. Queues -2 and -3 held buried cards, which no longer exist.
+/// Other software can still leave cards there, and a card keeps what it needs
+/// in its other columns, so opening a collection returns them to normal. This
+/// has to agree with `Card::restore_queue_from_type()`.
+pub const QUEUE_ONCE_OPENED_SQL: &str = "CASE
+    WHEN queue NOT IN (-2, -3) THEN queue
+    WHEN type = 0 THEN 0
+    WHEN type = 2 THEN 2
+    WHEN due > 1000000000 THEN 1
+    ELSE 3
+  END";
+
 pub use sqlite::copy_database;
 pub use sqlite::verify_copied_collection;
 pub(crate) use sqlite::ProcessTextFlags;

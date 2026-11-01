@@ -121,7 +121,7 @@ impl Collection {
         fsrs: bool,
     ) -> Result<i32> {
         let search = format!(
-            "{} -is:suspended -is:buried -deck:filtered",
+            "{} -is:suspended -deck:filtered",
             if term.search.trim().is_empty() {
                 "".to_string()
             } else {

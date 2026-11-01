@@ -61,10 +61,8 @@ pub enum CardQueue {
     /// due is a unix timestamp.
     /// preview cards only placed here when failed.
     PreviewRepeat = 4,
-    /// cards are not due in these states
+    /// cards are not due in this state
     Suspended = -1,
-    SchedBuried = -2,
-    UserBuried = -3,
 }
 
 /// Which of the blue/red/green numbers this card maps to.
@@ -72,7 +70,7 @@ pub enum CardQueueNumber {
     New,
     Learning,
     Review,
-    /// Suspended/buried cards should not be included.
+    /// Suspended cards should not be included.
     Invalid,
 }
 
@@ -180,9 +178,7 @@ impl Card {
             CardQueue::New => CardQueueNumber::New,
             CardQueue::PreviewRepeat | CardQueue::Learn => CardQueueNumber::Learning,
             CardQueue::DayLearn | CardQueue::Review => CardQueueNumber::Review,
-            CardQueue::Suspended | CardQueue::SchedBuried | CardQueue::UserBuried => {
-                CardQueueNumber::Invalid
-            }
+            CardQueue::Suspended => CardQueueNumber::Invalid,
         }
     }
 

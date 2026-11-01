@@ -179,7 +179,6 @@ message DeckConfig {
     bool wait_for_audio = 44;
     bool skip_question_when_replaying_answer = 26;
 
-
     // for fsrs
     float desired_retention = 37;
     string ignore_revlogs_before_date = 46;

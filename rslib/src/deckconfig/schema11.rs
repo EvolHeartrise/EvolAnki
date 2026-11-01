@@ -87,7 +87,7 @@ pub struct DeckConfSchema11 {
     seconds_to_show_answer: f32,
     #[serde(default)]
     question_action: QuestionAction,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "default_on_invalid")]
     answer_action: AnswerAction,
     #[serde(default = "wait_for_audio_default")]
     wait_for_audio: bool,
@@ -114,11 +114,10 @@ pub enum QuestionAction {
 #[derive(Default)]
 pub enum AnswerAction {
     #[default]
-    BuryCard = 0,
+    ShowReminder = 0,
     AnswerAgain = 1,
     AnswerGood = 2,
     AnswerHard = 3,
-    ShowReminder = 4,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

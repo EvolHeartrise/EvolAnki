@@ -16,7 +16,7 @@ impl GraphsContext {
         let mut due_by_day: HashMap<i32, u32> = Default::default();
         let mut daily_load = 0.0;
         for c in &self.cards {
-            // matched on type because queue changes on burying or suspending a new card
+            // matched on type because queue changes on suspending a new card
             if c.ctype == CardType::New {
                 continue;
             }
@@ -33,10 +33,6 @@ impl GraphsContext {
 
             daily_load += 1.0 / c.interval.max(1) as f32;
 
-            // still want to filtered out buried cards that are due today
-            if due_day <= 0 && matches!(c.queue, CardQueue::UserBuried | CardQueue::SchedBuried) {
-                continue;
-            }
             have_backlog |= due_day < 0;
             *due_by_day.entry(due_day).or_default() += 1;
         }

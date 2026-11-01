@@ -142,9 +142,6 @@ pub enum StateKind {
     Review,
     Learning,
     Due,
-    Buried,
-    UserBuried,
-    SchedBuried,
     Suspended,
 }
 
@@ -642,9 +639,6 @@ fn parse_state(s: &str) -> ParseResult<'_, SearchNode> {
         "review" => Review,
         "learn" => Learning,
         "due" => Due,
-        "buried" => Buried,
-        "buried-manually" => UserBuried,
-        "buried-sibling" => SchedBuried,
         "suspended" => Suspended,
         _ => {
             return Err(parse_failure(
@@ -1145,6 +1139,12 @@ mod test {
             assert!(matches!(failkind(term), SearchErrorKind::Other { .. }));
         }
 
+        assert_err_kind(
+            "is:buried",
+            InvalidState {
+                provided: "buried".into(),
+            },
+        );
         assert_err_kind(
             "is:foo",
             InvalidState {

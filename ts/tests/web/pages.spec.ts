@@ -199,7 +199,7 @@ test("methods off the allow-list are refused", async ({ page }) => {
     expect(await statusOf("closeCollection")).toBe(404);
     expect(await statusOf("getAbsoluteMediaPath")).toBe(404);
     expect(await statusOf("openFilePicker")).toBe(404);
-    expect(await statusOf("buryOrSuspendCards")).toBe(404);
+    expect(await statusOf("suspendCards")).toBe(404);
     expect(await statusOf("setFlag")).toBe(404);
     expect(await statusOf("getGraphPreferences")).toBe(200);
 });

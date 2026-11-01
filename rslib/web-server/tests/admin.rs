@@ -161,6 +161,89 @@ impl Fixture {
     }
 }
 
+/// Cards can still arrive buried, in a profile from desktop Anki.
+#[test]
+fn buried_cards_become_normal_when_converted_or_opened() {
+    let fx = Fixture::new();
+    fs::create_dir_all(fx.media()).unwrap();
+    let db = rusqlite::Connection::open(fx.collection()).unwrap();
+    let id_of = |ctype: i64| -> i64 {
+        db.query_row(
+            "select id from cards where type = ? and queue >= 0 limit 1",
+            [ctype],
+            |row| row.get(0),
+        )
+        .unwrap()
+    };
+    let (new, review) = (id_of(0), id_of(2));
+    let bury = |id: i64, queue: i64| {
+        db.execute("update cards set queue = ? where id = ?", [queue, id])
+            .unwrap();
+    };
+    bury(new, -2);
+    bury(review, -3);
+    drop(db);
+
+    let out = tempfile::tempdir().unwrap();
+    let target = out.path().join("converted/col.anki2");
+    let report = out.path().join("report.md");
+    let run = |args: &[&std::ffi::OsStr]| -> Value {
+        let output = Command::new(sibling("evolanki-admin"))
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        serde_json::from_slice(&output.stdout).unwrap()
+    };
+    run(&[
+        "convert".as_ref(),
+        "--source".as_ref(),
+        fx.collection().as_ref(),
+        "--target".as_ref(),
+        target.as_ref(),
+    ]);
+    let queue_in = |path: &std::path::Path, id: i64| -> i64 {
+        let db = rusqlite::Connection::open(path).unwrap();
+        db.query_row("select queue from cards where id = ?", [id], |row| {
+            row.get(0)
+        })
+        .unwrap()
+    };
+    assert_eq!(queue_in(&target, new), 0);
+    assert_eq!(queue_in(&target, review), 2);
+    assert_eq!(
+        queue_in(&fx.collection(), new),
+        -2,
+        "the source is untouched"
+    );
+
+    // validate doesn't count that as cards having changed
+    let validated = run(&[
+        "validate".as_ref(),
+        "--target".as_ref(),
+        target.as_ref(),
+        "--report".as_ref(),
+        report.as_ref(),
+        "--work-dir".as_ref(),
+        out.path().as_ref(),
+    ]);
+    let problems = validated["result"]["problems"].as_array().unwrap();
+    assert!(
+        !problems
+            .iter()
+            .any(|p| p.as_str().unwrap().contains("differ")),
+        "{problems:?}"
+    );
+    assert!(fs::read_to_string(&report)
+        .unwrap()
+        .contains("Cards in queue -2 or -3 in the source, now normal: 2"));
+
+    // and an ordinary open does it too
+    assert_eq!(fx.queue_of(new), 0);
+    assert_eq!(fx.queue_of(review), 2);
+    assert_eq!(fx.ok("stats.summary", json!({}))["suspended"], 0);
+}
+
 struct Server {
     child: Child,
     port: u16,
@@ -324,21 +407,16 @@ fn exercise_every_command(fx: &Fixture) {
     }
     assert!(!fx.dir.path().join("evil.png").exists());
 
-    // suspend, bury, due
+    // suspend, due
     assert_eq!(fx.ok("card.suspend", json!({"ids":[card]}))["changed"], 1,);
-    assert_eq!(fx.queue_of(card), -1);
-    assert_eq!(
-        fx.ok("card.unbury", json!({"ids":[card]}))["changed"],
-        0,
-        "it isn't buried"
-    );
     assert_eq!(fx.queue_of(card), -1);
     assert_eq!(fx.ok("card.unsuspend", json!({"ids":[card]}))["changed"], 1);
     assert_eq!(fx.queue_of(card), 0);
-    fx.ok("card.bury", json!({"ids":[card]}));
-    assert_eq!(fx.queue_of(card), -3);
-    assert_eq!(fx.ok("card.unsuspend", json!({"ids":[card]}))["changed"], 0);
-    assert_eq!(fx.ok("card.unbury", json!({"ids":[card]}))["changed"], 1);
+    assert_eq!(
+        fx.ok("card.unsuspend", json!({"ids":[card]}))["changed"],
+        0,
+        "it isn't suspended"
+    );
     fx.ok("card.set-due", json!({"ids":[card],"days":"5"}));
     let shown = fx.ok("card.show", json!({"id":card,"render":false}));
     assert_eq!(shown["queue"], 2);

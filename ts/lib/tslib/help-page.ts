@@ -26,8 +26,7 @@ export const HelpPage = {
         leeches: "https://docs.ankiweb.net/manual/leeches",
         waiting: "https://docs.ankiweb.net/manual/leeches#waiting",
     },
-    Studying: {
-    },
+    Studying: {},
     PackageImporting: {
         root: "https://docs.ankiweb.net/manual/importing/packaged-decks",
         updating: "https://docs.ankiweb.net/manual/importing/packaged-decks#updating",

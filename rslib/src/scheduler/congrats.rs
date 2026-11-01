@@ -9,8 +9,6 @@ pub(crate) struct CongratsInfo {
     pub next_learn_due: u32,
     pub review_remaining: bool,
     pub new_remaining: bool,
-    pub have_sched_buried: bool,
-    pub have_user_buried: bool,
 }
 
 impl Collection {
@@ -31,8 +29,6 @@ impl Collection {
             learn_remaining: info.learn_count,
             review_remaining: info.review_remaining,
             new_remaining: info.new_remaining,
-            have_sched_buried: info.have_sched_buried,
-            have_user_buried: info.have_user_buried,
             is_filtered_deck,
             secs_until_next_learn,
             deck_description,
@@ -54,8 +50,6 @@ mod test {
                 learn_remaining: 0,
                 review_remaining: false,
                 new_remaining: false,
-                have_sched_buried: false,
-                have_user_buried: false,
                 is_filtered_deck: false,
                 secs_until_next_learn: 86_400,
                 deck_description: "".to_string()

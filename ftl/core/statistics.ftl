@@ -92,12 +92,11 @@ statistics-counts-new-cards = New
 statistics-counts-young-cards = Young
 statistics-counts-mature-cards = Mature
 statistics-counts-suspended-cards = Suspended
-statistics-counts-buried-cards = Buried
 statistics-counts-filtered-cards = Filtered
 statistics-counts-learning-cards = Learning
 statistics-counts-relearning-cards = Relearning
 statistics-counts-title = Card Counts
-statistics-counts-separate-suspended-buried-cards = Separate suspended/buried cards
+statistics-counts-separate-suspended-cards = Separate suspended cards
 
 ## Retention represents your actual retention from past reviews, in
 ## comparison to the "desired retention" setting of FSRS, which forecasts

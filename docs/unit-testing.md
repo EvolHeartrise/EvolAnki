@@ -125,7 +125,7 @@ newer tests in the codebase put the condition last:
 Real examples from the codebase:
 
 - Rust: `answer_easy_graduates_new_card_to_review_queue`,
-  `bury_leaves_suspended_card_untouched`,
+  `suspend_marks_card_as_suspended_and_removes_from_queue`,
   `add_or_update_notetype_preserves_usn_when_flag_is_set`
 
 Vitest names the behavior in the `test(...)` description string rather than in an

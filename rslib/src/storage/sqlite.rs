@@ -24,6 +24,7 @@ use super::upgrades::SCHEMA_MAX_VERSION;
 use super::upgrades::SCHEMA_MIN_VERSION;
 use super::upgrades::SCHEMA_STARTING_VERSION;
 use super::SchemaVersion;
+use super::QUEUE_ONCE_OPENED_SQL;
 use crate::cloze::strip_clozes;
 use crate::config::schema11::schema11_config_as_string;
 use crate::error::DbErrorKind;
@@ -541,6 +542,12 @@ impl SqliteStorage {
             storage.commit_trx()?;
         }
 
+        // Like the old day rollover, this leaves mod and usn alone.
+        storage.db.execute(
+            &format!("UPDATE cards SET queue = {QUEUE_ONCE_OPENED_SQL} WHERE queue IN (-2, -3)"),
+            [],
+        )?;
+
         Ok(storage)
     }
 
@@ -723,11 +730,98 @@ mod test {
     use crate::collection::CollectionBuilder;
     use crate::error::DbError;
     use crate::scheduler::answering::test::v3_test_collection;
+    use crate::search::SortMode;
     use crate::storage::card::ReviewOrderSubclause;
     use crate::tests::NoteAdder;
 
     fn test_tr() -> I18n {
         I18n::template_only()
+    }
+
+    #[test]
+    fn opening_returns_cards_in_old_queues_to_normal() {
+        let tempfile = new_tempfile().unwrap();
+        // (queue, type, due), and the queue expected after opening
+        let cases = [
+            ((-2, 0, 7), 0),
+            ((-3, 0, 7), 0),
+            ((-2, 1, 1_700_000_000), 1),
+            ((-3, 1, 7), 3),
+            ((-2, 2, 7), 2),
+            ((-3, 2, 7), 2),
+            ((-2, 3, 1_700_000_000), 1),
+            ((-3, 3, 7), 3),
+            // these aren't touched
+            ((-1, 2, 7), -1),
+            ((2, 2, 7), 2),
+        ];
+        let mut cids = vec![];
+        {
+            let mut col = CollectionBuilder::default()
+                .set_collection_path(tempfile.path())
+                .build()
+                .unwrap();
+            for ((queue, ctype, due), _) in cases {
+                let nt = col.get_notetype_by_name("Basic").unwrap().unwrap();
+                let mut note = nt.new_note();
+                note.set_field(0, "front").unwrap();
+                col.add_note(&mut note, DeckId(1)).unwrap();
+                let cid: CardId = col
+                    .storage
+                    .db
+                    .query_row("select id from cards where nid = ?", [note.id], |row| {
+                        row.get(0)
+                    })
+                    .unwrap();
+                col.storage
+                    .db
+                    .execute(
+                        "update cards set queue = ?, type = ?, due = ?, mod = 5, usn = 6 \
+                         where id = ?",
+                        params![queue, ctype, due, cid],
+                    )
+                    .unwrap();
+                cids.push(cid);
+            }
+            col.close(None).unwrap();
+        }
+
+        let mut col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()
+            .unwrap();
+        for (((_, ctype, due), queue), cid) in cases.into_iter().zip(cids) {
+            let raw: (i8, i8, i32, i64, i32) = col
+                .storage
+                .db
+                .query_row(
+                    "select queue, type, due, mod, usn from cards where id = ?",
+                    [cid],
+                    |row| {
+                        Ok((
+                            row.get(0)?,
+                            row.get(1)?,
+                            row.get(2)?,
+                            row.get(3)?,
+                            row.get(4)?,
+                        ))
+                    },
+                )
+                .unwrap();
+            assert_eq!(raw, (queue, ctype, due, 5, 6));
+            // and it's what the backend would do itself
+            let mut card = col.storage.get_card(cid).unwrap().unwrap();
+            if queue != -1 {
+                card.restore_queue_from_type();
+                assert_eq!(card.queue as i8, queue);
+            }
+        }
+        assert_eq!(
+            col.search_cards("is:suspended", SortMode::NoOrder)
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     /// Builds a fresh on-disk collection, stamps the given schema version into

@@ -51,13 +51,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 <p>{today_new}</p>
             {/if}
 
-            {#if info.haveSchedBuried || info.haveUserBuried}
-                <p class="buried">
-                    Some related cards are held back until tomorrow, so that you don't
-                    see them on the same day.
-                </p>
-            {/if}
-
             <slot />
 
             {#if info.deckDescription}

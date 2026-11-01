@@ -61,7 +61,6 @@ message SearchNode {
     CARD_STATE_REVIEW = 2;
     CARD_STATE_DUE = 3;
     CARD_STATE_SUSPENDED = 4;
-    CARD_STATE_BURIED = 5;
   }
   message IdList {
     repeated int64 ids = 1;
@@ -200,7 +199,6 @@ message BrowserRow {
     COLOR_FLAG_PINK = 7;
     COLOR_FLAG_TURQUOISE = 8;
     COLOR_FLAG_PURPLE = 9;
-    COLOR_BURIED = 10;
   }
   repeated Cell cells = 1;
   Color color = 2;

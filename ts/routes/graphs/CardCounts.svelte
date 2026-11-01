@@ -34,7 +34,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         tableData = renderCards(svg as any, bounds, graphData);
     }
 
-    const label = tr2.statisticsCountsSeparateSuspendedBuriedCards();
+    const label = tr2.statisticsCountsSeparateSuspendedCards();
     const total = tr2.statisticsCountsTotalCards();
 </script>
 

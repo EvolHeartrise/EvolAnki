@@ -54,14 +54,13 @@ use anki_proto::notetypes::notetype;
 use anki_proto::notetypes::Notetype;
 use anki_proto::notetypes::NotetypeId;
 use anki_proto::notetypes::NotetypeUseCounts;
-use anki_proto::scheduler::bury_or_suspend_cards_request::Mode as BuryMode;
 use anki_proto::scheduler::custom_study_request::cram::CramKind;
 use anki_proto::scheduler::custom_study_request::Cram;
 use anki_proto::scheduler::custom_study_request::Value as StudyValue;
-use anki_proto::scheduler::BuryOrSuspendCardsRequest;
 use anki_proto::scheduler::CustomStudyRequest;
 use anki_proto::scheduler::SchedTimingTodayResponse;
 use anki_proto::scheduler::SetDueDateRequest;
+use anki_proto::scheduler::SuspendCardsRequest;
 use anki_proto::search::SearchRequest;
 use anki_proto::search::SearchResponse;
 use anki_proto::stats::CardStatsResponse;
@@ -120,8 +119,6 @@ pub const COMMANDS: &[Command] = &[
         "Overwrite a media file, keeping its name. The old one goes in backups/media-replaced. Browsers may show the old one for up to an hour.", media_replace),
     command!("card.suspend", Effect::Write, IDS, "Suspend cards.", card_suspend),
     command!("card.unsuspend", Effect::Write, IDS, "Unsuspend the suspended ones among these cards.", card_unsuspend),
-    command!("card.bury", Effect::Write, IDS, "Bury cards until the next day.", card_bury),
-    command!("card.unbury", Effect::Write, IDS, "Unbury the buried ones among these cards.", card_unbury),
     command!("card.set-due", Effect::Write, r#"{"ids":[]|"search":"","days":"0"|"1-7"|"3!"}"#,
         "Make cards due in this many days, from today. With !, the interval changes to match.", card_set_due),
     command!("tag.list", Read, "{}", "All tags.", tag_list),
@@ -602,54 +599,31 @@ fn media_replace(admin: &Admin, args: &Value) -> Result<Value> {
 //////////////////////////////////////////////////
 
 fn card_suspend(admin: &Admin, args: &Value) -> Result<Value> {
-    bury_or_suspend(admin, args, BuryMode::Suspend)
-}
-
-fn card_bury(admin: &Admin, args: &Value) -> Result<Value> {
-    bury_or_suspend(admin, args, BuryMode::BuryUser)
-}
-
-fn bury_or_suspend(admin: &Admin, args: &Value, mode: BuryMode) -> Result<Value> {
     let card_ids = card_targets(admin, args)?;
     let changed: OpChangesWithCount = call_typed(
         &admin.backend,
-        "buryOrSuspendCards",
-        &BuryOrSuspendCardsRequest {
+        "suspendCards",
+        &SuspendCardsRequest {
             card_ids,
             note_ids: vec![],
-            mode: mode as i32,
         },
     )?;
     Ok(json!({"changed": changed.count}))
 }
 
 fn card_unsuspend(admin: &Admin, args: &Value) -> Result<Value> {
-    restore(admin, args, "is:suspended")
-}
-
-fn card_unbury(admin: &Admin, args: &Value) -> Result<Value> {
-    restore(admin, args, "is:buried")
-}
-
-/// The backend's call does both, so first narrow the cards down to the kind
-/// asked for.
-fn restore(admin: &Admin, args: &Value, state: &str) -> Result<Value> {
     let wanted = card_targets(admin, args)?;
-    let in_state: std::collections::HashSet<i64> =
-        search_ids(&admin.backend, "searchCards", state)?
+    let suspended: std::collections::HashSet<i64> =
+        search_ids(&admin.backend, "searchCards", "is:suspended")?
             .into_iter()
             .collect();
     let cids: Vec<i64> = wanted
         .into_iter()
-        .filter(|id| in_state.contains(id))
+        .filter(|id| suspended.contains(id))
         .collect();
     let changed = cids.len();
     if changed > 0 {
-        let _: OpChanges = call_typed(
-            &admin.backend,
-            "restoreBuriedAndSuspendedCards",
-            &CardIds { cids },
-        )?;
+        let _: OpChanges = call_typed(&admin.backend, "unsuspendCards", &CardIds { cids })?;
     }
     Ok(json!({"changed": changed}))
 }
@@ -1197,7 +1171,6 @@ fn stats_summary(admin: &Admin, _args: &Value) -> Result<Value> {
                 "learning": count("select count() from cards where queue in (1, 3)")?,
                 "review": count("select count() from cards where queue = 2")?,
                 "suspended": count("select count() from cards where queue = -1")?,
-                "buried": count("select count() from cards where queue in (-2, -3)")?,
                 "with_memory_state": count(
                     "select count() from cards where data like '%\"s\":%'"
                 )?,

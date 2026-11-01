@@ -38,13 +38,12 @@ const barColours = [
     schemeGreens[5][2], /* young */
     schemeGreens[5][3], /* mature */
     "#FFDC41", /* suspended */
-    "grey", /* buried */
 ];
 
 function countCards(data: GraphsResponse, separateInactive: boolean): Count[] {
     const countData = separateInactive ? data.cardCounts!.excludingInactive! : data.cardCounts!.includingInactive!;
 
-    const extraQuery = separateInactive ? "AND -(\"is:buried\" OR \"is:suspended\")" : "";
+    const extraQuery = separateInactive ? "AND -\"is:suspended\"" : "";
 
     const counts: Count[] = [
         [tr.statisticsCountsNewCards(), countData.newCards, true, `"is:new"${extraQuery}`],
@@ -78,7 +77,6 @@ function countCards(data: GraphsResponse, separateInactive: boolean): Count[] {
             separateInactive,
             "\"is:suspended\"",
         ],
-        [tr.statisticsCountsBuriedCards(), countData.buried, separateInactive, "\"is:buried\""],
     ];
 
     return counts;

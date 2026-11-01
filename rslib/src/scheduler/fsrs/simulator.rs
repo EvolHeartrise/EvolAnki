@@ -342,7 +342,7 @@ impl Card {
                 })
             }
             CardQueue::New => None,
-            CardQueue::Learn | CardQueue::SchedBuried | CardQueue::UserBuried => Some(fsrs::Card {
+            CardQueue::Learn => Some(fsrs::Card {
                 id: card.id.0,
                 difficulty: memory_state.difficulty,
                 stability: memory_state.stability,

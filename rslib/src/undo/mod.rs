@@ -466,7 +466,9 @@ mod test {
             })
         })?;
         // dummy op name
-        col.transact(Op::Bury, |col| col.set_current_notetype_id(NotetypeId(123)))?;
+        col.transact(Op::Suspend, |col| {
+            col.set_current_notetype_id(NotetypeId(123))
+        })?;
 
         // merge subsequent changes into our restore point
         let op = col.merge_undoable_ops(restore_point)?;

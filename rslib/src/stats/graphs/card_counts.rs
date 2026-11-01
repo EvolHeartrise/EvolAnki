@@ -18,9 +18,6 @@ impl GraphsContext {
                 CardQueue::Suspended => {
                     excluding_inactive.suspended += 1;
                 }
-                CardQueue::SchedBuried | CardQueue::UserBuried => {
-                    excluding_inactive.buried += 1;
-                }
                 _ => increment_counts(&mut excluding_inactive, card),
             };
             increment_counts(&mut including_inactive, card);

@@ -19,10 +19,10 @@ impl QueueBuilder {
     }
 
     fn gather_intraday_learning_cards(&mut self, col: &mut Collection) -> Result<()> {
-        col.storage.for_each_intraday_card_in_active_decks(
-            self.context.timing.next_day_at,
-            |card| self.learning.push(card),
-        )?;
+        col.storage
+            .for_each_intraday_card_in_active_decks(self.context.timing.next_day_at, |card| {
+                self.learning.push(card)
+            })?;
 
         Ok(())
     }

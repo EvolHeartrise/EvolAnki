@@ -473,12 +473,6 @@ impl SqlWriter<'_> {
                 CardType::Learn as i8,
                 CardType::Relearn as i8,
             ),
-            StateKind::Buried => write!(
-                self.sql,
-                "c.queue in ({},{})",
-                CardQueue::SchedBuried as i8,
-                CardQueue::UserBuried as i8
-            ),
             StateKind::Suspended => write!(self.sql, "c.queue = {}", CardQueue::Suspended as i8),
             StateKind::Due => write!(
                 self.sql,
@@ -493,10 +487,6 @@ impl SqlWriter<'_> {
                 previewrepeat = CardQueue::PreviewRepeat as i8,
                 learncutoff = TimestampSecs::now().0 + (self.col.learn_ahead_secs() as i64),
             ),
-            StateKind::UserBuried => write!(self.sql, "c.queue = {}", CardQueue::UserBuried as i8),
-            StateKind::SchedBuried => {
-                write!(self.sql, "c.queue = {}", CardQueue::SchedBuried as i8)
-            }
         }
         .unwrap();
         Ok(())

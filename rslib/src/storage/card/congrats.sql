@@ -6,8 +6,6 @@ SELECT coalesce(
     0
   ) AS review_count,
   coalesce(sum(queue = :new_queue), 0) AS new_count,
-  coalesce(sum(queue = :sched_buried_queue), 0) AS sched_buried,
-  coalesce(sum(queue = :user_buried_queue), 0) AS user_buried,
   coalesce(sum(queue = :learn_queue), 0) AS learn_count,
   max(
     0,

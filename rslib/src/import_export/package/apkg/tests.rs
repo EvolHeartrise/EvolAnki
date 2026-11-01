@@ -3,6 +3,7 @@
 
 #![cfg(test)]
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
@@ -10,6 +11,7 @@ use std::io::Write;
 use anki_io::read_file;
 use anki_proto::import_export::ImportAnkiPackageOptions;
 
+use crate::card::CardQueue;
 use crate::import_export::package::ExportAnkiPackageOptions;
 use crate::media::files::sha1_of_data;
 use crate::media::MediaManager;
@@ -26,6 +28,88 @@ const JPG_DATA: &[u8] = b"1";
 const MP3_DATA: &[u8] = b"2";
 const JS_DATA: &[u8] = b"3";
 const EXISTING_MP3_DATA: &[u8] = b"4";
+
+/// Packages from elsewhere can hold buried cards, which arrive as normal ones.
+#[test]
+fn cards_buried_in_a_package_import_as_normal() {
+    let (mut src_col, src_tempdir) = open_fs_test_collection("src");
+    let (mut target_col, _target_tempdir) = open_fs_test_collection("target");
+    let exported = src_tempdir.path().join("exported.apkg");
+    let apkg_path = src_tempdir.path().join("test.apkg");
+    let review = NoteAdder::basic(&mut src_col)
+        .fields(&["review", ""])
+        .add(&mut src_col)
+        .id;
+    let new = NoteAdder::basic(&mut src_col)
+        .fields(&["new", ""])
+        .add(&mut src_col)
+        .id;
+    src_col
+        .export_apkg(
+            &exported,
+            ExportAnkiPackageOptions {
+                with_scheduling: true,
+                with_deck_configs: false,
+                with_media: false,
+                legacy: true,
+            },
+            "",
+            None,
+        )
+        .unwrap();
+
+    // change the package's own database, as nothing can bury a card any more
+    let mut archive = zip::ZipArchive::new(File::open(&exported).unwrap()).unwrap();
+    let mut writer = zip::ZipWriter::new(File::create(&apkg_path).unwrap());
+    for index in 0..archive.len() {
+        let mut entry = archive.by_index(index).unwrap();
+        let name = entry.name().unwrap().to_string();
+        let mut bytes = vec![];
+        std::io::copy(&mut entry, &mut bytes).unwrap();
+        if name.starts_with("collection.anki2") {
+            let db_path = src_tempdir.path().join("package.db");
+            std::fs::write(&db_path, &bytes).unwrap();
+            let db = rusqlite::Connection::open(&db_path).unwrap();
+            db.execute("update cards set queue = -2 where nid = ?", [new.0])
+                .unwrap();
+            db.execute(
+                "update cards set queue = -3, type = 2, due = 9, ivl = 20 where nid = ?",
+                [review.0],
+            )
+            .unwrap();
+            db.close().unwrap();
+            bytes = std::fs::read(&db_path).unwrap();
+        }
+        writer
+            .start_file(
+                name,
+                zip::write::SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Stored),
+            )
+            .unwrap();
+        writer.write_all(&bytes).unwrap();
+    }
+    writer.finish().unwrap();
+
+    target_col
+        .import_apkg(
+            &apkg_path,
+            ImportAnkiPackageOptions {
+                with_scheduling: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let queues: HashMap<NoteId, CardQueue> = target_col
+        .storage
+        .get_all_cards()
+        .into_iter()
+        .map(|card| (card.note_id, card.queue))
+        .collect();
+    assert_eq!(queues[&review], CardQueue::Review);
+    assert_eq!(queues[&new], CardQueue::New);
+}
 
 #[test]
 fn roundtrip() {

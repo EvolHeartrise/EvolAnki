@@ -7,7 +7,6 @@ use crate::error::Result;
 use crate::prelude::*;
 
 pub mod answering;
-pub mod bury_and_suspend;
 pub(crate) mod congrats;
 pub(crate) mod filtered;
 pub mod fsrs;
@@ -16,6 +15,7 @@ pub(crate) mod queue;
 mod reviews;
 mod service;
 pub mod states;
+pub mod suspend;
 pub mod timespan;
 pub mod timing;
 mod upgrade;

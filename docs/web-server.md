@@ -205,9 +205,14 @@ play is skipped.
   the device has: first any named in the tag, then one for its language.
 - English only.
 - `[latex]` isn't rendered. Marks, timeboxing, auto advance, `reviewExtra`, editing,
-  burying, suspending and flags aren't in the reviewer. Automatic leech suspension and
-  its notice, undo, and type-in answers are. A card suspended or buried while it's on
-  screen refuses the answer, with a notice, and the next card shows.
+  suspending and flags aren't in the reviewer. Automatic leech suspension and its notice,
+  undo, and type-in answers are. A card suspended while it's on screen refuses the
+  answer, with a notice, and the next card shows.
+- There is no burying, and nothing replaces it: cards of one note can all come up on the
+  same day, and the load balancer doesn't space them apart. Queues -2 and -3 are gone, so
+  `is:buried` is a search error. Opening a collection returns any card still in those
+  queues to normal, without changing anything else about it. So do `evolanki-admin
+  convert` and importing, as they open what they read.
 - No pages for: adding or editing cards, the browser, changing a notetype, importing,
   making filtered decks, custom study, or managing decks and tags. Agents do those with
   [`evolanki-admin`](admin-cli.md). They aren't reachable over HTTP.

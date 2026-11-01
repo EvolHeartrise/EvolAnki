@@ -637,8 +637,6 @@ impl super::SqliteStorage {
                     ":review_queue": CardQueue::Review as i8,
                     ":day_learn_queue": CardQueue::DayLearn as i8,
                     ":new_queue": CardQueue::New as i8,
-                    ":user_buried_queue": CardQueue::UserBuried as i8,
-                    ":sched_buried_queue": CardQueue::SchedBuried as i8,
                     ":learn_queue": CardQueue::Learn as i8,
                     ":today": today,
                 },
@@ -646,10 +644,8 @@ impl super::SqliteStorage {
                     Ok(CongratsInfo {
                         review_remaining: row.get::<_, u32>(0)? > 0,
                         new_remaining: row.get::<_, u32>(1)? > 0,
-                        have_sched_buried: row.get::<_, u32>(2)? > 0,
-                        have_user_buried: row.get::<_, u32>(3)? > 0,
-                        learn_count: row.get(4)?,
-                        next_learn_due: row.get(5)?,
+                        learn_count: row.get(2)?,
+                        next_learn_due: row.get(3)?,
                     })
                 },
             )?
