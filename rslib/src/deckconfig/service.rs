@@ -2,12 +2,10 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 use std::collections::HashMap;
 
-use anki_proto::generic;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
 use crate::collection::Collection;
-use crate::deckconfig::DeckConfSchema11;
 use crate::deckconfig::DeckConfig;
 use crate::deckconfig::DeckConfigId;
 use crate::deckconfig::UpdateDeckConfigsRequest;
@@ -16,31 +14,6 @@ use crate::scheduler::fsrs::params::ignore_revlogs_before_date_to_ms;
 use crate::scheduler::fsrs::simulator::is_included_card;
 
 impl crate::services::DeckConfigService for Collection {
-    fn add_or_update_deck_config_legacy(
-        &mut self,
-        input: generic::Json,
-    ) -> Result<anki_proto::deck_config::DeckConfigId> {
-        let conf: DeckConfSchema11 = serde_json::from_slice(&input.json)?;
-        let mut conf: DeckConfig = conf.into();
-
-        self.transact_no_undo(|col| {
-            col.add_or_update_deck_config_legacy(&mut conf)?;
-            Ok(anki_proto::deck_config::DeckConfigId { dcid: conf.id.0 })
-        })
-    }
-
-    fn all_deck_config_legacy(&mut self) -> Result<generic::Json> {
-        let conf: Vec<DeckConfSchema11> = self
-            .storage
-            .all_deck_config()?
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        serde_json::to_vec(&conf)
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
     fn get_deck_config(
         &mut self,
         input: anki_proto::deck_config::DeckConfigId,
@@ -48,25 +21,6 @@ impl crate::services::DeckConfigService for Collection {
         Ok(Collection::get_deck_config(self, input.into(), true)?
             .unwrap()
             .into())
-    }
-
-    fn get_deck_config_legacy(
-        &mut self,
-        input: anki_proto::deck_config::DeckConfigId,
-    ) -> Result<generic::Json> {
-        let conf = Collection::get_deck_config(self, input.into(), true)?.unwrap();
-        let conf: DeckConfSchema11 = conf.into();
-        Ok(serde_json::to_vec(&conf)?.into())
-    }
-
-    fn new_deck_config_legacy(&mut self) -> Result<generic::Json> {
-        serde_json::to_vec(&DeckConfSchema11::default())
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
-    fn remove_deck_config(&mut self, input: anki_proto::deck_config::DeckConfigId) -> Result<()> {
-        self.transact_no_undo(|col| col.remove_deck_config_inner(input.into()))
     }
 
     fn get_deck_configs_for_update(
@@ -173,8 +127,7 @@ impl From<anki_proto::deck_config::UpdateDeckConfigsRequest> for UpdateDeckConfi
         let mode = c.mode();
         UpdateDeckConfigsRequest {
             target_deck_id: c.target_deck_id.into(),
-            configs: c.configs.into_iter().map(Into::into).collect(),
-            removed_config_ids: c.removed_config_ids.into_iter().map(Into::into).collect(),
+            config: c.config.map(Into::into).unwrap_or_default(),
             mode,
             card_state_customizer: c.card_state_customizer,
             limits: c.limits.unwrap_or_default(),
@@ -209,7 +162,6 @@ impl From<anki_proto::deck_config::DeckConfigId> for DeckConfigId {
 mod tests {
     use std::assert_matches;
 
-    use anki_proto::generic::Json;
     use fsrs::DEFAULT_PARAMETERS;
 
     use super::*;
@@ -223,160 +175,19 @@ mod tests {
     use crate::tests::CardAdder;
     use crate::tests::DeckAdder;
 
-    fn deck_config_json() -> Result<generic::Json> {
-        serde_json::to_vec(&DeckConfSchema11::default())
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
-    #[test]
-    fn add_or_update_deck_config_legacy_adds_config() -> Result<()> {
-        let mut col = Collection::new();
-        let config_bytes = deck_config_json()?;
-        let config: serde_json::Value = serde_json::from_slice(&config_bytes.json)?;
-        let config_id =
-            DeckConfigService::add_or_update_deck_config_legacy(&mut col, config_bytes)?;
-        assert_ne!(
-            config_id,
-            anki_proto::deck_config::DeckConfigId {
-                dcid: config["id"].as_i64().unwrap()
-            }
-        );
-        assert_eq!(col.can_undo(), None);
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_legacy_updates_config() -> Result<()> {
-        let mut col = Collection::new();
-        let config_bytes = deck_config_json()?;
-        let mut config: serde_json::Value = serde_json::from_slice(&config_bytes.json)?;
-        let config_id =
-            DeckConfigService::add_or_update_deck_config_legacy(&mut col, config_bytes)?;
-        config["id"] = config_id.dcid.into();
-        config["name"] = "updated".to_string().into();
-        let config_id = DeckConfigService::add_or_update_deck_config_legacy(
-            &mut col,
-            Json {
-                json: serde_json::to_vec(&config)?,
-            },
-        )?;
-        let returned_config = DeckConfigService::get_deck_config(&mut col, config_id)?;
-        assert_eq!(returned_config.name, config["name"]);
-        assert_eq!(col.can_undo(), None);
-
-        Ok(())
-    }
-
-    #[test]
-    fn all_deck_config_legacy_returns_all_configs() -> Result<()> {
-        let mut col = Collection::new();
-        let config_bytes = deck_config_json()?;
-        let _ = DeckConfigService::add_or_update_deck_config_legacy(&mut col, config_bytes)?;
-        let configs = DeckConfigService::all_deck_config_legacy(&mut col)?;
-        let json: serde_json::Value = serde_json::from_slice(&configs.json)?;
-        let array = json.as_array().expect("should return a JSON array");
-
-        // Default + new config
-        assert_eq!(array.len(), 2);
-        let _ = array[0]
-            .as_object()
-            .expect("deckconfig should be a JSON object");
-
-        Ok(())
-    }
-
     #[test]
     fn get_deck_config_returns_config() -> Result<()> {
         let mut col = Collection::new();
-        let mut config = DeckConfig {
-            name: "custom".into(),
-            ..Default::default()
-        };
-        col.add_or_update_deck_config(&mut config)?;
+        let deck = DeckAdder::new("custom")
+            .with_config(|config| config.inner.new_per_day = 3)
+            .add(&mut col);
         let returned = DeckConfigService::get_deck_config(
             &mut col,
-            anki_proto::deck_config::DeckConfigId { dcid: config.id.0 },
+            anki_proto::deck_config::DeckConfigId { dcid: deck.id.0 },
         )?;
 
-        assert_eq!(returned.id, config.id.0);
-        assert_eq!(returned.name, "custom");
-
-        Ok(())
-    }
-
-    #[test]
-    fn get_deck_config_falls_back_to_default_for_unknown_id() -> Result<()> {
-        let mut col = Collection::new();
-        let returned = DeckConfigService::get_deck_config(
-            &mut col,
-            anki_proto::deck_config::DeckConfigId { dcid: 12345 },
-        )?;
-
-        assert_eq!(returned.id, 1);
-
-        Ok(())
-    }
-
-    #[test]
-    fn get_deck_config_legacy_returns_config() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig {
-            name: "custom".into(),
-            ..Default::default()
-        };
-        col.add_or_update_deck_config(&mut config)?;
-        let returned: serde_json::Value = serde_json::from_slice(
-            &(DeckConfigService::get_deck_config_legacy(
-                &mut col,
-                anki_proto::deck_config::DeckConfigId { dcid: config.id.0 },
-            )?
-            .json),
-        )?;
-
-        assert_eq!(returned["id"].as_i64(), Some(config.id.0));
-        assert_eq!(returned["name"].as_str(), Some("custom"));
-
-        Ok(())
-    }
-
-    #[test]
-    fn get_deck_config_legacy_falls_back_to_default_for_unknown_id() -> Result<()> {
-        let mut col = Collection::new();
-        let returned: serde_json::Value = serde_json::from_slice(
-            &(DeckConfigService::get_deck_config_legacy(
-                &mut col,
-                anki_proto::deck_config::DeckConfigId { dcid: 12345 },
-            )?
-            .json),
-        )?;
-
-        assert_eq!(returned["id"].as_i64(), Some(1));
-
-        Ok(())
-    }
-
-    #[test]
-    fn new_deck_config_legacy_returns_valid_config() -> Result<()> {
-        let mut col = Collection::new();
-        let config_json = DeckConfigService::new_deck_config_legacy(&mut col)?;
-        let config: DeckConfSchema11 =
-            serde_json::from_slice(&config_json.json).expect("deck config JSON deserialize");
-        assert_eq!(config, DeckConfSchema11::default());
-
-        Ok(())
-    }
-
-    #[test]
-    fn remove_deck_config_removes_config() -> Result<()> {
-        let mut col = Collection::new();
-        let config_bytes = deck_config_json()?;
-        let config_id =
-            DeckConfigService::add_or_update_deck_config_legacy(&mut col, config_bytes)?;
-        DeckConfigService::remove_deck_config(&mut col, config_id)?;
-        assert_eq!(col.get_deck_config(config_id.into(), false)?, None);
-        assert_eq!(col.can_undo(), None);
+        assert_eq!(returned.id, deck.id.0);
+        assert_eq!(returned.config.unwrap().new_per_day, 3);
 
         Ok(())
     }
@@ -385,7 +196,7 @@ mod tests {
     fn get_deck_configs_for_update_returns_requested_deck() -> Result<()> {
         let mut col = Collection::new();
         let deck = DeckAdder::new("child")
-            .with_config(|config| config.name = "custom".into())
+            .with_config(|config| config.inner.new_per_day = 3)
             .add(&mut col);
 
         let output = DeckConfigService::get_deck_configs_for_update(
@@ -395,9 +206,19 @@ mod tests {
 
         let current = output.current_deck.unwrap();
         assert_eq!(current.name, "child");
-        assert_eq!(current.config_id, deck.normal()?.config_id);
+        assert_eq!(current.default_search, "(deck:child -is:suspended)");
+        let config = output.config.unwrap();
+        assert_eq!(config.id, deck.id.0);
+        assert_eq!(config.config.unwrap().new_per_day, 3);
 
         Ok(())
+    }
+
+    #[test]
+    fn a_filtered_deck_has_no_options_to_show() {
+        let mut col = Collection::new();
+        let deck = DeckAdder::new("filtered").filtered(true).add(&mut col);
+        assert!(col.get_deck_configs_for_update(deck.id).is_err());
     }
 
     fn update_request_for_deck(
@@ -405,51 +226,29 @@ mod tests {
         deck_id: DeckId,
     ) -> Result<anki_proto::deck_config::UpdateDeckConfigsRequest> {
         let output = col.get_deck_configs_for_update(deck_id)?;
-        let current_config_id = output.current_deck.unwrap().config_id;
-        let config = output
-            .all_config
-            .into_iter()
-            .filter_map(|c| c.config)
-            .find(|c| c.id == current_config_id)
-            .unwrap();
         Ok(anki_proto::deck_config::UpdateDeckConfigsRequest {
             target_deck_id: deck_id.0,
-            configs: vec![config],
+            config: output.config,
             ..Default::default()
         })
     }
 
     #[test]
-    fn update_deck_configs_saves_configs_from_request() -> Result<()> {
+    fn update_deck_configs_saves_config_from_request() -> Result<()> {
         let mut col = Collection::new();
         let mut request = update_request_for_deck(&mut col, DeckId(1))?;
-        request.configs[0].name = "renamed".into();
+        request.config.as_mut().unwrap().config.as_mut().unwrap().new_per_day = 7;
 
         let changes = DeckConfigService::update_deck_configs(&mut col, request)?;
 
         assert!(changes.deck_config);
         assert_eq!(
-            col.get_deck_config(DeckConfigId(1), false)?.unwrap().name,
-            "renamed"
+            col.get_deck_config(DeckConfigId(1), false)?
+                .unwrap()
+                .inner
+                .new_per_day,
+            7
         );
-
-        Ok(())
-    }
-
-    #[test]
-    fn update_deck_configs_applies_config_to_children_in_apply_to_children_mode() -> Result<()> {
-        let mut col = Collection::new();
-        let parent = DeckAdder::new("parent")
-            .with_config(|config| config.name = "parent".into())
-            .add(&mut col);
-        let child = DeckAdder::new("parent::child").add(&mut col);
-        let mut request = update_request_for_deck(&mut col, parent.id)?;
-        request.set_mode(anki_proto::deck_config::UpdateDeckConfigsMode::ApplyToChildren);
-
-        let _ = DeckConfigService::update_deck_configs(&mut col, request)?;
-
-        let child = col.get_deck(child.id)?.unwrap();
-        assert_eq!(child.normal()?.config_id, parent.normal()?.config_id);
 
         Ok(())
     }

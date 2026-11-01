@@ -138,6 +138,7 @@ impl Collection {
 
         debug!("check decks");
         self.check_missing_deck_ids(&mut out)?;
+        self.ensure_decks_own_settings_inner()?;
         self.check_filtered_cards(&mut out)?;
 
         debug!("check notetypes");

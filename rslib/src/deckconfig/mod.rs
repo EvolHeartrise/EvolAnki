@@ -1,6 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+mod ownership;
 mod schema11;
 mod service;
 pub(crate) mod undo;
@@ -14,6 +15,9 @@ pub use anki_proto::deck_config::deck_config::config::QuestionAction;
 pub use anki_proto::deck_config::deck_config::config::ReviewCardOrder;
 pub use anki_proto::deck_config::deck_config::config::ReviewMix;
 pub use anki_proto::deck_config::deck_config::Config as DeckConfigInner;
+pub use ownership::settings_repair_needed;
+#[cfg(test)]
+pub(crate) use update::default_param_search;
 pub use schema11::DeckConfSchema11;
 pub use schema11::NewCardOrderSchema11;
 pub use update::UpdateDeckConfigsRequest;
@@ -97,6 +101,21 @@ impl Default for DeckConfig {
 }
 
 impl DeckConfig {
+    /// The built-in values, as the settings of this deck.
+    pub(crate) fn new_for_deck(deck: DeckId) -> Self {
+        Self::with_inner_for_deck(deck, Self::default().inner)
+    }
+
+    pub(crate) fn with_inner_for_deck(deck: DeckId, inner: DeckConfigInner) -> Self {
+        DeckConfig {
+            id: DeckConfigId(deck.0),
+            name: deck.to_string(),
+            mtime_secs: Default::default(),
+            usn: Default::default(),
+            inner,
+        }
+    }
+
     pub(crate) fn set_modified(&mut self, usn: Usn) {
         self.mtime_secs = TimestampSecs::now();
         self.usn = usn;
@@ -122,7 +141,8 @@ impl DeckConfig {
 }
 
 impl Collection {
-    /// If fallback is true, guaranteed to return a deck config.
+    /// If fallback is true, guaranteed to return a deck config: the built-in
+    /// values, if the row is missing.
     pub fn get_deck_config(
         &self,
         dcid: DeckConfigId,
@@ -131,62 +151,24 @@ impl Collection {
         if let Some(conf) = self.storage.get_deck_config(dcid)? {
             return Ok(Some(conf));
         }
-        if fallback {
-            if let Some(conf) = self.storage.get_deck_config(DeckConfigId(1))? {
-                return Ok(Some(conf));
-            }
-            // if even the default deck config is missing, just return the defaults
-            Ok(Some(DeckConfig::default()))
-        } else {
-            Ok(None)
-        }
+        Ok(fallback.then(|| DeckConfig {
+            id: dcid,
+            ..Default::default()
+        }))
     }
 }
 
 impl Collection {
+    /// Save the settings of a deck, which `config.id` names.
     pub(crate) fn add_or_update_deck_config(&mut self, config: &mut DeckConfig) -> Result<()> {
         let usn = Some(self.usn()?);
-
-        if config.id.0 == 0 {
-            self.add_deck_config_inner(config, usn)
-        } else {
-            let original = self
-                .storage
-                .get_deck_config(config.id)?
-                .or_not_found(config.id)?;
-            self.update_deck_config_inner(config, original, usn)
+        match self.storage.get_deck_config(config.id)? {
+            Some(original) => self.update_deck_config_inner(config, original, usn),
+            None => {
+                config.set_modified(self.usn()?);
+                self.add_deck_config_if_unique_undoable(config)
+            }
         }
-    }
-
-    /// Used by the old import code; if provided id is non-zero, will add
-    /// instead of ignoring. Does not support undo.
-    pub(crate) fn add_or_update_deck_config_legacy(
-        &mut self,
-        config: &mut DeckConfig,
-    ) -> Result<()> {
-        let usn = self.usn()?;
-
-        if config.id.0 == 0 {
-            self.add_deck_config_inner(config, Some(usn))
-        } else {
-            config.set_modified(usn);
-            self.storage
-                .add_or_update_deck_config_with_existing_id(config)
-        }
-    }
-
-    /// Assigns an id and adds to DB. If usn is provided, modification time and
-    /// usn will be updated.
-    pub(crate) fn add_deck_config_inner(
-        &mut self,
-        config: &mut DeckConfig,
-        usn: Option<Usn>,
-    ) -> Result<()> {
-        if let Some(usn) = usn {
-            config.set_modified(usn);
-        }
-        config.id.0 = TimestampMillis::now().0;
-        self.add_deck_config_undoable(config)
     }
 
     /// Update an existing deck config. If usn is provided, modification time
@@ -204,14 +186,6 @@ impl Collection {
             config.set_modified(usn);
         }
         self.update_deck_config_undoable(config, original)
-    }
-
-    /// Remove a deck configuration. This will force a full sync.
-    pub(crate) fn remove_deck_config_inner(&mut self, dcid: DeckConfigId) -> Result<()> {
-        require!(dcid.0 != 1, "can't delete default conf");
-        let conf = self.storage.get_deck_config(dcid)?.or_not_found(dcid)?;
-        self.set_schema_modified()?;
-        self.remove_deck_config_undoable(conf)
     }
 }
 
@@ -316,23 +290,9 @@ fn ensure_u32_valid(val: &mut u32, default: u32, min: u32, max: u32) {
 
 #[cfg(test)]
 mod tests {
-
     use std::assert_matches;
 
     use super::*;
-
-    #[test]
-    fn get_deck_config_returns_created_config() -> Result<()> {
-        let col = Collection::new();
-        let mut config = DeckConfig::default();
-        config.id.0 = TimestampMillis::now().0;
-        col.storage
-            .add_or_update_deck_config_with_existing_id(&config)?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
 
     #[test]
     fn get_deck_config_returns_none_when_flag_is_unset() -> Result<()> {
@@ -344,34 +304,30 @@ mod tests {
     }
 
     #[test]
-    fn get_deck_config_returns_default_when_flag_is_set() -> Result<()> {
-        let col = Collection::new();
-        let config = col.get_deck_config(DeckConfigId(TimestampMillis::now().0), true)?;
-        assert_matches!(config, Some(_));
-
-        Ok(())
-    }
-
-    #[test]
-    fn get_deck_config_returns_default_even_if_missing_when_flag_is_set() -> Result<()> {
-        let col = Collection::new();
-        col.storage.remove_deck_conf(DeckConfigId(1))?;
-        let config = col.get_deck_config(DeckConfigId(TimestampMillis::now().0), true)?;
-        assert_matches!(config, Some(_));
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_deck_config_inner_uses_usn() -> Result<()> {
+    fn a_missing_row_falls_back_on_built_in_values_rather_than_another_decks() -> Result<()> {
         let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        let mtime = config.mtime_secs;
-        col.add_deck_config_inner(&mut config, Some(Usn(1)))?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(config.usn, Usn(1));
-        assert_ne!(config.mtime_secs, mtime);
-        assert_eq!(returned_config, Some(config));
+        col.update_default_deck_config(|config| config.new_per_day = 77);
+        let dcid = DeckConfigId(TimestampMillis::now().0);
+        let config = col.get_deck_config(dcid, true)?.unwrap();
+        assert_eq!(config.id, dcid);
+        assert_eq!(config.inner.new_per_day, DeckConfig::default().inner.new_per_day);
+        assert_matches!(col.get_deck_config(dcid, false)?, None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn saving_uses_the_id_given_and_adds_a_missing_row() -> Result<()> {
+        let mut col = Collection::new();
+        let mut config = DeckConfig {
+            id: DeckConfigId(1234),
+            ..Default::default()
+        };
+        col.add_or_update_deck_config(&mut config)?;
+        assert_eq!(config.id, DeckConfigId(1234));
+        config.inner.new_per_day = 5;
+        col.add_or_update_deck_config(&mut config)?;
+        assert_eq!(col.get_deck_config(config.id, false)?, Some(config));
 
         Ok(())
     }
@@ -379,11 +335,10 @@ mod tests {
     #[test]
     fn update_deck_config_inner_uses_usn() -> Result<()> {
         let mut col = Collection::new();
-        let mut original = DeckConfig::default();
-        col.add_deck_config_undoable(&mut original)?;
+        let original = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         let mtime = original.mtime_secs;
         let mut config = original.clone();
-        config.name = "updated".into();
+        config.inner.new_per_day = 1;
         col.update_deck_config_inner(&mut config, original, Some(Usn(1)))?;
         let returned_config = col.get_deck_config(config.id, false)?;
         assert_eq!(config.usn, Usn(1));
@@ -396,8 +351,7 @@ mod tests {
     #[test]
     fn update_deck_config_inner_ignores_usn_if_identical() -> Result<()> {
         let mut col = Collection::new();
-        let mut original = DeckConfig::default();
-        col.add_deck_config_undoable(&mut original)?;
+        let original = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         let mtime = original.mtime_secs;
         let mut config = original.clone();
         col.update_deck_config_inner(&mut config, original, Some(Usn(1)))?;
@@ -405,109 +359,6 @@ mod tests {
         assert_ne!(config.usn, Usn(1));
         assert_eq!(config.mtime_secs, mtime);
         assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_adds_config() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        col.add_or_update_deck_config(&mut config)?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_updates_config() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        col.add_deck_config_undoable(&mut config)?;
-        config.name = "updated".into();
-        col.add_or_update_deck_config(&mut config)?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_fails_with_not_found() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        config.id.0 = TimestampMillis::now().0;
-        assert_matches!(
-            col.add_or_update_deck_config(&mut config),
-            Err(AnkiError::NotFound { .. })
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_legacy_adds_config() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        col.add_or_update_deck_config_legacy(&mut config)?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_legacy_updates_config() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        col.add_deck_config_undoable(&mut config)?;
-        config.name = "updated".into();
-        col.add_or_update_deck_config_legacy(&mut config)?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
-
-    #[test]
-    fn add_or_update_deck_config_legacy_uses_provided_id() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        config.id.0 = TimestampMillis::now().0;
-        col.add_or_update_deck_config_legacy(&mut config)?;
-        let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(returned_config, Some(config));
-
-        Ok(())
-    }
-
-    #[test]
-    fn remove_deck_config_inner_removes_config() -> Result<()> {
-        let mut col = Collection::new();
-        let mut config = DeckConfig::default();
-        let stamps = col.storage.get_collection_timestamps()?;
-        col.add_deck_config_undoable(&mut config)?;
-        col.remove_deck_config_inner(config.id)?;
-        assert_eq!(col.get_deck_config(config.id, false)?, None);
-        // Schema should be modified
-        assert_ne!(
-            col.storage.get_collection_timestamps()?.schema_change,
-            stamps.schema_change
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn remove_deck_config_inner_fails_on_default_config() -> Result<()> {
-        let mut col = Collection::new();
-        let config = col.get_deck_config(DeckConfigId(1), true)?.unwrap();
-
-        assert_matches!(
-            col.remove_deck_config_inner(config.id),
-            Err(AnkiError::InvalidInput { .. })
-        );
 
         Ok(())
     }

@@ -39,6 +39,10 @@ impl Deck {
         }
     }
 
+    pub(crate) fn is_normal(&self) -> bool {
+        !self.is_filtered()
+    }
+
     pub(crate) fn is_filtered(&self) -> bool {
         matches!(self.kind, DeckKind::Filtered(_))
     }

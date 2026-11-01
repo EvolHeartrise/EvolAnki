@@ -37,6 +37,7 @@ impl Collection {
     /// Rename deck if not unique. Bumps mtime and usn if
     /// name was changed, but otherwise leaves it the same.
     pub(super) fn prepare_deck_for_update(&mut self, deck: &mut Deck, usn: Usn) -> Result<()> {
+        deck.keep_settings_pointer_and_clear_overrides();
         if deck.name.maybe_normalize() {
             deck.set_modified(usn);
         }

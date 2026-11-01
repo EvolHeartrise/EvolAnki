@@ -16,7 +16,7 @@ impl crate::services::ImportExportService for Collection {
             .map(Into::into)
     }
 
-    fn get_import_anki_package_presets(
+    fn get_import_anki_package_defaults(
         &mut self,
     ) -> Result<anki_proto::import_export::ImportAnkiPackageOptions> {
         Ok(anki_proto::import_export::ImportAnkiPackageOptions {
@@ -193,13 +193,13 @@ mod tests {
     // --- Service function tests ---
 
     #[test]
-    fn get_import_anki_package_presets_returns_collection_defaults() {
+    fn get_import_anki_package_defaults_returns_collection_defaults() {
         let mut col = Collection::new();
-        let presets = ImportExportService::get_import_anki_package_presets(&mut col).unwrap();
+        let defaults = ImportExportService::get_import_anki_package_defaults(&mut col).unwrap();
         // newly created collection uses the default config values
-        assert!(!presets.merge_notetypes);
-        assert!(!presets.with_scheduling);
-        assert!(!presets.with_deck_configs);
+        assert!(!defaults.merge_notetypes);
+        assert!(!defaults.with_scheduling);
+        assert!(!defaults.with_deck_configs);
     }
 
     #[test]

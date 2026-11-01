@@ -22,18 +22,6 @@ pub(crate) enum LimitKind {
     New,
 }
 
-/// The deck's review limit for today, or its regular one, if any is
-/// configured.
-pub fn current_review_limit(deck: &NormalDeck, today: u32) -> Option<u32> {
-    review_limit_today(deck, today).or(deck.review_limit)
-}
-
-/// The deck's new limit for today, or its regular one, if any is
-/// configured.
-pub fn current_new_limit(deck: &NormalDeck, today: u32) -> Option<u32> {
-    new_limit_today(deck, today).or(deck.new_limit)
-}
-
 /// The deck's review limit for today.
 pub fn review_limit_today(deck: &NormalDeck, today: u32) -> Option<u32> {
     deck.review_limit_today
@@ -96,9 +84,9 @@ impl RemainingLimits {
         config: &DeckConfig,
     ) -> RemainingLimits {
         let mut review_limit =
-            current_review_limit(normal, today).unwrap_or(config.inner.reviews_per_day) as i32;
+            review_limit_today(normal, today).unwrap_or(config.inner.reviews_per_day) as i32;
         let mut new_limit =
-            current_new_limit(normal, today).unwrap_or(config.inner.new_per_day) as i32;
+            new_limit_today(normal, today).unwrap_or(config.inner.new_per_day) as i32;
         let (new_today_count, review_today_count) = deck.new_rev_counts(today);
 
         review_limit -= review_today_count;

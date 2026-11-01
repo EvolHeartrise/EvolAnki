@@ -28,7 +28,6 @@ use crate::search::Negated;
 use crate::search::Node;
 use crate::search::SearchNode;
 use crate::search::StateKind;
-use crate::storage::comma_separated_ids;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ComputeMemoryProgress {
@@ -51,11 +50,10 @@ pub(crate) fn get_decay_from_params(params: &[f32]) -> f32 {
 #[derive(Debug)]
 pub(crate) struct UpdateMemoryStateRequest {
     pub params: Params,
-    pub preset_desired_retention: f32,
+    pub desired_retention: f32,
     pub historical_retention: f32,
     pub max_interval: u32,
     pub reschedule: bool,
-    pub deck_desired_retention: HashMap<DeckId, f32>,
 }
 
 pub(crate) struct UpdateMemoryStateEntry {
@@ -145,14 +143,7 @@ impl Collection {
             // stats and browser search/sorts don't need to access the deck config.
             // Unlike memory states, scheduler doesn't use decay and dr stored in the card.
             let set_decay_and_desired_retention = move |card: &mut Card| {
-                let deck_id = card.original_or_current_deck_id();
-
-                let desired_retention = *req
-                    .deck_desired_retention
-                    .get(&deck_id)
-                    .unwrap_or(&req.preset_desired_retention);
-
-                card.desired_retention = Some(desired_retention);
+                card.desired_retention = Some(req.desired_retention);
                 card.decay = Some(decay);
             };
 
@@ -356,15 +347,12 @@ impl Collection {
         let mut card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
         let deck_id = card.original_deck_id.or(card.deck_id);
         let deck = self.get_deck(deck_id)?.or_not_found(card.deck_id)?;
-        let conf_id = DeckConfigId(deck.normal()?.config_id);
+        let conf_id = deck.config_id().or_invalid("home deck is filtered")?;
         let config = self
             .storage
             .get_deck_config(conf_id)?
             .or_not_found(conf_id)?;
-
-        // Get deck-specific desired retention if available, otherwise use config
-        // default
-        let desired_retention = deck.effective_desired_retention(&config);
+        let desired_retention = config.inner.desired_retention;
 
         let historical_retention = config.inner.historical_retention;
         let params = config.fsrs_params();
@@ -454,47 +442,36 @@ impl Collection {
     /// Only cards without a memory state are written to, and only their FSRS
     /// fields: due dates, intervals, ease factors and revlogs are left alone.
     fn add_missing_memory_states(&mut self) -> Result<()> {
-        let mut presets: HashMap<DeckConfigId, (DeckConfig, Vec<DeckId>)> = HashMap::new();
-        let mut deck_desired_retention = HashMap::new();
+        let mut decks = vec![];
         for deck in self.storage.get_all_decks()? {
-            let Ok(normal) = deck.normal() else {
-                continue;
-            };
-            if let Some(desired_retention) = normal.desired_retention {
-                deck_desired_retention.insert(deck.id, desired_retention);
+            if let Some(config_id) = deck.config_id() {
+                let config = self
+                    .get_deck_config(config_id, true)?
+                    .or_not_found(config_id)?;
+                decks.push((config, deck.id));
             }
-            // a missing preset falls back on the default one
-            let config = self
-                .get_deck_config(DeckConfigId(normal.config_id), true)?
-                .or_not_found(normal.config_id)?;
-            presets
-                .entry(config.id)
-                .or_insert_with(|| (config, vec![]))
-                .1
-                .push(deck.id);
         }
 
-        let without_state = |decks: &[DeckId]| {
+        let without_state = |deck: DeckId| {
             SearchBuilder::all([
-                SearchNode::DeckIdsWithoutChildren(comma_separated_ids(decks)).into(),
+                SearchNode::DeckIdsWithoutChildren(deck.to_string()).into(),
                 SearchNode::HasMemoryState.negated(),
             ])
             .try_into_search()
         };
 
-        let entries = presets
-            .values()
-            .map(|(config, decks)| {
+        let entries = decks
+            .iter()
+            .map(|(config, deck)| {
                 Ok(UpdateMemoryStateEntry {
                     req: Some(UpdateMemoryStateRequest {
                         params: config.fsrs_params().clone(),
-                        preset_desired_retention: config.inner.desired_retention,
+                        desired_retention: config.inner.desired_retention,
                         historical_retention: config.inner.historical_retention,
                         max_interval: config.inner.maximum_review_interval,
                         reschedule: false,
-                        deck_desired_retention: deck_desired_retention.clone(),
                     }),
-                    search: without_state(decks)?,
+                    search: without_state(*deck)?,
                     ignore_before: ignore_revlogs_before_ms_from_config(config)?,
                 })
             })
@@ -504,10 +481,10 @@ impl Collection {
         // Cards with no usable revlog are skipped above, so infer their state
         // from the card, as is done when answering them.
         let usn = self.usn()?;
-        for (config, decks) in presets.values() {
+        for (config, deck) in &decks {
             let fsrs = FSRS::new(config.fsrs_params())?;
             let search = SearchBuilder::all([
-                without_state(decks)?,
+                without_state(*deck)?,
                 SearchNode::State(StateKind::New).negated(),
             ]);
             for mut card in self.all_cards_for_search(search)? {
@@ -522,11 +499,7 @@ impl Collection {
                     continue;
                 }
                 card.decay = Some(get_decay_from_params(config.fsrs_params()));
-                card.desired_retention = Some(
-                    *deck_desired_retention
-                        .get(&card.original_or_current_deck_id())
-                        .unwrap_or(&config.inner.desired_retention),
-                );
+                card.desired_retention = Some(config.inner.desired_retention);
                 self.update_card_inner(&mut card, original, usn)?;
             }
         }
@@ -984,12 +957,12 @@ mod tests {
         }
 
         #[test]
-        fn migration_uses_deck_desired_retention() -> Result<()> {
+        fn migration_uses_the_desired_retention_of_the_deck() -> Result<()> {
             let mut col = Collection::new();
             let card_id = add_sm2_review_card(&mut col);
-            let mut deck = (*col.get_deck(DeckId(1))?.unwrap()).clone();
-            deck.normal_mut()?.desired_retention = Some(0.85);
-            col.update_deck(&mut deck)?;
+            let mut config = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
+            config.inner.desired_retention = 0.85;
+            col.add_or_update_deck_config(&mut config)?;
 
             col.migrate_to_fsrs_if_needed();
 

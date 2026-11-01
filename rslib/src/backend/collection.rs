@@ -25,6 +25,7 @@ impl BackendCollectionService for Backend {
             .set_shared_progress_state(self.progress_state.clone());
 
         let mut col = builder.build()?;
+        col.ensure_decks_own_settings()?;
         col.migrate_to_fsrs_if_needed();
         *guard = Some(col);
 

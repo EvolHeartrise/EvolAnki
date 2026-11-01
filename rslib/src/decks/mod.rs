@@ -31,7 +31,6 @@ pub(crate) use name::immediate_parent_name;
 pub use name::NativeDeckName;
 pub use schema11::DeckSchema11;
 
-use crate::deckconfig::DeckConfig;
 use crate::define_newtype;
 use crate::error::FilteredDeckError;
 use crate::prelude::*;
@@ -71,7 +70,6 @@ impl Deck {
                 ..Default::default()
             },
             kind: DeckKind::Normal(NormalDeck {
-                config_id: 1,
                 // enable in the future
                 // markdown_description = true,
                 ..Default::default()
@@ -79,23 +77,22 @@ impl Deck {
         }
     }
 
-    /// Returns deck config ID if deck is a normal deck.
+    /// The id of this deck's settings, if it's a normal deck. Each row belongs
+    /// to the deck with the same id, which is what stops two decks sharing one.
     pub fn config_id(&self) -> Option<DeckConfigId> {
-        if let DeckKind::Normal(ref norm) = self.kind {
-            Some(DeckConfigId(norm.config_id))
-        } else {
-            None
-        }
+        self.is_normal().then_some(DeckConfigId(self.id.0))
     }
 
-    /// Get the effective desired retention value for a deck.
-    /// Returns deck-specific desired retention if available, otherwise falls
-    /// back to config default.
-    pub fn effective_desired_retention(&self, config: &DeckConfig) -> f32 {
-        self.normal()
-            .ok()
-            .and_then(|d| d.desired_retention)
-            .unwrap_or(config.inner.desired_retention)
+    /// See [NormalDeck::config_id] for why this is stored. To be called once
+    /// the deck has its id, and its settings hold any overrides it had.
+    pub(crate) fn keep_settings_pointer_and_clear_overrides(&mut self) {
+        let id = self.id.0;
+        if let DeckKind::Normal(normal) = &mut self.kind {
+            normal.config_id = id;
+            normal.review_limit = None;
+            normal.new_limit = None;
+            normal.desired_retention = None;
+        }
     }
 
     // used by tests at the moment

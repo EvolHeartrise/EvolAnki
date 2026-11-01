@@ -65,7 +65,7 @@ impl Collection {
                 .or_not_found(card.original_deck_id)?
         };
         let config_id = original_deck.config_id().unwrap();
-        let preset = self
+        let config = self
             .get_deck_config(config_id, true)?
             .or_not_found(config_id.to_string())?;
 
@@ -104,8 +104,7 @@ impl Collection {
             memory_state,
             fsrs_retrievability,
             custom_data: card.custom_data,
-            fsrs_params: preset.fsrs_params().to_vec(),
-            preset: preset.name,
+            fsrs_params: config.fsrs_params().to_vec(),
             original_deck: if original_deck != deck {
                 Some(original_deck.human_name())
             } else {
@@ -161,7 +160,7 @@ impl Collection {
     ) -> Result<Vec<anki_proto::stats::card_stats_response::StatsRevlogEntry>> {
         let deck_id = card.original_deck_id.or(card.deck_id);
         let deck = self.get_deck(deck_id)?.or_not_found(card.deck_id)?;
-        let conf_id = DeckConfigId(deck.normal()?.config_id);
+        let conf_id = deck.config_id().or_invalid("deck is filtered")?;
         let config = self
             .storage
             .get_deck_config(conf_id)?
@@ -290,12 +289,7 @@ mod test {
         let deck_configs = col.get_deck_configs_for_update(DeckId(1))?;
         col.update_deck_configs(UpdateDeckConfigsRequest {
             target_deck_id: DeckId(1),
-            configs: deck_configs
-                .all_config
-                .into_iter()
-                .map(|config| config.config.unwrap().into())
-                .collect(),
-            removed_config_ids: vec![],
+            config: deck_configs.config.unwrap().into(),
             mode: UpdateDeckConfigsMode::Normal,
             card_state_customizer: String::new(),
             limits: Limits::default(),

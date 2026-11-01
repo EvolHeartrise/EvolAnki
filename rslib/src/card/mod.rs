@@ -378,19 +378,15 @@ impl Collection {
             // cards already in the target deck from triggering a recompute of
             // *other* memory-state-less cards in that deck.
             if fsrs_enabled && count > 0 {
-                let desired_retention = deck.effective_desired_retention(&config);
-                let deck_desired_retention = [(deck_id, desired_retention)].into();
-
                 use crate::search::SearchNode::*;
 
                 col.update_memory_state(vec![UpdateMemoryStateEntry {
                     req: Some(UpdateMemoryStateRequest {
                         params: config.fsrs_params().clone(),
-                        preset_desired_retention: config.inner.desired_retention,
+                        desired_retention: config.inner.desired_retention,
                         historical_retention: config.inner.historical_retention,
                         max_interval: config.inner.maximum_review_interval,
                         reschedule: false,
-                        deck_desired_retention,
                     }),
                     search: SearchBuilder::all(vec![
                         DeckIdsWithoutChildren(deck_id.to_string()).into(),
@@ -702,10 +698,10 @@ mod test {
         Ok(())
     }
 
-    // The recompute must use the target preset's parameters, not the source's.
+    // The recompute must use the target deck's parameters, not the source's.
     // Verified through the desired retention stored on the card.
     #[test]
-    fn set_deck_uses_target_preset_desired_retention() -> Result<()> {
+    fn set_deck_uses_target_deck_desired_retention() -> Result<()> {
         let mut col = Collection::new();
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
         let mut note = nt.new_note();

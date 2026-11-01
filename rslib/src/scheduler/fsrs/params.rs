@@ -55,12 +55,16 @@ pub(crate) fn ignore_revlogs_before_ms_from_config(config: &DeckConfig) -> Resul
 pub struct ComputeParamsRequest<'t> {
     pub search: &'t str,
     pub ignore_revlogs_before_ms: TimestampMillis,
-    pub current_preset: u32,
-    pub total_presets: u32,
+    pub current_deck: u32,
+    pub total_decks: u32,
     pub current_params: &'t Params,
     pub num_of_relearning_steps: usize,
     pub health_check: bool,
 }
+
+/// Splitting a shared set of parameters leaves some decks with little history
+/// of their own, and what they were given came from more than that.
+pub(crate) const MIN_ITEMS_TO_OPTIMIZE: u32 = 400;
 
 /// r: retention
 fn log_loss_adjustment(r: f32) -> f32 {
@@ -75,9 +79,9 @@ fn rmse_adjustment(r: f32, c: u32) -> f32 {
 }
 
 impl Collection {
-    /// Note this does not return an error if there are less than 400 items -
-    /// the caller should instead check the fsrs_items count in the return
-    /// value.
+    /// With fewer than [MIN_ITEMS_TO_OPTIMIZE] items, returns the current
+    /// parameters, rather than ones fitted to too little, and no error: the
+    /// caller can tell from the fsrs_items count in the return value.
     pub fn compute_params(
         &mut self,
         request: ComputeParamsRequest,
@@ -85,8 +89,8 @@ impl Collection {
         let ComputeParamsRequest {
             search,
             ignore_revlogs_before_ms: ignore_revlogs_before,
-            current_preset,
-            total_presets,
+            current_deck,
+            total_decks,
             current_params,
             num_of_relearning_steps,
             health_check,
@@ -99,7 +103,7 @@ impl Collection {
             fsrs_items_for_training(revlogs.clone(), timing.next_day_at, ignore_revlogs_before);
 
         let fsrs_items = items.len() as u32;
-        if fsrs_items == 0 {
+        if fsrs_items < MIN_ITEMS_TO_OPTIMIZE {
             return Ok(ComputeFsrsParamsResponse {
                 params: current_params.to_vec(),
                 fsrs_items,
@@ -111,8 +115,8 @@ impl Collection {
         let create_progress_thread = || -> Result<_> {
             let mut anki_progress = self.new_progress_handler::<ComputeParamsProgress>();
             anki_progress.update(false, |p| {
-                p.current_preset = current_preset;
-                p.total_presets = total_presets;
+                p.current_deck = current_deck;
+                p.total_decks = total_decks;
             })?;
             let progress = CombinedProgressState::new_shared();
             let progress2 = progress.clone();
@@ -248,7 +252,7 @@ impl Collection {
             .get_all_decks()?
             .into_iter()
             .filter_map(|deck| {
-                if let Some(preset_id) = deck.config_id().map(|id| id.0) {
+                if let Some(config_id) = deck.config_id().map(|id| id.0) {
                     let parent_id = immediate_parent_name(&deck.name.to_string())
                         .and_then(|parent_name| deck_name_to_id.get(parent_name))
                         .map(|id| id.0)
@@ -256,7 +260,7 @@ impl Collection {
                     Some(DeckEntry {
                         id: deck.id.0,
                         parent_id,
-                        preset_id,
+                        config_id,
                     })
                 } else {
                     None
@@ -342,9 +346,9 @@ pub struct ComputeParamsProgress {
     pub total_iterations: u32,
     pub reviews: u32,
     /// Only used in 'compute all params' case
-    pub current_preset: u32,
+    pub current_deck: u32,
     /// Only used in 'compute all params' case
-    pub total_presets: u32,
+    pub total_decks: u32,
 }
 
 /// Convert a series of revlog entries sorted by card id into FSRS items.
@@ -568,12 +572,148 @@ fn revlog_entry_to_proto(e: RevlogEntry) -> anki_proto::stats::RevlogEntry {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use anki_proto::deck_config::UpdateDeckConfigsMode;
+
     use super::*;
+    use crate::card::CardQueue;
+    use crate::card::CardType;
+    use crate::deckconfig::default_param_search;
+    use crate::deckconfig::UpdateDeckConfigsRequest;
+    use crate::tests::CardAdder;
+    use crate::tests::DeckAdder;
 
     const NEXT_DAY_AT: TimestampSecs = TimestampSecs(86400 * 1000);
 
     fn days_ago_ms(days_ago: i64) -> TimestampMillis {
         ((NEXT_DAY_AT.0 - days_ago * 86400) * 1000).into()
+    }
+
+    /// Give a new card in this deck `reviews` reviews, a day apart, which
+    /// counts for that many items, less the first, as training data.
+    fn add_reviewed_card(col: &mut Collection, deck: DeckId, reviews: i64, start: i64) -> CardId {
+        let card = CardAdder::new().deck(deck).add(col).remove(0);
+        let mut updated = card.clone();
+        updated.ctype = CardType::Review;
+        updated.queue = CardQueue::Review;
+        updated.interval = 1;
+        col.storage.update_card(&updated).unwrap();
+        let now = TimestampMillis::now().0;
+        for review in 0..reviews {
+            col.storage
+                .add_revlog_entry(
+                    &RevlogEntry {
+                        id: RevlogId(now - (reviews - review) * 86_400_000 - start),
+                        cid: card.id,
+                        review_kind: if review == 0 {
+                            RevlogReviewKind::Learning
+                        } else {
+                            RevlogReviewKind::Review
+                        },
+                        button_chosen: if review % 3 == 2 { 1 } else { 3 },
+                        interval: 1,
+                        ..Default::default()
+                    },
+                    true,
+                )
+                .unwrap();
+        }
+        card.id
+    }
+
+    fn items_for(col: &mut Collection, search: &str) -> ComputeFsrsParamsResponse {
+        col.compute_params(ComputeParamsRequest {
+            search,
+            ignore_revlogs_before_ms: 0.into(),
+            current_deck: 1,
+            total_decks: 1,
+            current_params: &vec![0.5; 19],
+            num_of_relearning_steps: 1,
+            health_check: false,
+        })
+        .unwrap()
+    }
+
+    #[test]
+    fn a_decks_search_counts_its_subdecks_and_no_other_deck() {
+        let mut col = Collection::new();
+        let parent = DeckAdder::new("P").add(&mut col);
+        let child = DeckAdder::new("P::C").add(&mut col);
+        let other = DeckAdder::new("O").add(&mut col);
+        add_reviewed_card(&mut col, parent.id, 3, 1);
+        add_reviewed_card(&mut col, child.id, 3, 2);
+        add_reviewed_card(&mut col, other.id, 3, 3);
+
+        let items = |col: &mut Collection, deck: &Deck| {
+            let search = default_param_search(deck).unwrap();
+            items_for(col, &search).fsrs_items
+        };
+        let per_card = items(&mut col, &other);
+        assert!(per_card > 0);
+        assert_eq!(items(&mut col, &parent), per_card * 2);
+        assert_eq!(items(&mut col, &child), per_card);
+    }
+
+    #[test]
+    fn too_few_reviews_keep_the_current_parameters() {
+        let mut col = Collection::new();
+        let deck = DeckAdder::new("small").add(&mut col);
+        add_reviewed_card(&mut col, deck.id, 5, 1);
+        let response = items_for(&mut col, &default_param_search(&deck).unwrap());
+        assert!(response.fsrs_items > 0);
+        assert!(response.fsrs_items < MIN_ITEMS_TO_OPTIMIZE);
+        assert_eq!(response.params, vec![0.5; 19]);
+    }
+
+    #[test]
+    fn optimize_all_works_deck_by_deck_and_leaves_small_decks_alone() -> Result<()> {
+        let mut col = Collection::new();
+        // far too optimistic for what follows, so that optimizing helps
+        let params = vec![
+            50.0, 60.0, 70.0, 80.0, 7.0114, 0.57, 2.0966, 0.0069, 1.5261, 0.112, 1.0178,
+            1.849, 0.1133, 0.3127, 2.2934, 0.2191, 3.0004, 0.7536, 0.3332, 0.1437, 0.2,
+        ];
+        let big = DeckAdder::new("big")
+            .with_config(|c| c.inner.fsrs_params_6 = params.clone())
+            .add(&mut col);
+        let small = DeckAdder::new("small")
+            .with_config(|c| c.inner.fsrs_params_5 = vec![0.5; 19])
+            .add(&mut col);
+        let empty = DeckAdder::new("empty")
+            .with_config(|c| c.inner.fsrs_params_6 = params.clone())
+            .add(&mut col);
+        for start in 0..150 {
+            add_reviewed_card(&mut col, big.id, 5, start);
+        }
+        add_reviewed_card(&mut col, small.id, 5, 1000);
+        let before = |col: &Collection, deck: &Deck| {
+            col.get_deck_config(deck.config_id().unwrap(), false)
+                .unwrap()
+                .unwrap()
+        };
+        let small_before = before(&col, &small);
+        let empty_before = before(&col, &empty);
+
+        let output = col.get_deck_configs_for_update(big.id)?;
+        col.update_deck_configs(UpdateDeckConfigsRequest {
+            target_deck_id: big.id,
+            config: output.config.unwrap().into(),
+            mode: UpdateDeckConfigsMode::ComputeAllParams,
+            card_state_customizer: String::new(),
+            limits: Default::default(),
+            new_cards_ignore_review_limit: false,
+            apply_all_parent_limits: false,
+            fsrs: true,
+            fsrs_reschedule: false,
+            fsrs_health_check: false,
+        })?;
+
+        assert_ne!(before(&col, &big).inner.fsrs_params_6, params);
+        // the same parameters in the same places, nothing cleared or filled in
+        let small_after = before(&col, &small);
+        assert_eq!(small_after.inner.fsrs_params_5, small_before.inner.fsrs_params_5);
+        assert_eq!(small_after.fsrs_params(), small_before.fsrs_params());
+        assert_eq!(before(&col, &empty).inner, empty_before.inner);
+        Ok(())
     }
 
     pub(crate) fn revlog(review_kind: RevlogReviewKind, days_ago: i64) -> RevlogEntry {

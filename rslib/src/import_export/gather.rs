@@ -64,7 +64,7 @@ impl ExchangeData {
                 .col
                 .gather_deck_configs(&self.decks, with_scheduling)?;
         }
-        self.reset_decks(!with_deck_configs, !with_scheduling, allow_filtered);
+        self.reset_decks(!with_scheduling, allow_filtered);
 
         self.check_ids()
     }
@@ -104,33 +104,23 @@ impl ExchangeData {
         }
     }
 
-    fn reset_decks(
-        &mut self,
-        reset_config_ids: bool,
-        reset_study_info: bool,
-        allow_filtered: bool,
-    ) {
+    fn reset_decks(&mut self, reset_study_info: bool, allow_filtered: bool) {
         for deck in self.decks.iter_mut() {
             if reset_study_info {
                 deck.common = Default::default();
             }
             match &mut deck.kind {
                 DeckKind::Normal(normal) => {
-                    if reset_config_ids {
-                        normal.config_id = 1;
-                    }
                     if reset_study_info {
                         normal.extend_new = 0;
                         normal.extend_review = 0;
-                        normal.review_limit = None;
                         normal.review_limit_today = None;
-                        normal.new_limit = None;
                         normal.new_limit_today = None;
                     }
                 }
                 DeckKind::Filtered(_) if reset_study_info || !allow_filtered => {
                     deck.kind = DeckKind::Normal(NormalDeck {
-                        config_id: 1,
+                        config_id: deck.id.0,
                         ..Default::default()
                     })
                 }

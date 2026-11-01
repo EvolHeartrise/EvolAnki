@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use prost::Message;
 use rusqlite::params;
+use rusqlite::Connection;
 use rusqlite::Row;
 use serde_json::Value;
 
@@ -30,6 +31,13 @@ fn row_to_deckconf(row: &Row, fix_invalid: bool) -> Result<DeckConfig> {
     })
 }
 
+/// For a connection that isn't a collection yet, too. Leaves values as stored.
+pub(crate) fn all_deck_config_unchecked(db: &Connection) -> Result<Vec<DeckConfig>> {
+    db.prepare_cached(include_str!("get.sql"))?
+        .query_and_then([], |row| row_to_deckconf(row, false))?
+        .collect()
+}
+
 impl SqliteStorage {
     pub(crate) fn all_deck_config(&self) -> Result<Vec<DeckConfig>> {
         self.db
@@ -39,11 +47,8 @@ impl SqliteStorage {
     }
 
     /// Does not cap values to those expected by the latest schema.
-    pub(crate) fn all_deck_config_for_schema16_upgrade(&self) -> Result<Vec<DeckConfig>> {
-        self.db
-            .prepare_cached(include_str!("get.sql"))?
-            .query_and_then([], |row| row_to_deckconf(row, false))?
-            .collect()
+    pub(crate) fn all_deck_config_unchecked(&self) -> Result<Vec<DeckConfig>> {
+        all_deck_config_unchecked(&self.db)
     }
 
     pub(crate) fn get_deck_config_map(&self) -> Result<HashMap<DeckConfigId, DeckConfig>> {
@@ -60,33 +65,6 @@ impl SqliteStorage {
             .query_and_then(params![dcid], |row| row_to_deckconf(row, true))?
             .next()
             .transpose()
-    }
-
-    pub(crate) fn get_deck_config_id_by_name(&self, name: &str) -> Result<Option<DeckConfigId>> {
-        self.db
-            .prepare_cached("select id from deck_config WHERE name = ?")?
-            .query_and_then([name], |row| Ok::<_, AnkiError>(DeckConfigId(row.get(0)?)))?
-            .next()
-            .transpose()
-    }
-
-    pub(crate) fn add_deck_conf(&self, conf: &mut DeckConfig) -> Result<()> {
-        let mut conf_bytes = vec![];
-        conf.inner.encode(&mut conf_bytes)?;
-        self.db
-            .prepare_cached(include_str!("add.sql"))?
-            .execute(params![
-                conf.id,
-                conf.name,
-                conf.mtime_secs,
-                conf.usn,
-                conf_bytes,
-            ])?;
-        let id = self.db.last_insert_rowid();
-        if conf.id.0 != id {
-            conf.id.0 = id;
-        }
-        Ok(())
     }
 
     pub(crate) fn add_deck_conf_if_unique(&self, conf: &DeckConfig) -> Result<bool> {
@@ -157,13 +135,6 @@ impl SqliteStorage {
     }
 
     // Creating/upgrading/downgrading
-
-    pub(super) fn add_default_deck_config(&self, tr: &I18n) -> Result<()> {
-        let mut conf = DeckConfig::default();
-        conf.id.0 = 1;
-        conf.name = tr.deck_config_default_name().into();
-        self.add_deck_conf(&mut conf)
-    }
 
     // schema 11->14
 
@@ -237,7 +208,7 @@ impl SqliteStorage {
 
     pub(super) fn upgrade_deck_conf_to_schema16(&self, server: bool) -> Result<()> {
         let mut invalid_configs = vec![];
-        for mut conf in self.all_deck_config_for_schema16_upgrade()? {
+        for mut conf in self.all_deck_config_unchecked()? {
             // schema 16 changed starting ease of 250 to 2.5
             conf.inner.initial_ease /= 100.0;
             // new deck configs created with schema 15 had the wrong

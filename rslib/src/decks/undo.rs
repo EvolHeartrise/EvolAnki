@@ -38,6 +38,9 @@ impl Collection {
         self.state.deck_cache.clear();
         self.add_deck_grave_undoable(deck.id, usn)?;
         self.storage.remove_deck(deck.id)?;
+        if let Some(config) = self.storage.get_deck_config(DeckConfigId(deck.id.0))? {
+            self.remove_deck_config_undoable(config)?;
+        }
         self.save_undo(UndoableDeckChange::Removed(Box::new(deck)));
         Ok(())
     }
@@ -47,7 +50,7 @@ impl Collection {
     pub(super) fn add_deck_undoable(&mut self, deck: &mut Deck) -> Result<(), AnkiError> {
         self.storage.add_deck(deck)?;
         self.save_undo(UndoableDeckChange::Added(Box::new(deck.clone())));
-        Ok(())
+        self.add_settings_if_missing(deck)
     }
 
     pub(super) fn add_or_update_deck_with_existing_id_undoable(
@@ -57,7 +60,7 @@ impl Collection {
         self.state.deck_cache.clear();
         self.storage.add_or_update_deck_with_existing_id(deck)?;
         self.save_undo(UndoableDeckChange::Added(Box::new(deck.clone())));
-        Ok(())
+        self.add_settings_if_missing(deck)
     }
 
     /// Update an individual, existing deck. Caller is responsible for ensuring
@@ -82,6 +85,9 @@ impl Collection {
     fn remove_deck_undoable(&mut self, deck: Deck) -> Result<()> {
         self.state.deck_cache.clear();
         self.storage.remove_deck(deck.id)?;
+        if let Some(config) = self.storage.get_deck_config(DeckConfigId(deck.id.0))? {
+            self.remove_deck_config_undoable(config)?;
+        }
         self.save_undo(UndoableDeckChange::Removed(Box::new(deck)));
         Ok(())
     }

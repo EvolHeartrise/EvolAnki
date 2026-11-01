@@ -533,7 +533,6 @@ impl SqliteStorage {
         }
 
         if create {
-            storage.add_default_deck_config(tr)?;
             storage.add_default_deck(tr)?;
             storage.add_stock_notetypes(tr)?;
         }

@@ -94,10 +94,10 @@ impl LoadBalancerContext<'_> {
 
 #[derive(Debug)]
 pub struct LoadBalancer {
-    /// Load balancer operates at the preset level, it only counts
-    /// cards in the same preset as the card being balanced.
-    days_by_preset: HashMap<DeckConfigId, [LoadBalancerDay; LOAD_BALANCE_DAYS]>,
-    easy_days_percentages_by_preset: HashMap<DeckConfigId, [EasyDay; 7]>,
+    /// Load balancer operates at the level of a deck's settings, so it only
+    /// counts cards in the same deck as the card being balanced.
+    days_by_deck: HashMap<DeckConfigId, [LoadBalancerDay; LOAD_BALANCE_DAYS]>,
+    easy_days_percentages_by_deck: HashMap<DeckConfigId, [EasyDay; 7]>,
     next_day_at: TimestampSecs,
 }
 
@@ -110,7 +110,7 @@ impl LoadBalancer {
     ) -> Result<LoadBalancer> {
         let cards_on_each_day =
             storage.get_all_cards_due_in_range(today, today + LOAD_BALANCE_DAYS as u32)?;
-        let days_by_preset = cards_on_each_day
+        let days_by_deck = cards_on_each_day
             .into_iter()
             // for each day, group all cards on each day by their deck config id
             .map(|cards_on_day| {
@@ -144,11 +144,11 @@ impl LoadBalancer {
                 },
             );
         let configs = storage.get_deck_config_map()?;
-        let easy_days_percentages_by_preset = build_easy_days_percentages(configs)?;
+        let easy_days_percentages_by_deck = build_easy_days_percentages(configs)?;
 
         Ok(LoadBalancer {
-            days_by_preset,
-            easy_days_percentages_by_preset,
+            days_by_deck,
+            easy_days_percentages_by_deck,
             next_day_at,
         })
     }
@@ -193,7 +193,7 @@ impl LoadBalancer {
 
         let (before_days, after_days) = constrained_fuzz_bounds(interval, minimum, maximum);
 
-        let days = self.days_by_preset.get(&deckconfig_id)?;
+        let days = self.days_by_deck.get(&deckconfig_id)?;
         let interval_days = &days[before_days as usize..=after_days as usize];
 
         // calculate review counts and expected distribution
@@ -208,7 +208,7 @@ impl LoadBalancer {
             })
             .unzip();
 
-        let easy_days_load = self.easy_days_percentages_by_preset.get(&deckconfig_id)?;
+        let easy_days_load = self.easy_days_percentages_by_deck.get(&deckconfig_id)?;
         let easy_days_modifier =
             calculate_easy_days_modifiers(easy_days_load, &weekdays, &review_counts);
         let intervals = review_counts
@@ -227,7 +227,7 @@ impl LoadBalancer {
     }
 
     pub fn add_card(&mut self, cid: CardId, dcid: DeckConfigId, interval: u32) {
-        if let Some(days) = self.days_by_preset.get_mut(&dcid) {
+        if let Some(days) = self.days_by_deck.get_mut(&dcid) {
             if let Some(day) = days.get_mut(interval as usize) {
                 day.add(cid);
             }
@@ -235,7 +235,7 @@ impl LoadBalancer {
     }
 
     pub fn remove_card(&mut self, cid: CardId) {
-        for days in self.days_by_preset.values_mut() {
+        for days in self.days_by_deck.values_mut() {
             for day in days.iter_mut() {
                 day.remove(cid);
             }

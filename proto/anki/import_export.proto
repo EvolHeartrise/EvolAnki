@@ -14,7 +14,7 @@ import "anki/generic.proto";
 
 service ImportExportService {
   rpc ImportAnkiPackage(ImportAnkiPackageRequest) returns (ImportResponse);
-  rpc GetImportAnkiPackagePresets(generic.Empty)
+  rpc GetImportAnkiPackageDefaults(generic.Empty)
       returns (ImportAnkiPackageOptions);
   rpc ExportAnkiPackage(ExportAnkiPackageRequest) returns (generic.UInt32);
   rpc GetCsvMetadata(CsvMetadataRequest) returns (CsvMetadata);

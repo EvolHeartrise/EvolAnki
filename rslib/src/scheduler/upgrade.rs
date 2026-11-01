@@ -78,13 +78,11 @@ fn get_filter_info_for_card(
         };
 
         let original_step_count = if had_custom_steps {
-            let home_conf_id = decks
-                .get(&card.original_deck_id)
-                .and_then(|deck| deck.config_id())
-                .unwrap_or(DeckConfigId(1));
             Some(
-                configs
-                    .get(&home_conf_id)
+                decks
+                    .get(&card.original_deck_id)
+                    .and_then(|deck| deck.config_id())
+                    .and_then(|id| configs.get(&id))
                     .map(|config| {
                         if card.ctype == CardType::Review {
                             config.inner.relearn_steps.len()

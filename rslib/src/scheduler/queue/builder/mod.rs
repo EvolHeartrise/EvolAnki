@@ -299,20 +299,16 @@ mod test {
 
     impl Collection {
         fn set_deck_gather_order(&mut self, deck: &mut Deck, order: NewCardGatherPriority) {
-            let mut conf = DeckConfig::default();
+            let mut conf = self.get_deck_config(deck.config_id().unwrap(), false).unwrap().unwrap();
             conf.inner.new_card_gather_priority = order as i32;
             conf.inner.new_card_sort_order = NewCardSortOrder::NoSort as i32;
             self.add_or_update_deck_config(&mut conf).unwrap();
-            deck.normal_mut().unwrap().config_id = conf.id.0;
-            self.add_or_update_deck(deck).unwrap();
         }
 
         fn set_deck_new_limit(&mut self, deck: &mut Deck, new_limit: u32) {
-            let mut conf = DeckConfig::default();
+            let mut conf = self.get_deck_config(deck.config_id().unwrap(), false).unwrap().unwrap();
             conf.inner.new_per_day = new_limit;
             self.add_or_update_deck_config(&mut conf).unwrap();
-            deck.normal_mut().unwrap().config_id = conf.id.0;
-            self.add_or_update_deck(deck).unwrap();
         }
 
         fn set_deck_review_limit(&mut self, deck: DeckId, limit: u32) {
@@ -334,11 +330,9 @@ mod test {
         }
 
         fn set_deck_review_order(&mut self, deck: &mut Deck, order: ReviewCardOrder) {
-            let mut conf = DeckConfig::default();
+            let mut conf = self.get_deck_config(deck.config_id().unwrap(), false).unwrap().unwrap();
             conf.inner.review_order = order as i32;
             self.add_or_update_deck_config(&mut conf).unwrap();
-            deck.normal_mut().unwrap().config_id = conf.id.0;
-            self.add_or_update_deck(deck).unwrap();
         }
 
         fn queue_as_due_and_ivl(&mut self, deck_id: DeckId) -> Vec<(i32, u32)> {

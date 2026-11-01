@@ -8,6 +8,7 @@ use std::iter;
 use prost::Message;
 use rusqlite::named_params;
 use rusqlite::params;
+use rusqlite::Connection;
 use rusqlite::Row;
 use unicase::UniCase;
 
@@ -60,6 +61,13 @@ fn row_to_due_counts(row: &Row) -> Result<(DeckId, DueCounts)> {
             total_cards,
         },
     ))
+}
+
+/// For a connection that isn't a collection yet, too.
+pub(crate) fn all_decks(db: &Connection) -> Result<Vec<Deck>> {
+    db.prepare(include_str!("get_deck.sql"))?
+        .query_and_then([], row_to_deck)?
+        .collect()
 }
 
 impl SqliteStorage {
@@ -159,6 +167,7 @@ impl SqliteStorage {
             .db
             .prepare(include_str!("alloc_id.sql"))?
             .query_row([TimestampMillis::now()], |r| r.get(0))?;
+        deck.keep_settings_pointer_and_clear_overrides();
         self.add_or_update_deck_with_existing_id(deck)
             .inspect_err(|_err| {
                 // restore id of 0
@@ -372,6 +381,8 @@ impl SqliteStorage {
         deck.id.0 = 1;
         // fixme: separate key
         deck.name = NativeDeckName::from_native_str(tr.deck_config_default_name());
+        deck.keep_settings_pointer_and_clear_overrides();
+        self.add_deck_conf_if_unique(&DeckConfig::new_for_deck(deck.id))?;
         self.add_or_update_deck_with_existing_id(&deck)
     }
 

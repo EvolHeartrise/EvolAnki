@@ -136,6 +136,9 @@ impl ExchangeData {
         let tempfile = collection_to_tempfile(meta, archive)?;
         let mut col = CollectionBuilder::new(tempfile.path()).build()?;
         col.maybe_fix_invalid_ids()?;
+        // so that what's gathered has a set of settings per deck, whatever
+        // version made it
+        col.ensure_decks_own_settings()?;
         col.maybe_upgrade_scheduler()?;
 
         progress.set(ImportProgress::Gathering)?;

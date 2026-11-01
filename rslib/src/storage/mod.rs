@@ -31,6 +31,8 @@ pub const QUEUE_ONCE_OPENED_SQL: &str = "CASE
     ELSE 3
   END";
 
+pub(crate) use deck::all_decks;
+pub(crate) use deckconfig::all_deck_config_unchecked;
 pub use sqlite::copy_database;
 pub use sqlite::verify_copied_collection;
 pub(crate) use sqlite::ProcessTextFlags;

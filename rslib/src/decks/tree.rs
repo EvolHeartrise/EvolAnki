@@ -408,9 +408,13 @@ mod test {
         assert_eq!(tree.children[0].children[0].new_count, 4);
 
         // set the limit to 4, which should mean 3 are left
-        let mut conf = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
-        conf.inner.new_per_day = 4;
-        col.add_or_update_deck_config(&mut conf)?;
+        for deck in [&parent_deck, &child_deck] {
+            let mut conf = col
+                .get_deck_config(deck.config_id().unwrap(), false)?
+                .unwrap();
+            conf.inner.new_per_day = 4;
+            col.add_or_update_deck_config(&mut conf)?;
+        }
 
         let tree = col.deck_tree(Some(TimestampSecs::now()))?;
         assert_eq!(tree.children[0].new_count, 3);
@@ -422,12 +426,10 @@ mod test {
     #[test]
     fn nested_counts_v3() -> Result<()> {
         fn create_deck_with_new_limit(col: &mut Collection, name: &str, new_limit: u32) -> Deck {
-            let mut deck = col.get_or_create_normal_deck(name).unwrap();
-            let mut conf = DeckConfig::default();
+            let deck = col.get_or_create_normal_deck(name).unwrap();
+            let mut conf = col.get_deck_config(deck.config_id().unwrap(), false).unwrap().unwrap();
             conf.inner.new_per_day = new_limit;
             col.add_or_update_deck_config(&mut conf).unwrap();
-            deck.normal_mut().unwrap().config_id = conf.id.0;
-            col.add_or_update_deck(&mut deck).unwrap();
             deck
         }
 

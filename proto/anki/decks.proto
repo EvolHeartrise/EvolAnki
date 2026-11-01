@@ -74,16 +74,22 @@ message Deck {
       uint32 limit = 1;
       uint32 today = 2;
     }
+    // The settings of a deck are the deck_config row with the deck's own id,
+    // and nothing reads this to find them. It's kept equal to that id, so that
+    // opening a collection can spot a deck from before settings belonged to
+    // decks, or from a package, and give it its own, and so that an older build
+    // can still open this collection.
     int64 config_id = 1;
     uint32 extend_new = 2;
     uint32 extend_review = 3;
     string description = 4;
     bool markdown_description = 5;
+    // These two, and desired_retention, are overrides from before settings
+    // belonged to decks, and are moved into the settings on opening.
     optional uint32 review_limit = 6;
     optional uint32 new_limit = 7;
     DayLimit review_limit_today = 8;
     DayLimit new_limit_today = 9;
-    // Deck-specific desired retention override
     optional float desired_retention = 10;
 
     reserved 12 to 15;

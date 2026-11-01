@@ -245,8 +245,8 @@ impl crate::services::SchedulerService for Collection {
         self.compute_params(ComputeParamsRequest {
             search: &input.search,
             ignore_revlogs_before_ms: input.ignore_revlogs_before_ms.into(),
-            current_preset: 1,
-            total_presets: 1,
+            current_deck: 1,
+            total_decks: 1,
             current_params: &input.current_params,
             num_of_relearning_steps: input.num_of_relearning_steps as usize,
             health_check: input.health_check,

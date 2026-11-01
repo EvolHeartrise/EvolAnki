@@ -3,17 +3,13 @@
 
 //! Updating configs in bulk, from the deck options screen.
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::iter;
-
 use anki_proto::deck_config::deck_configs_for_update::current_deck::Limits;
-use anki_proto::deck_config::deck_configs_for_update::ConfigWithExtra;
 use anki_proto::deck_config::deck_configs_for_update::CurrentDeck;
 use anki_proto::deck_config::UpdateDeckConfigsMode;
 use anki_proto::decks::deck::normal::DayLimit;
 use fsrs::DEFAULT_PARAMETERS;
 use fsrs::FSRS;
+use tracing::warn;
 
 use crate::config::I32ConfigKey;
 use crate::config::StringKey;
@@ -28,14 +24,12 @@ use crate::search::Negated;
 use crate::search::Node;
 use crate::search::SearchNode;
 use crate::search::StateKind;
-use crate::storage::comma_separated_ids;
 
 #[derive(Debug, Clone)]
 pub struct UpdateDeckConfigsRequest {
     pub target_deck_id: DeckId,
-    /// Deck will be set to last provided deck config.
-    pub configs: Vec<DeckConfig>,
-    pub removed_config_ids: Vec<DeckConfigId>,
+    /// The settings of the target deck. Its id is ignored.
+    pub config: DeckConfig,
     pub mode: UpdateDeckConfigsMode,
     pub card_state_customizer: String,
     pub limits: Limits,
@@ -63,8 +57,8 @@ impl Collection {
             0
         };
         Ok(anki_proto::deck_config::DeckConfigsForUpdate {
-            all_config: self.get_deck_config_with_extra_for_update()?,
             current_deck: Some(self.get_current_deck_for_update(deck)?),
+            config: Some(self.get_deck_settings_for_update(deck)?.into()),
             defaults: Some(defaults.into()),
             schema_modified: self
                 .storage
@@ -88,42 +82,29 @@ impl Collection {
     }
 }
 
+/// What a deck's FSRS tools look at, unless it has its own search: the deck and
+/// its subdecks, as `deck:` means, without suspended cards.
+pub(crate) fn default_param_search(deck: &Deck) -> Result<String> {
+    Ok(SearchNode::from_deck_name(&deck.human_name())
+        .and(SearchNode::State(StateKind::Suspended).negated())
+        .try_into_search()?
+        .to_string())
+}
+
 impl Collection {
-    fn get_deck_config_with_extra_for_update(&self) -> Result<Vec<ConfigWithExtra>> {
-        // grab the config and sort it
-        let mut config = self.storage.all_deck_config()?;
-        config.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+    fn get_deck_settings_for_update(&self, deck: DeckId) -> Result<DeckConfig> {
+        let mut config = self
+            .get_deck_config(DeckConfigId(deck.0), true)?
+            .or_not_found(deck)?;
         // pre-fill empty fsrs params with older params
-        config.iter_mut().for_each(|c| {
-            if c.inner.fsrs_params_6.is_empty() {
-                c.inner.fsrs_params_6 = if c.inner.fsrs_params_5.is_empty() {
-                    c.inner.fsrs_params_4.clone()
-                } else {
-                    c.inner.fsrs_params_5.clone()
-                };
-            }
-        });
-
-        // combine with use counts
-        let counts = self.get_deck_config_use_counts()?;
-        Ok(config
-            .into_iter()
-            .map(|config| ConfigWithExtra {
-                use_count: counts.get(&config.id).cloned().unwrap_or_default() as u32,
-                config: Some(config.into()),
-            })
-            .collect())
-    }
-
-    fn get_deck_config_use_counts(&self) -> Result<HashMap<DeckConfigId, usize>> {
-        let mut counts = HashMap::new();
-        for deck in self.storage.get_all_decks()? {
-            if let Ok(normal) = deck.normal() {
-                *counts.entry(DeckConfigId(normal.config_id)).or_default() += 1;
-            }
+        if config.inner.fsrs_params_6.is_empty() {
+            config.inner.fsrs_params_6 = if config.inner.fsrs_params_5.is_empty() {
+                config.inner.fsrs_params_4.clone()
+            } else {
+                config.inner.fsrs_params_5.clone()
+            };
         }
-
-        Ok(counts)
+        Ok(config)
     }
 
     fn get_current_deck_for_update(&mut self, deck: DeckId) -> Result<CurrentDeck> {
@@ -133,34 +114,25 @@ impl Collection {
 
         Ok(CurrentDeck {
             name: deck.human_name(),
-            config_id: normal.config_id,
-            parent_config_ids: self
-                .parent_config_ids(&deck)?
-                .into_iter()
-                .map(Into::into)
-                .collect(),
             limits: Some(normal_deck_to_limits(normal, today)),
+            default_search: default_param_search(&deck)?,
         })
     }
 
-    /// Deck configs used by parent decks.
-    fn parent_config_ids(&self, deck: &Deck) -> Result<HashSet<DeckConfigId>> {
-        Ok(self
-            .storage
-            .parent_decks(deck)?
-            .iter()
-            .filter_map(|deck| {
-                deck.normal()
-                    .ok()
-                    .map(|normal| DeckConfigId(normal.config_id))
-            })
-            .collect())
-    }
-
     fn update_deck_configs_inner(&mut self, mut req: UpdateDeckConfigsRequest) -> Result<()> {
-        require!(!req.configs.is_empty(), "config not provided");
         // FSRS can't be turned off: a stale payload must not clear memory states.
         req.fsrs = true;
+        let target = self
+            .storage
+            .get_deck(req.target_deck_id)?
+            .or_not_found(req.target_deck_id)?;
+        let target_config_id = target
+            .config_id()
+            .or_invalid("a filtered deck has no settings")?;
+        // What the page says it edited makes no difference to where this goes.
+        req.config.id = target_config_id;
+        req.config.name = target.id.to_string();
+
         let configs_before_update = self.storage.get_deck_config_map()?;
         let mut configs_after_update = configs_before_update.clone();
         let today = self
@@ -169,18 +141,13 @@ impl Collection {
             .adding_secs(-24 * 60 * 60)
             .date_string();
 
-        // handle removals first
-        for dcid in &req.removed_config_ids {
-            self.remove_deck_config_inner(*dcid)?;
-            configs_after_update.remove(dcid);
-        }
+        let mut configs = if req.mode == UpdateDeckConfigsMode::ComputeAllParams {
+            self.compute_all_params(&req)?
+        } else {
+            vec![req.config.clone()]
+        };
 
-        if req.mode == UpdateDeckConfigsMode::ComputeAllParams {
-            self.compute_all_params(&mut req)?;
-        }
-
-        // add/update provided configs
-        for conf in &mut req.configs {
+        for conf in &mut configs {
             if conf.inner.ignore_revlogs_before_date > today {
                 today.clone_into(&mut conf.inner.ignore_revlogs_before_date);
             }
@@ -198,116 +165,68 @@ impl Collection {
             configs_after_update.insert(conf.id, conf.clone());
         }
 
-        // get selected deck and possibly children
-        let selected_deck_ids: HashSet<_> = if req.mode == UpdateDeckConfigsMode::ApplyToChildren {
-            let deck = self
-                .storage
-                .get_deck(req.target_deck_id)?
-                .or_not_found(req.target_deck_id)?;
-            self.storage
-                .child_decks(&deck)?
-                .iter()
-                .chain(iter::once(&deck))
-                .map(|d| d.id)
-                .collect()
-        } else {
-            [req.target_deck_id].iter().cloned().collect()
-        };
-
-        // loop through all normal decks
         let usn = self.usn()?;
         let today = self.timing_today()?.days_elapsed;
-        let selected_config = req.configs.last().unwrap();
-        let mut decks_needing_memory_recompute: HashMap<DeckConfigId, Vec<DeckId>> =
-            Default::default();
+        let mut updated_target = target.clone();
+        update_deck_limits(updated_target.normal_mut()?, &req.limits, today);
+        self.update_deck_inner(&mut updated_target, target, usn)?;
+
+        // anything that follows from settings changing, in any deck that changed
+        let mut decks_needing_memory_recompute = vec![];
         let fsrs_toggled = self.get_config_bool(BoolKey::Fsrs) != req.fsrs;
         if fsrs_toggled {
             self.set_config_bool_inner(BoolKey::Fsrs, req.fsrs)?;
         }
-        let mut deck_desired_retention: HashMap<DeckId, f32> = Default::default();
         for deck in self.storage.get_all_decks()? {
-            if let Ok(normal) = deck.normal() {
-                let deck_id = deck.id;
-                // previous order & params
-                let previous_config_id = DeckConfigId(normal.config_id);
-                let previous_config = configs_before_update.get(&previous_config_id);
-                let previous_order = previous_config
-                    .map(|c| c.inner.new_card_insert_order())
-                    .unwrap_or_default();
-                let previous_params = previous_config.map(|c| c.fsrs_params());
-                let previous_preset_dr = previous_config.map(|c| c.inner.desired_retention);
-                let previous_deck_dr = normal.desired_retention;
-                let previous_dr = previous_deck_dr.or(previous_preset_dr);
-                let previous_easy_days = previous_config.map(|c| &c.inner.easy_days_percentages);
+            let Some(config_id) = deck.config_id() else {
+                continue;
+            };
+            let previous = configs_before_update.get(&config_id);
+            let current = configs_after_update.get(&config_id);
 
-                // if a selected (sub)deck, or its old config was removed, update deck to point
-                // to new config
-                let (current_config_id, current_deck_dr) = if selected_deck_ids.contains(&deck.id)
-                    || !configs_after_update.contains_key(&previous_config_id)
-                {
-                    let mut updated = deck.clone();
-                    updated.normal_mut()?.config_id = selected_config.id.0;
-                    update_deck_limits(updated.normal_mut()?, &req.limits, today);
-                    self.update_deck_inner(&mut updated, deck, usn)?;
-                    (selected_config.id, updated.normal()?.desired_retention)
-                } else {
-                    (previous_config_id, previous_deck_dr)
-                };
-
-                // if new order differs, deck needs re-sorting
-                let current_config = configs_after_update.get(&current_config_id);
-                let current_order = current_config
-                    .map(|c| c.inner.new_card_insert_order())
-                    .unwrap_or_default();
-                if previous_order != current_order {
-                    self.sort_deck(deck_id, current_order, usn)?;
-                }
-
-                // if params differ, memory state needs to be recomputed
-                let current_params = current_config.map(|c| c.fsrs_params());
-                let current_preset_dr = current_config.map(|c| c.inner.desired_retention);
-                let current_dr = current_deck_dr.or(current_preset_dr);
-                let current_easy_days = current_config.map(|c| &c.inner.easy_days_percentages);
-                if fsrs_toggled
-                    || previous_params != current_params
-                    || previous_dr != current_dr
-                    || (req.fsrs_reschedule && previous_easy_days != current_easy_days)
-                {
-                    decks_needing_memory_recompute
-                        .entry(current_config_id)
-                        .or_default()
-                        .push(deck_id);
-                }
-                if let Some(desired_retention) = current_deck_dr {
-                    deck_desired_retention.insert(deck_id, desired_retention);
-                }
-                self.adjust_remaining_steps_in_deck(deck_id, previous_config, current_config, usn)?;
+            // if new order differs, deck needs re-sorting
+            let current_order = current
+                .map(|c| c.inner.new_card_insert_order())
+                .unwrap_or_default();
+            let previous_order = previous
+                .map(|c| c.inner.new_card_insert_order())
+                .unwrap_or_default();
+            if previous_order != current_order {
+                self.sort_deck(deck.id, current_order, usn)?;
             }
+
+            // if params differ, memory state needs to be recomputed
+            let params_of = |c: Option<&DeckConfig>| c.map(|c| c.fsrs_params().clone());
+            let retention_of = |c: Option<&DeckConfig>| c.map(|c| c.inner.desired_retention);
+            let easy_days_of = |c: Option<&DeckConfig>| {
+                c.map(|c| c.inner.easy_days_percentages.clone())
+            };
+            if fsrs_toggled
+                || params_of(previous) != params_of(current)
+                || retention_of(previous) != retention_of(current)
+                || (req.fsrs_reschedule && easy_days_of(previous) != easy_days_of(current))
+            {
+                decks_needing_memory_recompute.push((deck.id, config_id));
+            }
+            self.adjust_remaining_steps_in_deck(deck.id, previous, current, usn)?;
         }
 
         if !decks_needing_memory_recompute.is_empty() {
             let input: Vec<UpdateMemoryStateEntry> = decks_needing_memory_recompute
                 .into_iter()
-                .map(|(conf_id, search)| {
-                    let config = configs_after_update.get(&conf_id);
-                    let params = config.and_then(|c| {
-                        if req.fsrs {
-                            Some(UpdateMemoryStateRequest {
-                                params: c.fsrs_params().clone(),
-                                preset_desired_retention: c.inner.desired_retention,
-                                max_interval: c.inner.maximum_review_interval,
-                                reschedule: req.fsrs_reschedule,
-                                historical_retention: c.inner.historical_retention,
-                                deck_desired_retention: deck_desired_retention.clone(),
-                            })
-                        } else {
-                            None
-                        }
+                .map(|(deck_id, config_id)| {
+                    let config = configs_after_update.get(&config_id);
+                    let params = config.map(|c| UpdateMemoryStateRequest {
+                        params: c.fsrs_params().clone(),
+                        desired_retention: c.inner.desired_retention,
+                        max_interval: c.inner.maximum_review_interval,
+                        reschedule: req.fsrs_reschedule,
+                        historical_retention: c.inner.historical_retention,
                     });
                     Ok(UpdateMemoryStateEntry {
                         req: params,
                         search: Node::Search(SearchNode::DeckIdsWithoutChildren(
-                            comma_separated_ids(&search),
+                            deck_id.to_string(),
                         )),
                         ignore_before: config
                             .map(ignore_revlogs_before_ms_from_config)
@@ -362,63 +281,61 @@ impl Collection {
         }
         Ok(())
     }
-    fn compute_all_params(&mut self, req: &mut UpdateDeckConfigsRequest) -> Result<()> {
+
+    /// The settings of all normal decks, with the parameters optimized where
+    /// that's possible, each from its own deck. A deck that can't be optimized,
+    /// as it has too few reviews or fails, is returned with what it had.
+    fn compute_all_params(&mut self, req: &UpdateDeckConfigsRequest) -> Result<Vec<DeckConfig>> {
         require!(req.fsrs, "FSRS must be enabled");
 
-        // frontend didn't include any unmodified deck configs, so we need to fill them
-        // in
-        let changed_configs: HashSet<_> = req.configs.iter().map(|c| c.id).collect();
-        let previous_last = req.configs.pop().or_invalid("no configs provided")?;
-        for config in self.storage.all_deck_config()? {
-            if !changed_configs.contains(&config.id) {
-                req.configs.push(config);
-            }
-        }
-        // other parts of the code expect the currently-selected preset to come last
-        req.configs.push(previous_last);
+        let mut decks: Vec<_> = self
+            .storage
+            .get_all_decks()?
+            .into_iter()
+            .filter(Deck::is_normal)
+            .collect();
+        decks.sort_unstable_by_key(|deck| deck.id == req.target_deck_id);
 
-        // calculate and apply params to each preset
-        let config_len = req.configs.len() as u32;
-        for (idx, config) in req.configs.iter_mut().enumerate() {
+        let total_decks = decks.len() as u32;
+        let mut configs = vec![];
+        for (idx, deck) in decks.iter().enumerate() {
+            let mut config = if deck.id == req.target_deck_id {
+                req.config.clone()
+            } else {
+                self.get_deck_settings_for_update(deck.id)?
+            };
             let search = if config.inner.param_search.trim().is_empty() {
-                SearchNode::Preset(config.name.clone())
-                    .and(SearchNode::State(StateKind::Suspended).negated())
-                    .try_into_search()?
-                    .to_string()
+                default_param_search(deck)?
             } else {
                 config.inner.param_search.clone()
             };
-            let ignore_revlogs_before_ms = ignore_revlogs_before_ms_from_config(config)?;
-            let num_of_relearning_steps = config.inner.relearn_steps.len();
+            let current_params = config.fsrs_params().clone();
             match self.compute_params(ComputeParamsRequest {
                 search: &search,
-                ignore_revlogs_before_ms,
-                current_preset: idx as u32 + 1,
-                total_presets: config_len,
-                current_params: config.fsrs_params(),
-                num_of_relearning_steps,
+                ignore_revlogs_before_ms: ignore_revlogs_before_ms_from_config(&config)?,
+                current_deck: idx as u32 + 1,
+                total_decks,
+                current_params: &current_params,
+                num_of_relearning_steps: config.inner.relearn_steps.len(),
                 health_check: false,
             }) {
-                Ok(params) => {
-                    println!("{}: {:?}", config.name, params.params);
+                Ok(params) if params.params != current_params => {
                     config.inner.fsrs_params_6 = params.params;
                 }
+                Ok(_) => (),
                 Err(AnkiError::Interrupted) => return Err(AnkiError::Interrupted),
-                Err(err) => {
-                    println!("{}: {}", config.name, err)
-                }
+                Err(err) => warn!(deck = deck.id.0, ?err, "unable to optimize"),
             }
-            let today = self.timing_today()?.days_elapsed as i32;
-            self.set_config_i32_inner(I32ConfigKey::LastFsrsOptimize, today)?;
+            configs.push(config);
         }
-        Ok(())
+        let today = self.timing_today()?.days_elapsed as i32;
+        self.set_config_i32_inner(I32ConfigKey::LastFsrsOptimize, today)?;
+        Ok(configs)
     }
 }
 
 fn normal_deck_to_limits(deck: &NormalDeck, today: u32) -> Limits {
     Limits {
-        review: deck.review_limit,
-        new: deck.new_limit,
         review_today: deck.review_limit_today.map(|limit| limit.limit),
         new_today: deck.new_limit_today.map(|limit| limit.limit),
         review_today_active: deck
@@ -429,16 +346,12 @@ fn normal_deck_to_limits(deck: &NormalDeck, today: u32) -> Limits {
             .new_limit_today
             .map(|limit| limit.today == today)
             .unwrap_or_default(),
-        desired_retention: deck.desired_retention,
     }
 }
 
 fn update_deck_limits(deck: &mut NormalDeck, limits: &Limits, today: u32) {
-    deck.review_limit = limits.review;
-    deck.new_limit = limits.new;
     update_day_limit(&mut deck.review_limit_today, limits.review_today, today);
     update_day_limit(&mut deck.new_limit_today, limits.new_today, today);
-    deck.desired_retention = limits.desired_retention;
 }
 
 fn update_day_limit(day_limit: &mut Option<DayLimit>, new_limit: Option<u32>, today: u32) {
@@ -460,10 +373,30 @@ fn update_day_limit(day_limit: &mut Option<DayLimit>, new_limit: Option<u32>, to
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::card::CardQueue;
     use crate::deckconfig::NewCardInsertOrder;
+    use crate::search::SortMode;
     use crate::tests::open_test_collection_with_learning_card;
     use crate::tests::open_test_collection_with_relearning_card;
+    use crate::tests::CardAdder;
+    use crate::tests::DeckAdder;
     use crate::timestamp::TimestampSecs;
+
+    fn request_for(col: &mut Collection, deck: DeckId) -> UpdateDeckConfigsRequest {
+        let output = col.get_deck_configs_for_update(deck).unwrap();
+        UpdateDeckConfigsRequest {
+            target_deck_id: deck,
+            config: output.config.unwrap().into(),
+            mode: UpdateDeckConfigsMode::Normal,
+            card_state_customizer: "".to_string(),
+            limits: Limits::default(),
+            new_cards_ignore_review_limit: false,
+            apply_all_parent_limits: false,
+            fsrs: false,
+            fsrs_reschedule: false,
+            fsrs_health_check: true,
+        }
+    }
 
     #[test]
     fn updating() -> Result<()> {
@@ -483,16 +416,6 @@ mod test {
         col.set_config_bool_inner(BoolKey::ApplyAllParentLimits, false)?;
         col.set_config_bool_inner(BoolKey::FsrsHealthCheck, true)?;
 
-        // pretend we're in sync
-        let stamps = col.storage.get_collection_timestamps()?;
-        col.storage.set_last_sync(stamps.schema_change)?;
-
-        let full_sync_required = |col: &mut Collection| -> bool {
-            col.storage
-                .get_collection_timestamps()
-                .unwrap()
-                .schema_changed_since_sync()
-        };
         let reset_card1_pos = |col: &mut Collection| {
             let mut card = col.storage.get_card(card1_id).unwrap().unwrap();
             // set it out of bounds, so we can be sure it has changed
@@ -502,67 +425,26 @@ mod test {
         let card1_pos = |col: &mut Collection| col.storage.get_card(card1_id).unwrap().unwrap().due;
 
         // if nothing changed, no changes should be made
-        let output = col.get_deck_configs_for_update(DeckId(1))?;
-        let mut input = UpdateDeckConfigsRequest {
-            target_deck_id: DeckId(1),
-            configs: output
-                .all_config
-                .into_iter()
-                .map(|c| c.config.unwrap().into())
-                .collect(),
-            removed_config_ids: vec![],
-            mode: UpdateDeckConfigsMode::Normal,
-            card_state_customizer: "".to_string(),
-            limits: Limits::default(),
-            new_cards_ignore_review_limit: false,
-            apply_all_parent_limits: false,
-            fsrs: false,
-            fsrs_reschedule: false,
-            fsrs_health_check: true,
-        };
+        let mut input = request_for(&mut col, DeckId(1));
+        // the page's prefilled values are saved if they differ, so settle them first
+        col.update_deck_configs(input.clone())?;
+        input = request_for(&mut col, DeckId(1));
         assert!(!col.update_deck_configs(input.clone())?.changes.had_change());
 
         // modifying a value should update the config, but not the deck
-        input.configs[0].inner.new_per_day += 1;
+        input.config.inner.new_per_day += 1;
         let changes = col.update_deck_configs(input.clone())?.changes.changes;
         assert!(!changes.deck);
         assert!(changes.deck_config);
         assert!(!changes.card);
 
-        // adding a new config will update the deck as well
-        let new_config = DeckConfig {
-            id: DeckConfigId(0),
-            ..input.configs[0].clone()
-        };
-        input.configs.push(new_config);
-        let changes = col.update_deck_configs(input.clone())?.changes.changes;
-        assert!(changes.deck);
-        assert!(changes.deck_config);
-        assert!(!changes.card);
-        let allocated_id = col.get_deck(DeckId(1))?.unwrap().normal()?.config_id;
-        assert_ne!(allocated_id, 0);
-        assert_ne!(allocated_id, 1);
-
         // changing the order will cause the cards to be re-sorted
         assert_eq!(card1_pos(&mut col), 1);
         reset_card1_pos(&mut col);
         assert_eq!(card1_pos(&mut col), 0);
-        input.configs[1].inner.new_card_insert_order = NewCardInsertOrder::Random as i32;
+        input.config.inner.new_card_insert_order = NewCardInsertOrder::Random as i32;
         assert!(col.update_deck_configs(input.clone())?.changes.changes.card);
         assert_ne!(card1_pos(&mut col), 0);
-
-        // removing the config will assign the selected config (default in this case),
-        // and as default has normal sort order, that will reset the order again
-        assert!(!full_sync_required(&mut col));
-        reset_card1_pos(&mut col);
-        input.configs.remove(1);
-        input.removed_config_ids.push(DeckConfigId(allocated_id));
-        col.update_deck_configs(input)?;
-        let current_id = col.get_deck(DeckId(1))?.unwrap().normal()?.config_id;
-        assert_eq!(current_id, 1);
-        assert_eq!(card1_pos(&mut col), 1);
-        // should have forced a full sync
-        assert!(full_sync_required(&mut col));
 
         Ok(())
     }
@@ -578,24 +460,7 @@ mod test {
         let before = col.get_first_card();
         assert!(before.memory_state.is_some());
 
-        let output = col.get_deck_configs_for_update(DeckId(1))?;
-        let mut input = UpdateDeckConfigsRequest {
-            target_deck_id: DeckId(1),
-            configs: output
-                .all_config
-                .into_iter()
-                .map(|c| c.config.unwrap().into())
-                .collect(),
-            removed_config_ids: vec![],
-            mode: UpdateDeckConfigsMode::Normal,
-            card_state_customizer: "".to_string(),
-            limits: Limits::default(),
-            new_cards_ignore_review_limit: false,
-            apply_all_parent_limits: false,
-            fsrs: false,
-            fsrs_reschedule: false,
-            fsrs_health_check: true,
-        };
+        let mut input = request_for(&mut col, DeckId(1));
 
         // an otherwise unchanged save must not treat this as a toggle
         col.update_deck_configs(input.clone())?;
@@ -607,7 +472,7 @@ mod test {
         assert_eq!(stored, Some(true));
 
         // a change that triggers a recompute must keep FSRS data too
-        input.configs[0].inner.desired_retention = 0.8;
+        input.config.inner.desired_retention = 0.8;
         col.update_deck_configs(input)?;
         let card = col.get_first_card();
         assert!(card.memory_state.is_some());
@@ -615,6 +480,93 @@ mod test {
         assert_eq!(card.due, before.due);
         assert_eq!(card.interval, before.interval);
         assert!(col.get_config_bool(BoolKey::Fsrs));
+        Ok(())
+    }
+
+    #[test]
+    fn a_save_changes_only_the_target_deck_whatever_id_it_carries() -> Result<()> {
+        let mut col = Collection::new();
+        let first = DeckAdder::new("first").add(&mut col);
+        let second = DeckAdder::new("second").add(&mut col);
+        let first_before = col.get_deck_config(first.config_id().unwrap(), false)?;
+        let default_before = col.get_deck_config(DeckConfigId(1), false)?;
+
+        let mut input = request_for(&mut col, second.id);
+        input.config.inner.new_per_day = 3;
+        // a stale page, naming another row
+        input.config.id = first.config_id().unwrap();
+        col.update_deck_configs(input)?;
+
+        assert_eq!(col.get_deck_config(first.config_id().unwrap(), false)?, first_before);
+        assert_eq!(col.get_deck_config(DeckConfigId(1), false)?, default_before);
+        let second_after = col.get_deck_config(second.config_id().unwrap(), false)?.unwrap();
+        assert_eq!(second_after.inner.new_per_day, 3);
+        Ok(())
+    }
+
+    #[test]
+    fn a_filtered_deck_cant_be_saved_to() {
+        let mut col = Collection::new();
+        let deck = DeckAdder::new("filtered").filtered(true).add(&mut col);
+        let mut input = request_for(&mut col, DeckId(1));
+        input.target_deck_id = deck.id;
+        assert!(col.update_deck_configs(input).is_err());
+    }
+
+    #[test]
+    fn today_only_limits_are_kept_and_the_regular_limit_is_the_settings() -> Result<()> {
+        let mut col = Collection::new();
+        let today = col.timing_today()?.days_elapsed;
+        let deck = DeckAdder::new("deck").add(&mut col);
+        let mut input = request_for(&mut col, deck.id);
+        input.config.inner.new_per_day = 3;
+        input.limits.new_today = Some(9);
+        col.update_deck_configs(input.clone())?;
+
+        let saved = col.storage.get_deck(deck.id)?.unwrap();
+        assert_eq!(
+            saved.normal()?.new_limit_today,
+            Some(DayLimit { limit: 9, today })
+        );
+        assert_eq!(saved.normal()?.new_limit, None);
+        let shown = col.get_deck_configs_for_update(deck.id)?;
+        let limits = shown.current_deck.unwrap().limits.unwrap();
+        assert!(limits.new_today_active);
+        assert_eq!(limits.new_today, Some(9));
+        assert_eq!(shown.config.unwrap().config.unwrap().new_per_day, 3);
+        Ok(())
+    }
+
+    #[test]
+    fn default_search_is_the_deck_with_its_subdecks() -> Result<()> {
+        let mut col = Collection::new();
+        for name in ["Kaishi 1.5k", "A::B", "odd_na*me"] {
+            let deck = DeckAdder::new(name).add(&mut col);
+            let search = default_param_search(&deck)?;
+            assert!(search.contains("deck:"), "{search}");
+            assert!(search.ends_with("-is:suspended)"), "{search}");
+            // and it parses back to what it was
+            col.search_cards(search.as_str(), SortMode::NoOrder)?;
+        }
+
+        let parent = DeckAdder::new("P").add(&mut col);
+        let child = DeckAdder::new("P::C").add(&mut col);
+        let other = DeckAdder::new("PP").add(&mut col);
+        let in_parent = CardAdder::new().deck(parent.id).add(&mut col).remove(0);
+        let in_child = CardAdder::new().deck(child.id).add(&mut col).remove(0);
+        let in_other = CardAdder::new().deck(other.id).add(&mut col).remove(0);
+        let mut suspended = CardAdder::new().deck(parent.id).add(&mut col).remove(0);
+        suspended.queue = CardQueue::Suspended;
+        col.storage.update_card(&suspended)?;
+
+        let found = col.search_cards(
+            default_param_search(&parent)?.as_str(),
+            SortMode::NoOrder,
+        )?;
+        assert!(found.contains(&in_parent.id));
+        assert!(found.contains(&in_child.id));
+        assert!(!found.contains(&in_other.id));
+        assert!(!found.contains(&suspended.id));
         Ok(())
     }
 
@@ -689,62 +641,26 @@ mod test {
             .next_day_at
             .adding_secs(-24 * 60 * 60)
             .date_string();
-        let output = col.get_deck_configs_for_update(DeckId(1)).unwrap();
-        let base_input = UpdateDeckConfigsRequest {
-            target_deck_id: DeckId(1),
-            configs: output
-                .all_config
-                .into_iter()
-                .map(|c| c.config.unwrap().into())
-                .collect(),
-            removed_config_ids: vec![],
-            mode: UpdateDeckConfigsMode::Normal,
-            card_state_customizer: "".to_string(),
-            limits: Limits::default(),
-            new_cards_ignore_review_limit: false,
-            apply_all_parent_limits: false,
-            fsrs: false,
-            fsrs_reschedule: false,
-            fsrs_health_check: true,
+        let base_input = request_for(&mut col, DeckId(1));
+        let mut saved_date = |date: String| {
+            let mut input = base_input.clone();
+            input.config.inner.ignore_revlogs_before_date = date;
+            assert!(col.update_deck_configs(input).is_ok());
+            let updated = col.get_deck_configs_for_update(DeckId(1)).unwrap();
+            let config: DeckConfig = updated.config.unwrap().into();
+            config.inner.ignore_revlogs_before_date
         };
 
         // future date should be clamped to today
-        let mut future_input = base_input.clone();
-        future_input.configs[0].inner.ignore_revlogs_before_date =
-            TimestampSecs::now().adding_secs(86_400).date_string();
-        assert!(col.update_deck_configs(future_input).is_ok());
-
-        let updated = col.get_deck_configs_for_update(DeckId(1)).unwrap();
-        let updated_config: DeckConfig = updated.all_config[0].config.clone().unwrap().into();
-        assert_eq!(updated_config.inner.ignore_revlogs_before_date, today);
-
+        let future = TimestampSecs::now().adding_secs(86_400).date_string();
+        assert_eq!(saved_date(future), today);
         // past dates should be left unchanged
-        let past_date = TimestampSecs::now().adding_secs(-86_400).date_string();
-        let mut past_input = base_input.clone();
-        past_input.configs[0].inner.ignore_revlogs_before_date = past_date.clone();
-        assert!(col.update_deck_configs(past_input).is_ok());
-        let updated2 = col.get_deck_configs_for_update(DeckId(1)).unwrap();
-        let updated_config2: DeckConfig = updated2.all_config[0].config.clone().unwrap().into();
-        assert_eq!(updated_config2.inner.ignore_revlogs_before_date, past_date);
-
+        let past = TimestampSecs::now().adding_secs(-86_400).date_string();
+        assert_eq!(saved_date(past.clone()), past);
         // today's date should also be left unchanged
-        let mut today_input = base_input.clone();
-        today_input.configs[0].inner.ignore_revlogs_before_date = today.clone();
-        assert!(col.update_deck_configs(today_input).is_ok());
-        let updated3 = col.get_deck_configs_for_update(DeckId(1)).unwrap();
-        let updated_config3: DeckConfig = updated3.all_config[0].config.clone().unwrap().into();
-        assert_eq!(updated_config3.inner.ignore_revlogs_before_date, today);
-
+        assert_eq!(saved_date(today.clone()), today);
         // empty dates should be saved as is and handled by
         // ignore_revlogs_before_date_to_ms
-        let mut today_input = base_input;
-        today_input.configs[0].inner.ignore_revlogs_before_date = "".to_string();
-        assert!(col.update_deck_configs(today_input).is_ok());
-        let updated3 = col.get_deck_configs_for_update(DeckId(1)).unwrap();
-        let updated_config3: DeckConfig = updated3.all_config[0].config.clone().unwrap().into();
-        assert_eq!(
-            updated_config3.inner.ignore_revlogs_before_date,
-            "".to_string()
-        );
+        assert_eq!(saved_date("".to_string()), "");
     }
 }

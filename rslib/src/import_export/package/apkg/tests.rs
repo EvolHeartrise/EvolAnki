@@ -270,7 +270,6 @@ fn export_and_reimport_with_fsrs_params(with_scheduling: bool) -> DeckConfig {
 
     let deck = DeckAdder::new("fsrs-deck")
         .with_config(|c| {
-            c.name = "fsrs-config".into();
             c.inner.fsrs_params_4 = vec![0.1; 17];
             c.inner.fsrs_params_5 = vec![0.2; 19];
             c.inner.fsrs_params_6 = vec![0.3; 21];
@@ -304,13 +303,122 @@ fn export_and_reimport_with_fsrs_params(with_scheduling: bool) -> DeckConfig {
         )
         .unwrap();
 
+    let deck = target_col.get_deck_id("fsrs-deck").unwrap().unwrap();
     target_col
-        .storage
-        .all_deck_config()
+        .get_deck_config(DeckConfigId(deck.0), false)
         .unwrap()
-        .into_iter()
-        .find(|c| c.name == "fsrs-config")
-        .expect("custom config should have been imported")
+        .expect("config should have been imported")
+}
+
+/// What an older version or client could have written: `b` uses `a`'s settings,
+/// and has an override of its own.
+fn package_with_shared_settings(path: &std::path::Path, src_col: &mut Collection) {
+    let a = DeckAdder::new("a")
+        .with_config(|c| {
+            c.inner.new_per_day = 11;
+            c.inner.reviews_per_day = 111;
+        })
+        .add(src_col);
+    let mut b = DeckAdder::new("b")
+        .with_config(|c| c.inner.new_per_day = 99)
+        .add(src_col);
+    NoteAdder::basic(src_col).deck(a.id).add(src_col);
+    NoteAdder::basic(src_col).deck(b.id).add(src_col);
+    let normal = b.normal_mut().unwrap();
+    normal.config_id = a.id.0;
+    normal.new_limit = Some(7);
+    src_col.storage.update_deck(&b).unwrap();
+    src_col
+        .export_apkg(
+            path,
+            ExportAnkiPackageOptions {
+                with_scheduling: true,
+                with_deck_configs: true,
+                with_media: false,
+                legacy: false,
+            },
+            SearchNode::WholeCollection,
+            None,
+        )
+        .unwrap();
+}
+
+fn settings_of(col: &mut Collection, name: &str) -> DeckConfig {
+    let deck = col.get_deck_id(name).unwrap().unwrap();
+    col.get_deck_config(DeckConfigId(deck.0), false)
+        .unwrap()
+        .unwrap_or_else(|| panic!("{name} has no settings"))
+}
+
+#[test]
+fn decks_sharing_settings_in_a_package_each_get_their_own_copy() {
+    let (mut src_col, src_tempdir) = open_fs_test_collection("src");
+    let (mut target_col, _target_tempdir) = open_fs_test_collection("target");
+    let apkg_path = src_tempdir.path().join("shared.apkg");
+    package_with_shared_settings(&apkg_path, &mut src_col);
+
+    target_col
+        .import_apkg(
+            &apkg_path,
+            ImportAnkiPackageOptions {
+                with_scheduling: true,
+                with_deck_configs: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let a = settings_of(&mut target_col, "a");
+    let b = settings_of(&mut target_col, "b");
+    assert_ne!(a.id, b.id);
+    assert_eq!(a.inner.new_per_day, 11);
+    assert_eq!(a.inner.reviews_per_day, 111);
+    // what it was using, with its override
+    assert_eq!(b.inner.new_per_day, 7);
+    assert_eq!(b.inner.reviews_per_day, 111);
+
+    // the file's own ids don't come along, and nothing is left unowned
+    let owned = target_col.storage.get_all_decks().unwrap().len();
+    assert_eq!(target_col.storage.all_deck_config().unwrap().len(), owned);
+
+    // nor does importing the same thing again leave more
+    target_col
+        .import_apkg(
+            &apkg_path,
+            ImportAnkiPackageOptions {
+                with_scheduling: true,
+                with_deck_configs: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(target_col.storage.all_deck_config().unwrap().len(), owned);
+}
+
+#[test]
+fn a_package_imported_without_settings_gives_built_in_values_or_keeps_the_decks_own() {
+    let (mut src_col, src_tempdir) = open_fs_test_collection("src");
+    let (mut target_col, _target_tempdir) = open_fs_test_collection("target");
+    let apkg_path = src_tempdir.path().join("shared.apkg");
+    package_with_shared_settings(&apkg_path, &mut src_col);
+    // an existing deck, and the local Default deck's settings, which a new
+    // deck must not pick up
+    let existing = DeckAdder::new("a")
+        .with_config(|c| c.inner.new_per_day = 44)
+        .add(&mut target_col);
+    target_col.update_default_deck_config(|c| c.new_per_day = 55);
+
+    target_col
+        .import_apkg(&apkg_path, ImportAnkiPackageOptions::default())
+        .unwrap();
+
+    assert_eq!(settings_of(&mut target_col, "a").id.0, existing.id.0);
+    assert_eq!(settings_of(&mut target_col, "a").inner.new_per_day, 44);
+    assert_eq!(
+        settings_of(&mut target_col, "b").inner.new_per_day,
+        DeckConfig::default().inner.new_per_day
+    );
+    assert_eq!(settings_of(&mut target_col, "Default").inner.new_per_day, 55);
 }
 
 #[test]

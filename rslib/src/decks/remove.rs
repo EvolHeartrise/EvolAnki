@@ -42,6 +42,7 @@ impl Collection {
             self.prepare_deck_for_update(&mut modified_default, usn)?;
             modified_default.set_modified(usn);
             self.update_single_deck_undoable(&mut modified_default, deck.clone())?;
+            self.reset_settings(deck.id)?;
         } else {
             self.remove_deck_and_add_grave_undoable(deck.clone(), usn)?;
         }

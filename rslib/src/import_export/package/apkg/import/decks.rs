@@ -14,6 +14,8 @@ struct DeckContext<'d> {
     usn: Usn,
     renamed_parents: Vec<(String, String)>,
     imported_decks: HashMap<DeckId, DeckId>,
+    /// By the id of the deck they came with, if settings are being imported.
+    configs: HashMap<DeckConfigId, DeckConfig>,
     unique_suffix: String,
     source_col_today: u32,
 }
@@ -25,6 +27,7 @@ impl<'d> DeckContext<'d> {
             usn,
             renamed_parents: Vec::new(),
             imported_decks: HashMap::new(),
+            configs: HashMap::new(),
             unique_suffix: TimestampSecs::now().to_string(),
             source_col_today,
         }
@@ -34,28 +37,36 @@ impl<'d> DeckContext<'d> {
 impl Context<'_> {
     pub(super) fn import_decks_and_configs(&mut self) -> Result<HashMap<DeckId, DeckId>> {
         let mut ctx = DeckContext::new(self.target_col, self.usn, self.data.days_elapsed);
-        ctx.import_deck_configs(mem::take(&mut self.data.deck_configs))?;
+        ctx.configs = mem::take(&mut self.data.deck_configs)
+            .into_iter()
+            .map(|config| (config.id, config))
+            .collect();
         ctx.import_decks(mem::take(&mut self.data.decks))?;
         Ok(ctx.imported_decks)
     }
 }
 
 impl DeckContext<'_> {
-    fn import_deck_configs(&mut self, mut configs: Vec<DeckConfig>) -> Result<()> {
-        for config in &mut configs {
-            config.usn = self.usn;
-            self.target_col.add_deck_config_if_unique_undoable(config)?;
-        }
-        Ok(())
-    }
-
     fn import_decks(&mut self, mut decks: Vec<Deck>) -> Result<()> {
         // ensure parents are seen before children
         decks.sort_unstable_by_key(|deck| deck.level());
         for deck in &mut decks {
             self.maybe_reparent(deck);
             self.maybe_correct_day_limits(deck)?;
+            let source_id = deck.id;
             self.import_deck(deck)?;
+            self.import_settings_of(source_id)?;
+        }
+        Ok(())
+    }
+
+    /// Replace what the deck has with what came with it. A deck that didn't
+    /// bring any keeps its own, or has built-in values if it's new.
+    fn import_settings_of(&mut self, source_id: DeckId) -> Result<()> {
+        let incoming = self.configs.get(&DeckConfigId(source_id.0));
+        if let (Some(incoming), Some(&deck_id)) = (incoming, self.imported_decks.get(&source_id)) {
+            let mut config = DeckConfig::with_inner_for_deck(deck_id, incoming.inner.clone());
+            self.target_col.add_or_update_deck_config(&mut config)?;
         }
         Ok(())
     }
@@ -186,11 +197,6 @@ fn update_normal_with_other(normal: &mut NormalDeck, other: &NormalDeck) {
         normal.markdown_description = other.markdown_description;
         normal.description.clone_from(&other.description);
     }
-    if other.config_id != 1 {
-        normal.config_id = other.config_id;
-    }
-    normal.review_limit = other.review_limit.or(normal.review_limit);
-    normal.new_limit = other.new_limit.or(normal.new_limit);
     normal.review_limit_today = other.review_limit_today.or(normal.review_limit_today);
     normal.new_limit_today = other.new_limit_today.or(normal.new_limit_today);
 }

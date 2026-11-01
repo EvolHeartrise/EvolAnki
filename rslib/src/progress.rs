@@ -185,8 +185,8 @@ pub(crate) fn progress_to_proto(
                     current: progress.current_iteration,
                     total: progress.total_iterations,
                     reviews: progress.reviews,
-                    current_preset: progress.current_preset,
-                    total_presets: progress.total_presets,
+                    current_deck: progress.current_deck,
+                    total_decks: progress.total_decks,
                 })
             }
             Progress::ComputeRetention(progress) => {

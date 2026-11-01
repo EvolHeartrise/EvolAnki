@@ -192,7 +192,6 @@ impl SqlWriter<'_> {
             SearchNode::Property { operator, kind } => self.write_prop(operator, kind)?,
             SearchNode::CustomData(key) => self.write_custom_data(key)?,
             SearchNode::WholeCollection => write!(self.sql, "true").unwrap(),
-            SearchNode::Preset(name) => self.write_deck_preset(name)?,
             SearchNode::HasMemoryState => {
                 write!(self.sql, "extract_fsrs_variable(c.data, 's') is not null").unwrap();
             }
@@ -941,30 +940,6 @@ impl SqlWriter<'_> {
         )
     }
 
-    fn write_deck_preset(&mut self, name: &str) -> Result<()> {
-        let dcid = self.col.storage.get_deck_config_id_by_name(name)?;
-        if dcid.is_none() {
-            write!(self.sql, "false").unwrap();
-            return Ok(());
-        };
-
-        let mut str_ids = String::new();
-        let deck_ids = self
-            .col
-            .storage
-            .get_all_decks()?
-            .into_iter()
-            .filter_map(|d| {
-                if d.config_id() == dcid {
-                    Some(d.id)
-                } else {
-                    None
-                }
-            });
-        ids_to_string(&mut str_ids, deck_ids);
-        write!(self.sql, "(c.did in {str_ids} or c.odid in {str_ids})").unwrap();
-        Ok(())
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -1082,7 +1057,6 @@ impl SearchNode {
             SearchNode::CardIds(_) => RequiredTable::Cards,
             SearchNode::Property { .. } => RequiredTable::Cards,
             SearchNode::CustomData { .. } => RequiredTable::Cards,
-            SearchNode::Preset(_) => RequiredTable::Cards,
             SearchNode::HasMemoryState => RequiredTable::Cards,
 
             SearchNode::UnqualifiedText(_) => RequiredTable::Notes,
@@ -1425,13 +1399,6 @@ c.odue != 0 then c.odue else c.due end) != {days}) or (c.queue in (1,4) and
                 vec!["r".into()]
             )
         );
-
-        // preset search
-        assert_eq!(
-            &s(ctx, "preset:default").0,
-            "((c.did in (1) or c.odid in (1)))"
-        );
-        assert_eq!(&s(ctx, "preset:typo").0, "(false)");
 
         // strip clozes
         assert_eq!(&s(ctx, "sc:abcdef").0, "((n.mid = 1581236385343) and (coalesce(process_text(cast(n.sfld as text), 2), n.sfld) like ?1 escape '\\' or coalesce(process_text(n.flds, 2), n.flds) like ?1 escape '\\'))");

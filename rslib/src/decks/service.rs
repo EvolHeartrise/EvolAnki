@@ -514,7 +514,7 @@ mod tests {
         common.new_studied = 7;
         let expected_kind =
             anki_proto::decks::deck::Kind::Normal(anki_proto::decks::deck::Normal {
-                config_id: 1,
+                config_id: deck.id.0,
                 description: "Updated description".to_string(),
                 ..Default::default()
             });

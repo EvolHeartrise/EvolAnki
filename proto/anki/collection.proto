@@ -131,9 +131,9 @@ message ComputeParamsProgress {
   uint32 total = 2;
   uint32 reviews = 3;
   // Only used in 'compute all params' case
-  uint32 current_preset = 4;
+  uint32 current_deck = 4;
   // Only used in 'compute all params' case
-  uint32 total_presets = 5;
+  uint32 total_decks = 5;
 }
 
 message ComputeRetentionProgress {

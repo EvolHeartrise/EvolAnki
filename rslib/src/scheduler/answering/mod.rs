@@ -295,7 +295,7 @@ impl Collection {
     }
 
     /// Answer card, writing its new state to the database.
-    /// Provided [CardAnswer] has its answer time capped to deck preset.
+    /// Provided [CardAnswer] has its answer time capped to the deck's setting.
     pub fn answer_card(&mut self, answer: &mut CardAnswer) -> Result<OpOutput<()>> {
         self.transact(Op::AnswerCard, |col| {
             col.require_card_still_in_study(answer.card_id)?;
@@ -466,7 +466,7 @@ impl Collection {
             .get_deck_config(home_deck.config_id().or_invalid("home deck is filtered")?)?
             .unwrap_or_default();
 
-        let desired_retention = home_deck.effective_desired_retention(&config);
+        let desired_retention = config.inner.desired_retention;
         let fsrs_enabled = self.fsrs_enabled();
         let fsrs_next_states = if fsrs_enabled {
             let params = config.fsrs_params();
@@ -698,10 +698,9 @@ pub(crate) mod test {
 
         // Create a deck with specific desired retention
         let deck_id = DeckId(1);
-        let deck = col.get_deck(deck_id)?.unwrap();
-        let mut deck_clone = (*deck).clone();
-        deck_clone.normal_mut().unwrap().desired_retention = Some(0.85);
-        col.update_deck(&mut deck_clone)?;
+        let mut config = col.get_deck_config(DeckConfigId(deck_id.0), false)?.unwrap();
+        config.inner.desired_retention = 0.85;
+        col.add_or_update_deck_config(&mut config)?;
 
         // Create a card in this deck
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
@@ -719,7 +718,6 @@ pub(crate) mod test {
         println!("FSRS enabled: {}", col.get_config_bool(BoolKey::Fsrs));
         println!("Desired retention: {:?}", updater.desired_retention);
 
-        // Verify that the desired retention is from the deck, not the config
         assert_eq!(updater.desired_retention, Some(0.85));
 
         Ok(())

@@ -108,21 +108,16 @@ mod test {
         col.add_notetype(&mut nt, true)?;
         let original_notetype = col.storage.get_notetype(nt.id)?.unwrap();
 
-        let mut deck_config = DeckConfig {
-            name: "Migration preset".into(),
-            ..Default::default()
-        };
+        let mut deck = Deck::new_normal();
+        deck.name = NativeDeckName::from_human_name("Migration deck");
+        col.add_or_update_deck(&mut deck)?;
+        let mut deck_config = col.get_deck_config(deck.config_id().unwrap(), false)?.unwrap();
         deck_config.inner.learn_steps = vec![2.0, 20.0];
         col.add_or_update_deck_config(&mut deck_config)?;
         let original_deck_config = col
             .storage
             .get_deck_config(deck_config.id)?
             .expect("added deck config");
-
-        let mut deck = Deck::new_normal();
-        deck.name = NativeDeckName::from_human_name("Migration deck");
-        deck.normal_mut()?.config_id = deck_config.id.0;
-        col.add_or_update_deck(&mut deck)?;
         let original_deck = col.storage.get_deck(deck.id)?.expect("added deck");
 
         let mut note = nt.new_note();

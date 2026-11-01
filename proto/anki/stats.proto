@@ -64,7 +64,6 @@ message CardStatsResponse {
   // not set if due date/state not available
   optional float fsrs_retrievability = 19;
   string custom_data = 20;
-  string preset = 21;
   optional string original_deck = 22;
   optional float desired_retention = 23;
   repeated float fsrs_params = 24;
@@ -234,7 +233,7 @@ message CardEntry {
 message DeckEntry {
   int64 id = 1;
   int64 parent_id = 2;
-  int64 preset_id = 3;
+  int64 config_id = 3;
 }
 
 message Dataset {
