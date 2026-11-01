@@ -36,38 +36,15 @@ message CardStatsResponse {
     // per mill
     uint32 ease = 5;
     float taken_secs = 6;
-    optional cards.FsrsMemoryState memory_state = 7;
     // seconds
     uint32 last_interval = 8;
   }
   repeated StatsRevlogEntry revlog = 1;
-  int64 card_id = 2;
-  int64 note_id = 3;
   string deck = 4;
-  // Unix timestamps
-  int64 added = 5;
-  optional int64 first_review = 6;
-  optional int64 latest_review = 7;
-  optional int64 due_date = 8;
-  optional int32 due_position = 9;
-  // days
-  uint32 interval = 10;
-  // per mill
-  uint32 ease = 11;
-  uint32 reviews = 12;
-  uint32 lapses = 13;
-  float average_secs = 14;
-  float total_secs = 15;
-  string card_type = 16;
   string notetype = 17;
-  optional cards.FsrsMemoryState memory_state = 18;
   // not set if due date/state not available
   optional float fsrs_retrievability = 19;
-  string custom_data = 20;
-  optional string original_deck = 22;
-  optional float desired_retention = 23;
   repeated float fsrs_params = 24;
-  bool fsrs_enabled = 25;
 }
 
 message GraphsRequest {

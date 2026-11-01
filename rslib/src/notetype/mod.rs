@@ -120,18 +120,6 @@ impl Notetype {
     pub fn new_note(&self) -> Note {
         Note::new(self)
     }
-
-    /// Return the template for the given card ordinal. Cloze notetypes
-    /// always return the first and only template.
-    pub fn get_template(&self, card_ord: u16) -> Result<&CardTemplate> {
-        let template = if self.config.kind() == NotetypeKind::Cloze {
-            self.templates.first()
-        } else {
-            self.templates.get(card_ord as usize)
-        };
-
-        template.or_not_found(card_ord)
-    }
 }
 
 impl Collection {

@@ -537,7 +537,6 @@ pub(crate) struct FsrsItemForMemoryState {
     /// When revlogs have been truncated, this stores the initial state at first
     /// review
     pub starting_state: Option<MemoryState>,
-    pub filtered_revlogs: Vec<RevlogEntry>,
 }
 
 /// Like [fsrs_item_for_memory_state], but for updating multiple cards at once.
@@ -633,7 +632,6 @@ pub(crate) fn fsrs_item_for_memory_state(
             Ok(Some(FsrsItemForMemoryState {
                 item,
                 starting_state: None,
-                filtered_revlogs: output.filtered_revlogs,
             }))
         } else if let Some(first_user_grade) = output.filtered_revlogs.first() {
             // the revlog has been truncated, but not fully
@@ -660,7 +658,6 @@ pub(crate) fn fsrs_item_for_memory_state(
             Ok(Some(FsrsItemForMemoryState {
                 item,
                 starting_state: Some(starting_state),
-                filtered_revlogs: output.filtered_revlogs,
             }))
         } else {
             // only manual and rescheduled revlogs; treat like empty

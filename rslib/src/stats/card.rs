@@ -1,16 +1,10 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use fsrs::FSRS;
 use fsrs::FSRS5_DEFAULT_DECAY;
 
-use crate::card::CardType;
-use crate::card::FsrsMemoryState;
 use crate::prelude::*;
 use crate::revlog::RevlogEntry;
-use crate::scheduler::fsrs::memory_state::fsrs_item_for_memory_state;
-use crate::scheduler::fsrs::params::ignore_revlogs_before_ms_from_config;
-use crate::scheduler::timing::is_unix_epoch_timestamp;
 
 impl Collection {
     pub fn card_stats(&mut self, cid: CardId) -> Result<anki_proto::stats::CardStatsResponse> {
@@ -27,10 +21,7 @@ impl Collection {
             .get_deck(card.deck_id)?
             .or_not_found(card.deck_id)?;
         let revlog = self.storage.get_revlog_entries_for_card(card.id)?;
-
-        let (average_secs, total_secs) = average_and_total_secs_strings(&revlog);
         let timing = self.timing_today()?;
-        let fsrs_enabled = self.fsrs_enabled();
 
         let last_review_time = if let Some(last_review_time) = card.last_review_time {
             last_review_time
@@ -69,49 +60,12 @@ impl Collection {
             .get_deck_config(config_id, true)?
             .or_not_found(config_id.to_string())?;
 
-        let memory_state =
-            if fsrs_enabled && card.ctype != CardType::New && card.memory_state.is_none() {
-                self.compute_memory_state(card.id)?.state
-            } else {
-                card.memory_state.map(Into::into)
-            };
-
         Ok(anki_proto::stats::CardStatsResponse {
-            card_id: card.id.into(),
-            note_id: card.note_id.into(),
             deck: deck.human_name(),
-            added: card.id.as_secs().0,
-            first_review: revlog
-                .iter()
-                .find(|entry| entry.has_rating())
-                .map(|entry| entry.id.as_secs().0),
-            // last_review_time is not used to ensure cram revlogs are included.
-            latest_review: revlog
-                .iter()
-                .rfind(|entry| entry.has_rating())
-                .map(|entry| entry.id.as_secs().0),
-            due_date: self.due_date(&card)?,
-            due_position: self.position(&card),
-            interval: card.interval,
-            ease: card.ease_factor as u32,
-            reviews: card.reps,
-            lapses: card.lapses,
-            average_secs,
-            total_secs,
-            card_type: nt.get_template(card.template_idx)?.name.clone(),
             notetype: nt.name.clone(),
-            revlog: self.stats_revlog_entries_with_memory_state(&card, revlog)?,
-            memory_state,
+            revlog: revlog.iter().rev().map(stats_revlog_entry).collect(),
             fsrs_retrievability,
-            custom_data: card.custom_data,
             fsrs_params: config.fsrs_params().to_vec(),
-            original_deck: if original_deck != deck {
-                Some(original_deck.human_name())
-            } else {
-                None
-            },
-            desired_retention: card.desired_retention,
-            fsrs_enabled,
         })
     }
 
@@ -120,104 +74,6 @@ impl Collection {
         Ok(anki_proto::stats::ReviewLogs {
             entries: revlogs.iter().rev().map(stats_revlog_entry).collect(),
         })
-    }
-
-    fn due_date(&mut self, card: &Card) -> Result<Option<i64>> {
-        Ok(match card.ctype {
-            CardType::New => None,
-            CardType::Review | CardType::Learn | CardType::Relearn => {
-                let due = if card.original_due != 0 {
-                    card.original_due
-                } else {
-                    card.due
-                };
-                if !is_unix_epoch_timestamp(due) {
-                    let days_remaining = due - (self.timing_today()?.days_elapsed as i32);
-                    let mut due_timestamp = TimestampSecs::now();
-                    due_timestamp.0 += (days_remaining as i64) * 86_400;
-                    Some(due_timestamp.0)
-                } else {
-                    Some(due as i64)
-                }
-            }
-        })
-    }
-
-    fn position(&mut self, card: &Card) -> Option<i32> {
-        if let Some(original_pos) = card.original_position {
-            return Some(original_pos as i32);
-        }
-        match card.ctype {
-            CardType::New => Some(card.due),
-            _ => None,
-        }
-    }
-
-    fn stats_revlog_entries_with_memory_state(
-        self: &mut Collection,
-        card: &Card,
-        revlog: Vec<RevlogEntry>,
-    ) -> Result<Vec<anki_proto::stats::card_stats_response::StatsRevlogEntry>> {
-        let deck_id = card.original_deck_id.or(card.deck_id);
-        let deck = self.get_deck(deck_id)?.or_not_found(card.deck_id)?;
-        let conf_id = deck.config_id().or_invalid("deck is filtered")?;
-        let config = self
-            .storage
-            .get_deck_config(conf_id)?
-            .or_not_found(conf_id)?;
-        let historical_retention = config.inner.historical_retention;
-        let fsrs = FSRS::new(config.fsrs_params())?;
-        let next_day_at = self.timing_today()?.next_day_at;
-        let ignore_before = ignore_revlogs_before_ms_from_config(&config)?;
-
-        let mut result = Vec::new();
-        if let Some(item) = fsrs_item_for_memory_state(
-            &fsrs,
-            revlog.clone(),
-            next_day_at,
-            historical_retention,
-            ignore_before,
-        )? {
-            let memory_states = fsrs.historical_memory_states(item.item, item.starting_state)?;
-            let mut revlog_index = 0;
-            for entry in revlog {
-                let mut stats_entry = stats_revlog_entry(&entry);
-                let memory_state: Option<FsrsMemoryState> = if revlog_index >= memory_states.len() {
-                    // The removed revlog is in the end of the revlog, so we use the last memory
-                    // state
-                    Some(memory_states[memory_states.len() - 1].into())
-                } else if entry.id == item.filtered_revlogs[revlog_index].id {
-                    revlog_index += 1;
-                    Some(memory_states[revlog_index - 1].into())
-                } else if revlog_index == 0 {
-                    // The removed revlog is in the start of the revlog, so we don't have a memory
-                    // state for it
-                    None
-                } else {
-                    // The removed revlog is in the middle of the revlog, so we use the memory
-                    // state for the previous revlog entry
-                    Some(memory_states[revlog_index].into())
-                };
-                stats_entry.memory_state = memory_state.map(|s| s.into());
-                result.push(stats_entry);
-            }
-            Ok(result.into_iter().rev().collect())
-        } else {
-            Ok(revlog.iter().rev().map(stats_revlog_entry).collect())
-        }
-    }
-}
-
-fn average_and_total_secs_strings(revlog: &[RevlogEntry]) -> (f32, f32) {
-    let normal_answer_count = revlog.iter().filter(|r| r.has_rating()).count();
-    let total_secs: f32 = revlog
-        .iter()
-        .map(|entry| (entry.taken_millis as f32) / 1000.0)
-        .sum();
-    if normal_answer_count == 0 || total_secs == 0.0 {
-        (0.0, 0.0)
-    } else {
-        (total_secs / normal_answer_count as f32, total_secs)
     }
 }
 
@@ -231,18 +87,13 @@ fn stats_revlog_entry(
         interval: entry.interval_secs(),
         ease: entry.ease_factor,
         taken_secs: entry.taken_millis as f32 / 1000.,
-        memory_state: None,
         last_interval: entry.last_interval_secs(),
     }
 }
 
 #[cfg(test)]
 mod test {
-    use anki_proto::deck_config::deck_configs_for_update::current_deck::Limits;
-    use anki_proto::deck_config::UpdateDeckConfigsMode;
-
     use super::*;
-    use crate::deckconfig::UpdateDeckConfigsRequest;
     use crate::search::SortMode;
 
     fn test_collection() -> Result<(Collection, CardId)> {
@@ -258,50 +109,6 @@ mod test {
     fn stats() -> Result<()> {
         let (mut col, cid) = test_collection()?;
         let _report = col.card_stats(cid)?;
-
-        Ok(())
-    }
-
-    #[test]
-    fn stats_calculate_memory_state_if_not_present() -> Result<()> {
-        let (mut col, cid) = test_collection()?;
-
-        col.set_config_bool(BoolKey::Fsrs, true, true)?;
-        // review the card as easy
-        col.grade_now(&[cid], 3)?;
-        let mut card = col.storage.get_card(cid)?.unwrap();
-        assert!(card.memory_state.is_some());
-
-        card.clear_fsrs_data();
-        col.storage.update_card(&card)?;
-
-        let card = col.storage.get_card(cid)?.unwrap();
-        assert!(card.memory_state.is_none());
-
-        let report = col.card_stats(cid)?;
-        let card = col.storage.get_card(cid)?.unwrap();
-
-        assert!(report.memory_state.is_some());
-        // Don't modify the card. See https://github.com/ankitects/anki/issues/5635
-        assert!(card.memory_state.is_none());
-
-        // A save asking for FSRS to be turned off has no effect
-        let deck_configs = col.get_deck_configs_for_update(DeckId(1))?;
-        col.update_deck_configs(UpdateDeckConfigsRequest {
-            target_deck_id: DeckId(1),
-            config: deck_configs.config.unwrap().into(),
-            mode: UpdateDeckConfigsMode::Normal,
-            card_state_customizer: String::new(),
-            limits: Limits::default(),
-            new_cards_ignore_review_limit: false,
-            apply_all_parent_limits: false,
-            fsrs: false,
-            fsrs_reschedule: false,
-            fsrs_health_check: true,
-        })?;
-
-        let report = col.card_stats(cid)?;
-        assert!(report.memory_state.is_some());
 
         Ok(())
     }
