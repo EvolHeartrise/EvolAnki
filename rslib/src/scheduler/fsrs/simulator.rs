@@ -71,7 +71,6 @@ pub(crate) fn apply_load_balance_and_easy_days(
             .map(|(interval_index, &target_interval)| LoadBalancerInterval {
                 target_interval,
                 review_count: review_counts[interval_index],
-                sibling_modifier: 1.0,
                 easy_days_modifier: easy_days_modifier[interval_index],
             });
     select_weighted_interval(intervals, Some(fuzz_seed)).unwrap() as f32

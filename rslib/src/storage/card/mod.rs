@@ -34,7 +34,6 @@ use crate::error::Result;
 use crate::notes::NoteId;
 use crate::scheduler::congrats::CongratsInfo;
 use crate::scheduler::fsrs::memory_state::get_last_revlog_info;
-use crate::scheduler::queue::BuryMode;
 use crate::scheduler::queue::DueCard;
 use crate::scheduler::queue::DueCardKind;
 use crate::scheduler::queue::NewCard;
@@ -116,7 +115,6 @@ fn row_to_new_card(row: &Row) -> result::Result<NewCard, rusqlite::Error> {
         template_index: row.get(2)?,
         mtime: row.get(3)?,
         current_deck_id: row.get(4)?,
-        original_deck_id: row.get(5)?,
         hash: 0,
     })
 }
@@ -264,12 +262,10 @@ impl super::SqliteStorage {
         while let Some(row) = rows.next()? {
             func(DueCard {
                 id: row.get(0)?,
-                note_id: row.get(1)?,
-                due: row.get(2).ok().unwrap_or_default(),
-                mtime: row.get(3)?,
-                current_deck_id: row.get(4)?,
-                original_deck_id: row.get(5)?,
-                reps: row.get(6)?,
+                due: row.get(1).ok().unwrap_or_default(),
+                mtime: row.get(2)?,
+                current_deck_id: row.get(3)?,
+                reps: row.get(4)?,
                 kind: DueCardKind::Learning,
             })
         }
@@ -304,12 +300,10 @@ impl super::SqliteStorage {
         while let Some(row) = rows.next()? {
             if !func(DueCard {
                 id: row.get(0)?,
-                note_id: row.get(1)?,
-                due: row.get(2).ok().unwrap_or_default(),
-                mtime: row.get(4)?,
-                current_deck_id: row.get(5)?,
-                original_deck_id: row.get(6)?,
-                reps: row.get(7)?,
+                due: row.get(1).ok().unwrap_or_default(),
+                mtime: row.get(3)?,
+                current_deck_id: row.get(4)?,
+                reps: row.get(5)?,
                 kind,
             })? {
                 break;
@@ -520,30 +514,6 @@ impl super::SqliteStorage {
         Ok(cids)
     }
 
-    pub(crate) fn all_siblings_for_bury(
-        &self,
-        cid: CardId,
-        nid: NoteId,
-        bury_mode: BuryMode,
-    ) -> Result<Vec<Card>> {
-        let params = named_params! {
-            ":card_id": cid,
-            ":note_id": nid,
-            ":include_new": bury_mode.bury_new,
-            ":include_reviews": bury_mode.bury_reviews,
-            ":include_day_learn": bury_mode.bury_interday_learning      ,
-            ":new_queue": CardQueue::New as i8,
-            ":review_queue": CardQueue::Review as i8,
-            ":daylearn_queue": CardQueue::DayLearn as i8,
-        };
-        self.with_searched_cards_table(false, || {
-            self.db
-                .prepare_cached(include_str!("siblings_for_bury.sql"))?
-                .execute(params)?;
-            self.all_searched_cards()
-        })
-    }
-
     pub(crate) fn with_searched_cards_table<T>(
         &self,
         preserve_order: bool,
@@ -626,23 +596,22 @@ impl super::SqliteStorage {
         &self,
         min_day: u32,
         max_day: u32,
-    ) -> Result<Vec<Vec<(CardId, NoteId, DeckId)>>> {
+    ) -> Result<Vec<Vec<(CardId, DeckId)>>> {
         Ok(self
             .db
-            .prepare_cached("select id, nid, did, due from cards where due >= ?1 and due < ?2 ")?
+            .prepare_cached("select id, did, due from cards where due >= ?1 and due < ?2 ")?
             .query_and_then([min_day, max_day], |row: &Row| {
                 Ok::<_, rusqlite::Error>((
                     row.get::<_, CardId>(0)?,
-                    row.get::<_, NoteId>(1)?,
-                    row.get::<_, DeckId>(2)?,
-                    row.get::<_, i32>(3)?,
+                    row.get::<_, DeckId>(1)?,
+                    row.get::<_, i32>(2)?,
                 ))
             })?
             .flatten()
             .fold(
                 vec![Vec::new(); (max_day - min_day) as usize],
-                |mut acc, (card_id, note_id, deck_id, due)| {
-                    acc[due as usize - min_day as usize].push((card_id, note_id, deck_id));
+                |mut acc, (card_id, deck_id, due)| {
+                    acc[due as usize - min_day as usize].push((card_id, deck_id));
                     acc
                 },
             ))

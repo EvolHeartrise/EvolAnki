@@ -102,9 +102,8 @@ mod test {
         let mut col = Collection::new();
         let nid = add_note(&mut col, true)?;
 
-        // turn burying and leech suspension on
+        // turn leech suspension on
         let mut conf = col.storage.get_deck_config(DeckConfigId(1))?.unwrap();
-        conf.inner.bury_new = true;
         conf.inner.leech_action = LeechAction::Suspend as i32;
         col.storage.update_deck_conf(&conf)?;
 
@@ -126,9 +125,9 @@ mod test {
         // immediately graduate the first card
         col.answer_easy();
 
-        // the sibling will be buried
+        // the sibling stays as it was
         let sibling = col.storage.get_card(sibling_cid)?.unwrap();
-        assert_eq!(sibling.queue, CardQueue::SchedBuried);
+        assert_eq!(sibling.queue, CardQueue::New);
 
         // make it due now, with 7 lapses. we use the storage layer directly,
         // bypassing undo
@@ -162,7 +161,9 @@ mod test {
             let deck = col.get_deck(DeckId(1))?.unwrap();
             assert_eq!(deck.common.review_studied, 1);
 
-            assert!(col.get_next_card()?.is_none());
+            // the sibling is still to come
+            assert_eq!(col.counts(), [1, 0, 0]);
+            assert_eq!(col.get_next_card()?.unwrap().card.id, sibling_cid);
 
             Ok(())
         };
@@ -188,7 +189,7 @@ mod test {
             let deck = col.get_deck(DeckId(1))?.unwrap();
             assert_eq!(deck.common.review_studied, 0);
             assert!(col.get_next_card()?.is_some());
-            assert_eq!(col.counts(), [0, 0, 1]);
+            assert_eq!(col.counts(), [1, 0, 1]);
 
             Ok(())
         };

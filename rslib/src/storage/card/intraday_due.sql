@@ -1,9 +1,7 @@
 SELECT id,
-  nid,
   due,
   cast(mod AS integer),
   did,
-  odid,
   reps
 FROM cards
 WHERE did IN (

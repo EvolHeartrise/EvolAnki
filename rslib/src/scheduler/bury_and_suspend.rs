@@ -4,7 +4,6 @@
 use anki_proto::scheduler::bury_or_suspend_cards_request::Mode as BuryOrSuspendMode;
 use anki_proto::scheduler::unbury_deck_request::Mode as UnburyDeckMode;
 
-use super::queue::BuryMode;
 use super::timing::SchedTimingToday;
 use crate::card::CardQueue;
 use crate::config::SchedulerVersion;
@@ -127,40 +126,6 @@ impl Collection {
             let cards = col.all_cards_for_ids(cids, false)?;
             col.bury_or_suspend_cards_inner(cards, mode)
         })
-    }
-
-    pub(crate) fn bury_siblings(
-        &mut self,
-        card: &Card,
-        nid: NoteId,
-        mut bury_mode: BuryMode,
-    ) -> Result<usize> {
-        bury_mode.exclude_earlier_gathered_queues(card.queue);
-        let cards = self
-            .storage
-            .all_siblings_for_bury(card.id, nid, bury_mode)?;
-        self.bury_or_suspend_cards_inner(cards, BuryOrSuspendMode::BurySched)
-    }
-}
-
-impl BuryMode {
-    /// Disables burying for queues gathered before `queue`.
-    fn exclude_earlier_gathered_queues(&mut self, queue: CardQueue) {
-        self.bury_interday_learning &= queue.gather_ord() <= CardQueue::DayLearn.gather_ord();
-        self.bury_reviews &= queue.gather_ord() <= CardQueue::Review.gather_ord();
-    }
-}
-
-impl CardQueue {
-    fn gather_ord(self) -> u8 {
-        match self {
-            CardQueue::Learn | CardQueue::PreviewRepeat => 0,
-            CardQueue::DayLearn => 1,
-            CardQueue::Review => 2,
-            CardQueue::New => 3,
-            // not gathered
-            CardQueue::Suspended | CardQueue::SchedBuried | CardQueue::UserBuried => u8::MAX,
-        }
     }
 }
 

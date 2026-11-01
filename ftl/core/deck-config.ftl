@@ -96,32 +96,6 @@ deck-config-leech-action-tooltip =
     `Suspend Card`: In addition to tagging the note, hide the card until it is
     manually unsuspended.
 
-## Burying section
-
-deck-config-bury-title = Burying
-deck-config-bury-new-siblings = Bury new siblings
-deck-config-bury-review-siblings = Bury review siblings
-deck-config-bury-interday-learning-siblings = Bury interday learning siblings
-deck-config-bury-new-tooltip =
-    Whether other `new` cards of the same note (e.g. reverse cards, adjacent cloze deletions)
-    will be delayed until the next day.
-deck-config-bury-review-tooltip = Whether other `review` cards of the same note will be delayed until the next day.
-deck-config-bury-interday-learning-tooltip =
-    Whether other `learning` cards of the same note with intervals > 1 day
-    will be delayed until the next day.
-deck-config-bury-priority-tooltip =
-    When Anki gathers cards, it first gathers intraday learning cards, then
-    interday learning cards, then review cards, and finally new cards. This affects
-    how burying works:
-    
-    - If you have all burying options enabled, the sibling that comes earliest in
-    that list will be shown. For example, a review card will be shown in preference
-    to a new card.
-    - Siblings later in the list can not bury earlier card types. For example, if you
-    disable burying of new cards, and study a new card, it will not bury any interday
-    learning or review cards, and you may see both a review sibling and new sibling in the
-    same session.
-
 ## Gather order and sort order of cards
 
 deck-config-ordering-title = Display Order
@@ -148,12 +122,11 @@ deck-config-new-card-sort-order = New card sort order
 deck-config-new-card-sort-order-tooltip-2 =
     `Card type, then order gathered`: Shows cards in order of card type number.
     Cards of each card type number are shown in the order they were gathered. 
-    If you have sibling burying disabled, this will ensure all front→back cards are seen before any back→front cards.
+    This will ensure all front→back cards are seen before any back→front cards.
     This is useful to have all cards of the same note shown in the same session, but not
     too close to one another.
     
-    `Order gathered`: Shows cards exactly as they were gathered. If sibling burying is disabled,
-    this will typically result in all cards of a note being seen one after the other.
+    `Order gathered`: Shows cards exactly as they were gathered. This will typically result in all cards of a note being seen one after the other.
     
     `Card type, then random`: Shows cards in order of card type number. Cards of each card
     type number are shown in a random order. This order is useful if you don't want sibling cards

@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-mod burying;
 mod gathering;
 pub(crate) mod intersperser;
 pub(crate) mod sized_chain;
@@ -13,7 +12,6 @@ use std::collections::VecDeque;
 use intersperser::Intersperser;
 use sized_chain::SizedChain;
 
-use super::BuryMode;
 use super::CardQueues;
 use super::Counts;
 use super::LearningQueueEntry;
@@ -32,11 +30,9 @@ use crate::scheduler::timing::SchedTimingToday;
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DueCard {
     pub id: CardId,
-    pub note_id: NoteId,
     pub mtime: TimestampSecs,
     pub due: i32,
     pub current_deck_id: DeckId,
-    pub original_deck_id: DeckId,
     pub kind: DueCardKind,
     pub reps: u32,
 }
@@ -54,7 +50,6 @@ pub(crate) struct NewCard {
     pub note_id: NoteId,
     pub mtime: TimestampSecs,
     pub current_deck_id: DeckId,
-    pub original_deck_id: DeckId,
     pub template_index: u32,
     pub hash: u64,
 }
@@ -117,11 +112,8 @@ pub(super) struct QueueBuilder {
 #[derive(Debug, Clone)]
 struct Context {
     timing: SchedTimingToday,
-    config_map: HashMap<DeckConfigId, DeckConfig>,
     root_deck: Deck,
     sort_options: QueueSortOptions,
-    seen_note_ids: HashMap<NoteId, BuryMode>,
-    deck_map: HashMap<DeckId, Deck>,
     fsrs: bool,
     fsrs_short_term_with_steps: bool,
 }
@@ -174,11 +166,8 @@ impl QueueBuilder {
             load_balancer,
             context: Context {
                 timing,
-                config_map,
                 root_deck,
                 sort_options,
-                seen_note_ids: HashMap::new(),
-                deck_map,
                 fsrs: col.get_config_bool(BoolKey::Fsrs),
                 fsrs_short_term_with_steps: col
                     .get_config_bool(BoolKey::FsrsShortTermWithStepsEnabled),
@@ -491,26 +480,23 @@ mod test {
     }
 
     #[test]
-    fn new_card_potentially_burying_review_card() {
+    fn cards_of_a_note_are_all_shown_on_the_same_day() {
         let mut col = Collection::new();
-        // add one new and one review card
-        CardAdder::new().siblings(2).due_dates(["0"]).add(&mut col);
-        // Potentially problematic config: New cards are shown first and would bury
-        // review siblings. This poses a problem because we gather review cards first.
-        col.update_default_deck_config(|config| {
-            config.new_mix = ReviewMix::BeforeReviews as i32;
-            config.bury_new = false;
-            config.bury_reviews = true;
-        });
+        // one review card and two new ones, all of the same note
+        CardAdder::new().siblings(3).due_dates(["0"]).add(&mut col);
+        assert_eq!(col.counts(), [2, 0, 1]);
+        assert_eq!(col.card_queue_len(), 3);
 
-        let old_queue_len = col.card_queue_len();
+        // answering one leaves the others as they were
         col.answer_easy();
         col.clear_study_queues();
-
-        // The number of cards in the queue must decrease by exactly 1, either because
-        // no burying was performed, or the first built queue anticipated it and didn't
-        // include the buried card.
-        assert_eq!(col.card_queue_len(), old_queue_len - 1);
+        assert_eq!(col.card_queue_len(), 2);
+        col.answer_easy();
+        col.clear_study_queues();
+        assert_eq!(col.card_queue_len(), 1);
+        col.answer_easy();
+        col.clear_study_queues();
+        assert_eq!(col.card_queue_len(), 0);
     }
 
     #[test]

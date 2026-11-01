@@ -162,10 +162,6 @@ export function newInsertOrderChoices(): Choice<DeckConfig_Config_NewCardInsertO
 export function answerChoices(): Choice<DeckConfig_Config_AnswerAction>[] {
     return [
         {
-            label: tr.studyingBuryCard(),
-            value: DeckConfig_Config_AnswerAction.BURY_CARD,
-        },
-        {
             label: tr.deckConfigAnswerAgain(),
             value: DeckConfig_Config_AnswerAction.ANSWER_AGAIN,
         },

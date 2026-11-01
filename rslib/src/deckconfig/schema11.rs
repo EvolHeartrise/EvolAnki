@@ -66,8 +66,6 @@ pub struct DeckConfSchema11 {
     new_sort_order: i32,
     #[serde(default)]
     new_gather_priority: i32,
-    #[serde(default)]
-    bury_interday_learning: bool,
 
     #[serde(default, rename = "fsrsWeights")]
     fsrs_params_4: Vec<f32>,
@@ -126,8 +124,6 @@ pub enum AnswerAction {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NewConfSchema11 {
-    #[serde(default)]
-    bury: bool,
     #[serde(deserialize_with = "default_on_invalid")]
     delays: Vec<f32>,
     initial_factor: u16,
@@ -198,8 +194,6 @@ fn hard_factor_default() -> f32 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RevConfSchema11 {
-    #[serde(default)]
-    bury: bool,
     ease4: f32,
     ivl_fct: f32,
     max_ivl: u32,
@@ -239,7 +233,6 @@ pub struct LapseConfSchema11 {
 impl Default for RevConfSchema11 {
     fn default() -> Self {
         RevConfSchema11 {
-            bury: false,
             ease4: 1.3,
             ivl_fct: 1.0,
             max_ivl: 36500,
@@ -253,7 +246,6 @@ impl Default for RevConfSchema11 {
 impl Default for NewConfSchema11 {
     fn default() -> Self {
         NewConfSchema11 {
-            bury: false,
             delays: vec![1.0, 10.0],
             initial_factor: INITIAL_EASE_FACTOR_THOUSANDS,
             ints: NewCardIntervals::default(),
@@ -291,7 +283,7 @@ impl Default for DeckConfSchema11 {
             seconds_to_show_question: 0.0,
             seconds_to_show_answer: 0.0,
             question_action: QuestionAction::ShowAnswer,
-            answer_action: AnswerAction::BuryCard,
+            answer_action: AnswerAction::ShowReminder,
             wait_for_audio: true,
             replayq: true,
             dynamic: false,
@@ -305,7 +297,6 @@ impl Default for DeckConfSchema11 {
             review_order: 0,
             new_sort_order: 0,
             new_gather_priority: 0,
-            bury_interday_learning: false,
             fsrs_params_4: vec![],
             fsrs_params_5: vec![],
             fsrs_params_6: vec![],
@@ -385,9 +376,6 @@ impl From<DeckConfSchema11> for DeckConfig {
                 answer_action: c.answer_action as i32,
                 wait_for_audio: c.wait_for_audio,
                 skip_question_when_replaying_answer: !c.replayq,
-                bury_new: c.new.bury,
-                bury_reviews: c.rev.bury,
-                bury_interday_learning: c.bury_interday_learning,
                 fsrs_params_4: c.fsrs_params_4,
                 fsrs_params_5: c.fsrs_params_5,
                 fsrs_params_6: c.fsrs_params_6,
@@ -448,8 +436,7 @@ impl From<DeckConfig> for DeckConfSchema11 {
                 1 => AnswerAction::AnswerAgain,
                 2 => AnswerAction::AnswerGood,
                 3 => AnswerAction::AnswerHard,
-                4 => AnswerAction::ShowReminder,
-                _ => AnswerAction::BuryCard,
+                _ => AnswerAction::ShowReminder,
             },
             question_action: match i.question_action {
                 1 => QuestionAction::ShowReminder,
@@ -459,7 +446,6 @@ impl From<DeckConfig> for DeckConfSchema11 {
             replayq: !i.skip_question_when_replaying_answer,
             dynamic: false,
             new: NewConfSchema11 {
-                bury: i.bury_new,
                 delays: i.learn_steps,
                 initial_factor: (i.initial_ease * 1000.0) as u16,
                 ints: NewCardIntervals {
@@ -475,7 +461,6 @@ impl From<DeckConfig> for DeckConfSchema11 {
                 other: new_other,
             },
             rev: RevConfSchema11 {
-                bury: i.bury_reviews,
                 ease4: i.easy_multiplier,
                 ivl_fct: i.interval_multiplier,
                 max_ivl: i.maximum_review_interval,
@@ -501,7 +486,6 @@ impl From<DeckConfig> for DeckConfSchema11 {
             review_order: i.review_order,
             new_sort_order: i.new_card_sort_order,
             new_gather_priority: i.new_card_gather_priority,
-            bury_interday_learning: i.bury_interday_learning,
             fsrs_params_4: i.fsrs_params_4,
             fsrs_params_5: i.fsrs_params_5,
             fsrs_params_6: i.fsrs_params_6,
@@ -524,7 +508,6 @@ static RESERVED_DECKCONF_KEYS: Set<&'static str> = phf_set! {
     "dyn",
     "maxTaken",
     "reviewOrder",
-    "buryInterdayLearning",
     "newMix",
     "mod",
     "timer",
@@ -548,11 +531,11 @@ static RESERVED_DECKCONF_KEYS: Set<&'static str> = phf_set! {
 };
 
 static RESERVED_DECKCONF_NEW_KEYS: Set<&'static str> = phf_set! {
-    "order", "delays", "bury", "perDay", "initialFactor", "ints"
+    "order", "delays", "perDay", "initialFactor", "ints"
 };
 
 static RESERVED_DECKCONF_REV_KEYS: Set<&'static str> = phf_set! {
-    "maxIvl", "hardFactor", "ease4", "ivlFct", "perDay", "bury"
+    "maxIvl", "hardFactor", "ease4", "ivlFct", "perDay"
 };
 
 static RESERVED_DECKCONF_LAPSE_KEYS: Set<&'static str> = phf_set! {

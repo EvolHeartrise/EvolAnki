@@ -15,7 +15,6 @@ use rand::rngs::StdRng;
 use revlog::RevlogEntryPartial;
 
 use super::fsrs::params::ignore_revlogs_before_ms_from_config;
-use super::queue::BuryMode;
 use super::states::load_balancer::LoadBalancerContext;
 use super::states::steps::LearningSteps;
 use super::states::CardState;
@@ -236,7 +235,6 @@ impl Collection {
         &mut self,
         card: Card,
     ) -> Result<(SchedulingStates, Card)> {
-        let note_id = card.note_id;
         let ctx = self.card_state_updater(card)?;
         let current = ctx.current_card_state();
 
@@ -246,17 +244,9 @@ impl Collection {
             .as_ref()
             .and_then(|card_queues| card_queues.load_balancer.as_ref())
         {
-            // Only get_deck_config when load balancer is enabled
-            if let Some(deck_config_id) = ctx.original_deck.config_id() {
-                let note_id = self
-                    .get_deck_config(deck_config_id, false)?
-                    .map(|deck_config| deck_config.inner.bury_reviews)
-                    .unwrap_or(false)
-                    .then_some(note_id);
-                Some(load_balancer.review_context(note_id, deck_config_id))
-            } else {
-                None
-            }
+            ctx.original_deck
+                .config_id()
+                .map(|deck_config_id| load_balancer.review_context(deck_config_id))
         } else {
             None
         };
@@ -360,7 +350,6 @@ impl Collection {
         self.add_partial_revlog(revlog_partial, usn, answer)?;
 
         self.update_deck_stats_from_answer(usn, answer, &updater, original.queue)?;
-        self.maybe_bury_siblings(&original, &updater.config)?;
         let timing = updater.timing;
         let deckconfig_id = updater.original_deck.config_id();
         let mut card = updater.into_card();
@@ -388,7 +377,7 @@ impl Collection {
                 .and_then(|card_queues| card_queues.load_balancer.as_mut())
             {
                 if let Some(deckconfig_id) = deckconfig_id {
-                    load_balancer.add_card(card.id, card.note_id, deckconfig_id, card.interval)
+                    load_balancer.add_card(card.id, deckconfig_id, card.interval)
                 }
             }
         }
@@ -408,14 +397,6 @@ impl Collection {
             )?;
         }
 
-        Ok(())
-    }
-
-    fn maybe_bury_siblings(&mut self, card: &Card, config: &DeckConfig) -> Result<()> {
-        let bury_mode = BuryMode::from_deck_config(config);
-        if bury_mode.any_burying() {
-            self.bury_siblings(card, card.note_id, bury_mode)?;
-        }
         Ok(())
     }
 

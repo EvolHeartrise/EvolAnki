@@ -13,7 +13,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import AdvancedOptions from "./AdvancedOptions.svelte";
     import AudioOptions from "./AudioOptions.svelte";
     import AutoAdvance from "./AutoAdvance.svelte";
-    import BuryOptions from "./BuryOptions.svelte";
     import ConfigSelector from "./ConfigSelector.svelte";
     import DailyLimits from "./DailyLimits.svelte";
     import DisplayOrder from "./DisplayOrder.svelte";
@@ -50,7 +49,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export const dailyLimits = {};
     export const newOptions = {};
     export const lapseOptions = {};
-    export const buryOptions = {};
     export const displayOrder = {};
     export const timerOptions = {};
     export const audioOptions = {};
@@ -109,10 +107,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         </div>
 
         <div>
-            <Row class="row-columns">
-                <BuryOptions {state} api={buryOptions} />
-            </Row>
-
             <Row class="row-columns">
                 <AudioOptions {state} api={audioOptions} />
             </Row>

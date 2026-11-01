@@ -27,7 +27,6 @@ export const HelpPage = {
         waiting: "https://docs.ankiweb.net/manual/leeches#waiting",
     },
     Studying: {
-        siblingsAndBurying: "https://docs.ankiweb.net/manual/studying#siblings-and-burying",
     },
     PackageImporting: {
         root: "https://docs.ankiweb.net/manual/importing/packaged-decks",

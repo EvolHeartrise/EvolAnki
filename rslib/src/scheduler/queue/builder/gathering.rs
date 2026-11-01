@@ -1,8 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use super::DueCard;
-use super::NewCard;
 use super::QueueBuilder;
 use crate::deckconfig::NewCardGatherPriority;
 use crate::decks::limits::LimitKind;
@@ -23,10 +21,7 @@ impl QueueBuilder {
     fn gather_intraday_learning_cards(&mut self, col: &mut Collection) -> Result<()> {
         col.storage.for_each_intraday_card_in_active_decks(
             self.context.timing.next_day_at,
-            |card| {
-                self.get_and_update_bury_mode_for_note(card.into());
-                self.learning.push(card);
-            },
+            |card| self.learning.push(card),
         )?;
 
         Ok(())
@@ -48,8 +43,11 @@ impl QueueBuilder {
                 if !self
                     .limits
                     .limit_reached(card.current_deck_id, LimitKind::Review)?
-                    && self.add_due_card(card)
                 {
+                    match card.kind {
+                        DueCardKind::Review => self.review.push(card),
+                        DueCardKind::Learning => self.day_learning.push(card),
+                    }
                     self.limits.decrement_deck_and_parent_limits(
                         card.current_deck_id,
                         LimitKind::Review,
@@ -99,7 +97,8 @@ impl QueueBuilder {
             col.storage
                 .for_each_new_card_in_deck(deck_id, sort, |card| {
                     let limit_reached = self.limits.limit_reached(deck_id, LimitKind::New)?;
-                    if !limit_reached && self.add_new_card(card) {
+                    if !limit_reached {
+                        self.new.push(card);
                         self.limits
                             .decrement_deck_and_parent_limits(deck_id, LimitKind::New)?;
                     }
@@ -123,49 +122,13 @@ impl QueueBuilder {
                 if !self
                     .limits
                     .limit_reached(card.current_deck_id, LimitKind::New)?
-                    && self.add_new_card(card)
                 {
+                    self.new.push(card);
                     self.limits
                         .decrement_deck_and_parent_limits(card.current_deck_id, LimitKind::New)?;
                 }
                 Ok(true)
             })
-    }
-
-    /// True if limit should be decremented.
-    fn add_due_card(&mut self, card: DueCard) -> bool {
-        let bury_this_card = self
-            .get_and_update_bury_mode_for_note(card.into())
-            .map(|mode| match card.kind {
-                DueCardKind::Review => mode.bury_reviews,
-                DueCardKind::Learning => mode.bury_interday_learning,
-            })
-            .unwrap_or_default();
-        if bury_this_card {
-            false
-        } else {
-            match card.kind {
-                DueCardKind::Review => self.review.push(card),
-                DueCardKind::Learning => self.day_learning.push(card),
-            }
-
-            true
-        }
-    }
-
-    // True if limit should be decremented.
-    fn add_new_card(&mut self, card: NewCard) -> bool {
-        let bury_this_card = self
-            .get_and_update_bury_mode_for_note(card.into())
-            .map(|mode| mode.bury_new)
-            .unwrap_or_default();
-        // no previous siblings seen?
-        if bury_this_card {
-            false
-        } else {
-            self.new.push(card);
-            true
-        }
     }
 
     // Generates a salt for use with fnvhash. Useful to increase randomness

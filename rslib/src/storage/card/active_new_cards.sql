@@ -2,8 +2,7 @@ SELECT id,
   nid,
   ord,
   cast(mod AS integer),
-  did,
-  odid
+  did
 FROM cards
 WHERE did IN (
     SELECT id

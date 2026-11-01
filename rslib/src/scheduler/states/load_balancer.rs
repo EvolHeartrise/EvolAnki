@@ -2,7 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use chrono::Datelike;
 use rand::distr::weighted::WeightedIndex;
@@ -14,7 +13,6 @@ use super::fuzz::constrained_fuzz_bounds;
 use crate::card::CardId;
 use crate::deckconfig::DeckConfigId;
 use crate::error::InvalidInputError;
-use crate::notes::NoteId;
 use crate::prelude::*;
 use crate::storage::SqliteStorage;
 
@@ -24,14 +22,6 @@ const MAX_LOAD_BALANCE_INTERVAL: usize = 90;
 // cache. a flat 10% increase over the max interval should be enough to not have
 // problems
 const LOAD_BALANCE_DAYS: usize = (MAX_LOAD_BALANCE_INTERVAL as f32 * 1.1) as usize;
-// when bury siblings is enabled, we try and make it so siblings are not
-// scheduled on the same days. a day with a sibling is set to a very low
-// (non-zero to make algorithms simpler) weight. to further disperse siblings,
-// closer days are given lower weights. days right before/after have a 0.2
-// weight modifier, 2 days before/after have a 0.4 weight modifier, etc
-const SIBLING_MODIFIER_STEPS: [i32; 11] = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
-const SIBLING_MODIFIER_RANGE: [f32; 11] =
-    [1.0, 0.8, 0.6, 0.4, 0.2, 0.000001, 0.2, 0.4, 0.6, 0.8, 1.0];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum EasyDay {
@@ -64,35 +54,23 @@ impl EasyDay {
 
 #[derive(Debug, Default)]
 struct LoadBalancerDay {
-    cards: Vec<(CardId, NoteId)>,
-    notes: HashSet<NoteId>,
+    cards: Vec<CardId>,
 }
 
 impl LoadBalancerDay {
-    fn add(&mut self, cid: CardId, nid: NoteId) {
-        self.cards.push((cid, nid));
-        self.notes.insert(nid);
+    fn add(&mut self, cid: CardId) {
+        self.cards.push(cid);
     }
 
     fn remove(&mut self, cid: CardId) {
-        if let Some(index) = self.cards.iter().position(|c| c.0 == cid) {
-            let (_, rnid) = self.cards.swap_remove(index);
-
-            // if all cards of a note are removed, remove note
-            if !self.cards.iter().any(|(_cid, nid)| *nid == rnid) {
-                self.notes.remove(&rnid);
-            }
+        if let Some(index) = self.cards.iter().position(|c| *c == cid) {
+            self.cards.swap_remove(index);
         }
-    }
-
-    fn has_sibling(&self, nid: &NoteId) -> bool {
-        self.notes.contains(nid)
     }
 }
 
 pub struct LoadBalancerContext<'a> {
     load_balancer: &'a LoadBalancer,
-    note_id: Option<NoteId>,
     deckconfig_id: DeckConfigId,
     fuzz_seed: Option<u64>,
 }
@@ -105,7 +83,6 @@ impl LoadBalancerContext<'_> {
             maximum,
             self.deckconfig_id,
             self.fuzz_seed,
-            self.note_id,
         )
     }
 
@@ -139,11 +116,11 @@ impl LoadBalancer {
             .map(|cards_on_day| {
                 cards_on_day
                     .into_iter()
-                    .filter_map(|(cid, nid, did)| Some((cid, nid, did_to_dcid.get(&did)?)))
+                    .filter_map(|(cid, did)| Some((cid, did_to_dcid.get(&did)?)))
                     .fold(
                         HashMap::<_, Vec<_>>::new(),
-                        |mut day_group_by_dcid, (cid, nid, dcid)| {
-                            day_group_by_dcid.entry(dcid).or_default().push((cid, nid));
+                        |mut day_group_by_dcid, (cid, dcid)| {
+                            day_group_by_dcid.entry(dcid).or_default().push(cid);
                             day_group_by_dcid
                         },
                     )
@@ -158,8 +135,8 @@ impl LoadBalancer {
                             .entry(*group)
                             .or_insert_with(|| std::array::from_fn(|_| LoadBalancerDay::default()));
 
-                        for (cid, nid) in cards {
-                            day[day_index].add(cid, nid);
+                        for cid in cards {
+                            day[day_index].add(cid);
                         }
                     }
 
@@ -176,14 +153,9 @@ impl LoadBalancer {
         })
     }
 
-    pub fn review_context(
-        &self,
-        note_id: Option<NoteId>,
-        deckconfig_id: DeckConfigId,
-    ) -> LoadBalancerContext<'_> {
+    pub fn review_context(&self, deckconfig_id: DeckConfigId) -> LoadBalancerContext<'_> {
         LoadBalancerContext {
             load_balancer: self,
-            note_id,
             deckconfig_id,
             fuzz_seed: None,
         }
@@ -204,9 +176,6 @@ impl LoadBalancer {
     /// slightly biased to be due earlier. Without this, the load balancer
     /// ends up being very biased towards later days, especially around
     /// graduating intervals.
-    ///
-    /// if a note_id is provided, it attempts to avoid placing a card on a day
-    /// that already has that note_id (aka avoid siblings)
     fn find_interval(
         &self,
         interval: f32,
@@ -214,7 +183,6 @@ impl LoadBalancer {
         maximum: u32,
         deckconfig_id: DeckConfigId,
         fuzz_seed: Option<u64>,
-        note_id: Option<NoteId>,
     ) -> Option<u32> {
         // if we're sending a card far out into the future, the need to balance is low
         if interval as usize > MAX_LOAD_BALANCE_INTERVAL
@@ -243,31 +211,25 @@ impl LoadBalancer {
         let easy_days_load = self.easy_days_percentages_by_preset.get(&deckconfig_id)?;
         let easy_days_modifier =
             calculate_easy_days_modifiers(easy_days_load, &weekdays, &review_counts);
-        let sibling_modifier =
-            calculate_sibling_modifiers(&self.days_by_preset, before_days, after_days, note_id);
         let intervals = review_counts
             .into_iter()
             .zip(easy_days_modifier)
-            .zip(sibling_modifier)
             .enumerate()
             .map(
-                |(interval_index, ((review_count, easy_days_modifier), sibling_modifier))| {
-                    LoadBalancerInterval {
-                        target_interval: interval_index as u32 + before_days,
-                        review_count,
-                        sibling_modifier,
-                        easy_days_modifier,
-                    }
+                |(interval_index, (review_count, easy_days_modifier))| LoadBalancerInterval {
+                    target_interval: interval_index as u32 + before_days,
+                    review_count,
+                    easy_days_modifier,
                 },
             );
 
         select_weighted_interval(intervals, fuzz_seed)
     }
 
-    pub fn add_card(&mut self, cid: CardId, nid: NoteId, dcid: DeckConfigId, interval: u32) {
+    pub fn add_card(&mut self, cid: CardId, dcid: DeckConfigId, interval: u32) {
         if let Some(days) = self.days_by_preset.get_mut(&dcid) {
             if let Some(day) = days.get_mut(interval as usize) {
-                day.add(cid, nid);
+                day.add(cid);
             }
         }
     }
@@ -356,63 +318,9 @@ pub(crate) fn calculate_easy_days_modifiers(
         .collect()
 }
 
-// gently nudge siblings so they don't clump together
-// all deckconfigs need to be searched, rather than just the day, because
-// siblings might have different deckconfigs.
-// for example, a card is being scheduled and days 2 and 8 have siblings:
-//                  X                             X
-//  days: 0    1    2    3    4    5    6    7    8    9    10
-// 2 mod: 0.40 0.20 0.00 0.20 0.40 0.60 0.80
-// 8 mod:                     0.80 0.60 0.40 0.20 0.00 0.20 0.40
-// total: 0.40 0.20 0.00 0.20 0.32 0.36 0.32 0.20 0.00 0.20 0.40
-// 0.00 is actually a not-actually-zero-but-really small number for ease of
-// implementation
-fn calculate_sibling_modifiers(
-    days_by_preset: &HashMap<DeckConfigId, [LoadBalancerDay; LOAD_BALANCE_DAYS]>,
-    before_days: u32,
-    after_days: u32,
-    nid: Option<NoteId>,
-) -> Vec<f32> {
-    let mut modifiers = vec![1.0; after_days as usize - before_days as usize + 1];
-
-    if let Some(nid) = nid {
-        let sibling_days = days_by_preset
-            .values()
-            .flat_map(|days| {
-                days.iter()
-                    .enumerate()
-                    .fold(HashSet::new(), |mut sibling_days, (i, day)| {
-                        if day.has_sibling(&nid) {
-                            sibling_days.insert(i);
-                        }
-                        sibling_days
-                    })
-            })
-            .collect::<HashSet<_>>();
-
-        for sibling_day in sibling_days {
-            let sibling_iter = SIBLING_MODIFIER_STEPS
-                .iter()
-                .zip(SIBLING_MODIFIER_RANGE.iter());
-            for (step, sibling_modifier_value) in sibling_iter {
-                // converts true interval to modifier-space
-                let target_day = sibling_day as i32 + step - before_days as i32;
-                if let Ok(target_day) = TryInto::<usize>::try_into(target_day) {
-                    if let Some(day_modifier) = modifiers.get_mut(target_day) {
-                        *day_modifier *= sibling_modifier_value;
-                    }
-                }
-            }
-        }
-    }
-
-    modifiers
-}
-
 pub struct LoadBalancerInterval {
     pub target_interval: u32,
     pub review_count: usize,
-    pub sibling_modifier: f32,
     pub easy_days_modifier: f32,
 }
 
@@ -428,10 +336,7 @@ pub fn select_weighted_interval(
                     let card_count_weight = (1.0 / card_count as f32).powf(2.15);
                     let card_interval_weight = (1.0 / interval.target_interval as f32).powi(3);
 
-                    card_count_weight
-                        * card_interval_weight
-                        * interval.sibling_modifier
-                        * interval.easy_days_modifier
+                    card_count_weight * card_interval_weight * interval.easy_days_modifier
                 }
             };
 
