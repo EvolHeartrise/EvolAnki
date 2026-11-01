@@ -392,9 +392,10 @@ test("each deck's options are its own, down to subdecks and new ones", async ({ 
     await expect(await open("Sub")).toHaveValue("20");
     expect(problems).toEqual([]);
 
-    const rows = await query<{ count: number }>("select count() as count from deck_config");
-    const decks = await query<{ count: number }>("select count() as count from decks");
-    expect(rows).toEqual(decks);
+    const counts = await query<{ settings: number; decks: number }>(
+        "select (select count() from deck_config) as settings, (select count() from decks) as decks",
+    );
+    expect(counts[0].settings).toBe(counts[0].decks);
 });
 
 test("failing a card leaves it unsuspended and untagged, with no leech controls", async ({ page }) => {
