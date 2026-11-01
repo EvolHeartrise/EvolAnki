@@ -16,7 +16,7 @@ import {
     tagsToReplay,
     typeAnswerInput,
 } from "./lib";
-import { isVideoFile } from "./media";
+import { isAudioFile } from "./media";
 
 test("finishRendering injects the front side only into the answer", () => {
     const nodes = [
@@ -91,10 +91,10 @@ test("media urls can't leave the media path", () => {
     expect(mediaUrl("/_frame/t/", "a b#?.mp3")).toBe("/_frame/t/m/a%20b%23%3F.mp3");
 });
 
-test("video files are told from audio by extension", () => {
-    expect(isVideoFile("a.mp4")).toBe(true);
-    expect(isVideoFile("clip.WEBM")).toBe(true);
-    expect(isVideoFile("a.mp3")).toBe(false);
-    expect(isVideoFile("a.ogg")).toBe(false);
-    expect(isVideoFile("noextension")).toBe(false);
+test("only audio files are played, by extension", () => {
+    expect(isAudioFile("a.mp3")).toBe(true);
+    expect(isAudioFile("a.OGG")).toBe(true);
+    expect(isAudioFile("a.mp4")).toBe(false);
+    expect(isAudioFile("clip.WEBM")).toBe(false);
+    expect(isAudioFile("noextension")).toBe(false);
 });

@@ -100,11 +100,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     let timer = new AnswerTimer();
     let resolveTyped: ((value: string) => void) | null = null;
     let mediaBlocked = false;
-    let videoShowing = false;
     let mediaContainer: HTMLElement;
     const player = new MediaPlayer(data.frameBase, {
         onBlocked: (blocked) => (mediaBlocked = blocked),
-        onVideo: (showing) => (videoShowing = showing),
+        onNotAudio: (filename) =>
+            showNotice(`Can't play ${filename}: only audio files are supported.`),
     });
 
     const ratingButtons: [CardAnswer_Rating, string, string][] = [
@@ -408,7 +408,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         await nextCard();
     }
 
-    // Audio and video
+    // Audio
     // ---------------------------------------------------------
 
     function replay(): void {
@@ -569,11 +569,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         <div class="notice error" role="alert">{error}</div>
     {/if}
 
-    <div
-        class="media"
-        class:video-showing={videoShowing}
-        bind:this={mediaContainer}
-    ></div>
+    <div class="media" bind:this={mediaContainer}></div>
 
     {#if mediaBlocked}
         <button class="btn btn-primary play-blocked" on:click={() => player.resume()}>
@@ -664,17 +660,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     .media {
         display: none;
-
-        &.video-showing {
-            display: block;
-            background: #000;
-        }
-
-        :global(video) {
-            display: block;
-            width: 100%;
-            max-height: 40vh;
-        }
     }
 
     .play-blocked {

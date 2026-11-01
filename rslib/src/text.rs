@@ -121,7 +121,6 @@ pub static HTML_MEDIA_TAGS: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-// videos are also in sound tags
 static AV_TAGS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?xs)

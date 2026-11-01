@@ -192,14 +192,14 @@ autoplay policy to speak of, so that one is acted out with a stand-in that refus
 until a tap. **None of this has been on an actual phone.** Things to check on one: that
 autoplay works after Study Now on iOS Safari in particular (it depends on the one-tap
 "unlock" above), the on-screen keyboard over type-in answers, safe-area insets on a notch, and how your audio formats play. iOS has no `.ogg`/`.opus` support before
-Safari 18.4, and neither platform plays `.mkv` or `.avi` reliably. A file that can't
-play is skipped.
+Safari 18.4. A file that can't play is skipped.
 
 ## Differences from desktop Anki
 
 - Scripts in cards don't run, so nor does custom scheduling.
-- `[sound:]` files play in the page, one after another. Those with a video extension show
-  in a player under the card, which plays whatever the browser supports.
+- `[sound:]` files play in the page, one after another. Only audio plays: mp3, m4a, ogg,
+  oga, opus, wav, flac and aac. Anything else, such as `[sound:x.mp4]`, isn't requested,
+  and the reviewer says so in a notice while the card carries on. There's no video player.
 - There is no text-to-speech. A `{{tts ...:Field}}` filter or `[anki:tts]` tag in an
   imported card shows nothing, and plays nothing. Their text was only ever spoken, so a
   card whose front was only that has a blank front.

@@ -541,7 +541,6 @@ mod test {
 
     #[test]
     fn extract_av_tags_moves_sound_into_av_tags() {
-        use anki_proto::card_rendering::av_tag::Value as AvValue;
         let mut col = Collection::new();
 
         let resp = col
@@ -553,10 +552,7 @@ mod test {
 
         assert_eq!(resp.text, "foo [anki:play:q:0] baz");
         assert_eq!(resp.av_tags.len(), 1);
-        assert!(matches!(
-            &resp.av_tags[0].value,
-            Some(AvValue::SoundOrVideo(name)) if name == "bar.mp3"
-        ));
+        assert_eq!(resp.av_tags[0].sound, "bar.mp3");
     }
 
     #[test]

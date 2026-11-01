@@ -53,7 +53,7 @@ impl<'iter, 'nodes> IntoIterator for &'iter CardNodes<'nodes> {
 #[derive(Debug, PartialEq)]
 enum Node<'a> {
     Text(&'a str),
-    SoundOrVideo(&'a str),
+    Sound(&'a str),
     Directive(Directive<'a>),
 }
 
@@ -100,16 +100,15 @@ mod test {
             (
                 "foo [anki:play:q:0] baz",
                 vec![anki_proto::card_rendering::AvTag {
-                    value: Some(anki_proto::card_rendering::av_tag::Value::SoundOrVideo(
-                        "bar.mp3".to_string()
-                    ))
+                    sound: "bar.mp3".to_string()
                 }],
             ),
         );
     }
 
     /// A deck made for other Anki clients can still hold these. They speak text
-    /// and were never shown, so they leave nothing behind, whatever their options.
+    /// and were never shown, so they leave nothing behind, whatever their
+    /// options.
     #[test]
     fn tts_tags_are_dropped() {
         for tag in [

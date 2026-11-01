@@ -6,56 +6,45 @@
 // Phones won't start playback without a user gesture. Android Chrome remembers one
 // for the page, while iOS wants each media element to have been played from inside
 // one, after which scripts can change its source and play it freely. So there's one
-// audio and one video element for the life of the page, and unlockMedia() blesses
-// them at the first tap. If playback is still refused, the reviewer offers a button.
+// audio element for the life of the page, and unlockMedia() blesses it at the first
+// tap. If playback is still refused, the reviewer offers a button.
 
 import type { AVTag } from "@generated/anki/card_rendering_pb";
 
 import { mediaUrl } from "./lib";
 
-/** What upstream Anki plays in a video player. */
-const VIDEO_EXTENSIONS = new Set(["avi", "flv", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "ogv", "webm"]);
+/** All that's played. Others are refused, even if a browser could play their audio. */
+const AUDIO_EXTENSIONS = new Set(["aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav"]);
 
 /** A single silent sample. */
 const SILENCE = "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAACAgA==";
 
-export function isVideoFile(filename: string): boolean {
-    return VIDEO_EXTENSIONS.has(filename.split(".").pop()?.toLowerCase() ?? "");
+export function isAudioFile(filename: string): boolean {
+    return AUDIO_EXTENSIONS.has(filename.split(".").pop()?.toLowerCase() ?? "");
 }
 
 let audio: HTMLAudioElement | null = null;
-let video: HTMLVideoElement | null = null;
-const unlocked = new Set<HTMLMediaElement>();
+let unlocked = false;
 
 function audioElement(): HTMLAudioElement {
     return (audio ??= document.createElement("audio"));
 }
 
-function videoElement(): HTMLVideoElement {
-    if (!video) {
-        video = document.createElement("video");
-        video.playsInline = true;
-        video.controls = true;
-    }
-    return video;
-}
-
 /** Call from a click or key press, before anything needs to play. */
 export function unlockMedia(): void {
-    for (const element of [audioElement(), videoElement()]) {
-        // something that's already playing can stay that way, and is as good
-        if (!unlocked.has(element) && element.paused) {
-            element.src = SILENCE;
-            element.play().then(() => unlocked.add(element)).catch(() => undefined);
-        }
+    const element = audioElement();
+    // something that's already playing can stay that way, and is as good
+    if (!unlocked && element.paused) {
+        element.src = SILENCE;
+        element.play().then(() => (unlocked = true)).catch(() => undefined);
     }
 }
 
 export interface PlayerCallbacks {
     /** The browser refused to play without a gesture, or has since allowed it. */
     onBlocked(blocked: boolean): void;
-    /** The video element should or shouldn't be shown. */
-    onVideo(showing: boolean): void;
+    /** This isn't an audio file, so it was skipped. */
+    onNotAudio(filename: string): void;
 }
 
 export class MediaPlayer {
@@ -67,21 +56,18 @@ export class MediaPlayer {
 
     constructor(private frameBase: string, private callbacks: PlayerCallbacks) {}
 
-    /** Puts the elements in the page, under `container`. */
+    /** Puts the element in the page, under `container`. */
     mount(container: HTMLElement): void {
         const audio = audioElement();
-        const video = videoElement();
         audio.hidden = true;
-        container.append(audio, video);
-        for (const element of [audio, video]) {
-            const next = () => this.playNext();
-            element.addEventListener("ended", next);
-            element.addEventListener("error", next);
-            this.removeListeners.push(() => {
-                element.removeEventListener("ended", next);
-                element.removeEventListener("error", next);
-            });
-        }
+        container.append(audio);
+        const next = () => this.playNext();
+        audio.addEventListener("ended", next);
+        audio.addEventListener("error", next);
+        this.removeListeners.push(() => {
+            audio.removeEventListener("ended", next);
+            audio.removeEventListener("error", next);
+        });
     }
 
     unmount(): void {
@@ -91,7 +77,6 @@ export class MediaPlayer {
         }
         this.removeListeners = [];
         audio?.remove();
-        video?.remove();
     }
 
     /** Replaces what's playing. */
@@ -106,8 +91,6 @@ export class MediaPlayer {
         this.queue = [];
         this.pending = [];
         audio?.pause();
-        video?.pause();
-        this.callbacks.onVideo(false);
         this.callbacks.onBlocked(false);
     }
 
@@ -123,9 +106,10 @@ export class MediaPlayer {
         if (!tag) {
             return;
         }
-        if (tag.value.case === "soundOrVideo") {
-            this.playFile(tag, tag.value.value);
+        if (isAudioFile(tag.sound)) {
+            this.playFile(tag);
         } else {
+            this.callbacks.onNotAudio(tag.sound);
             this.playNext();
         }
     }
@@ -136,15 +120,13 @@ export class MediaPlayer {
         this.callbacks.onBlocked(true);
     }
 
-    private playFile(tag: AVTag, filename: string): void {
-        const isVideo = isVideoFile(filename);
-        const element = isVideo ? videoElement() : audioElement();
-        this.callbacks.onVideo(isVideo);
-        element.src = mediaUrl(this.frameBase, filename);
+    private playFile(tag: AVTag): void {
+        const element = audioElement();
+        element.src = mediaUrl(this.frameBase, tag.sound);
         const generation = this.generation;
         element.play().then(
             () => {
-                unlocked.add(element);
+                unlocked = true;
                 if (generation === this.generation) {
                     this.callbacks.onBlocked(false);
                 }

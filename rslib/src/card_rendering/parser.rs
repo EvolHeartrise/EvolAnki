@@ -63,12 +63,11 @@ fn node(s: &str) -> IResult<'_, Node<'_>> {
     alt((sound_node, tag_node, text_node)).parse(s)
 }
 
-/// A sound tag `[sound:resource]`, where `resource` is pointing to a sound or
-/// video file.
+/// A sound tag `[sound:resource]`.
 fn sound_node(s: &str) -> IResult<'_, Node<'_>> {
     map(
         delimited(tag("[sound:"), is_not("]"), tag("]")),
-        Node::SoundOrVideo,
+        Node::Sound,
     )
     .parse(s)
 }
@@ -203,18 +202,14 @@ mod test {
         );
 
         // sound
-        assert_parsed_nodes!("[sound:foo]", SoundOrVideo("foo"));
+        assert_parsed_nodes!("[sound:foo]", Sound("foo"));
         assert_parsed_nodes!(
             "foo [sound:bar] baz",
             Text("foo "),
-            SoundOrVideo("bar"),
+            Sound("bar"),
             Text(" baz")
         );
-        assert_parsed_nodes!(
-            "[sound:foo][sound:bar]",
-            SoundOrVideo("foo"),
-            SoundOrVideo("bar")
-        );
+        assert_parsed_nodes!("[sound:foo][sound:bar]", Sound("foo"), Sound("bar"));
 
         // tags
         assert_parsed_nodes!(
@@ -258,6 +253,5 @@ mod test {
                 options: [("a", "b \t\n c ]")].into_iter().collect(),
             })
         );
-
     }
 }

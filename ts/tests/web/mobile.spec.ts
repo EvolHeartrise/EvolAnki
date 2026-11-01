@@ -12,10 +12,6 @@ import { type Browser, chromium, devices, expect, type FrameLocator, type Page, 
 
 import { Server, tempCollection } from "./server";
 
-/** 0.6 seconds of blue, from ffmpeg -f lavfi -i color=c=blue:s=64x48:r=5 -c:v libvpx. */
-const WEBM =
-    "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIwEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggIa7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECCwAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYi++y1lhYPGzJyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAvrwgDgibCBQLqBMJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYi++y1lhYPGzGfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDAuNjAwMDAwMDAwAB9DtnX254EAo8GBAACAUAMAnQEqQAAwAABHCIWFiIWEiAICAnWqA/gCBwjVZ5mPN9IA/v9NEv/8WFfxYV/FhX/xYV/8/M7txfzmAKOWgQDIANEBAAEQEAAYABhYL/QACIwAAKOWgQGQANEBAAEQEAAYABhYL/QACIwAABxTu2uRu4+zgQC3iveBAfGCAZ/wgQM=";
-
 function wav(): Buffer {
     const samples = 4410;
     const header = Buffer.alloc(44);
@@ -42,7 +38,7 @@ async function start(notes: { deck: string; notetype: string; fields: string[] }
     const media = collection.path.replace(/\.anki2$/, ".media");
     mkdirSync(media, { recursive: true });
     writeFileSync(join(media, "beep.wav"), wav());
-    writeFileSync(join(media, "clip.webm"), Buffer.from(WEBM, "base64"));
+    writeFileSync(join(media, "clip.mp4"), "not looked at");
     const seed = join(dirname(collection.path), "seed.json");
     writeFileSync(seed, JSON.stringify({ decks: decks.map((name) => ({ name })), notes }));
     server = await Server.start(collection.path, seed);
@@ -210,51 +206,22 @@ for (
             await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.ended)).toBe(true);
             await expect(control).toHaveCount(0);
         });
-
-        test("sound and video files find the right element", async () => {
-            browser = await launch();
-            const context = await browser.newContext({ ...device });
-            const page = await context.newPage();
-            await start(
-                [
-                    {
-                        deck: "Clips",
-                        notetype: "Basic",
-                        fields: ["front", "[sound:clip.webm]answer"],
-                    },
-                ],
-                ["Clips"],
-            );
-            await openDeck(page, "Clips");
-            await page.getByRole("button", { name: "Study Now" }).tap();
-            await expect(card(page).locator("#qa")).toBeAttached();
-            await expect(page.locator("video")).toBeHidden();
-
-            await page.getByRole("button", { name: "Show Answer" }).tap();
-            const video = page.locator("video");
-            await expect(video).toBeVisible();
-            await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.src)).toMatch(/clip\.webm$/);
-            await expect.poll(() => page.locator("audio").evaluate((a: HTMLAudioElement) => a.src)).not.toMatch(
-                /clip\.webm$/,
-            );
-            const box = (await video.boundingBox())!;
-            expect(box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-            await noSidewaysScroll(page, "with a video");
-            // moving on takes the video away
-            await page.locator("button[data-rating='3']").tap();
-            await expect(video).toBeHidden();
-        });
     });
 }
 
-test("a video that the browser can play reaches its end", async () => {
+test("leftover text-to-speech shows nothing, and a video file is refused plainly", async () => {
     browser = await chromium.launch();
     const page = await browser.newPage();
-    await start([basic("Clip", "[sound:clip.webm]q", "a")], ["Clip"]);
+    const requests: string[] = [];
+    page.on("request", (request) => requests.push(request.url()));
+    await start([basic("Clip", "[anki:tts lang=ja_JP]spoken[/anki:tts]shown[sound:clip.mp4]", "a")], ["Clip"]);
     await page.goto(server.url);
     await page.locator(`tr[data-deck="Clip"] .name a`).click();
     await page.getByRole("button", { name: "Study Now" }).click();
-    const video = page.locator("video");
-    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.ended)).toBe(true);
-    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.videoWidth)).toBe(64);
+    await expect(card(page).locator("#qa")).toContainText("shown");
+    await expect(card(page).locator("#qa")).not.toContainText("spoken");
+    await expect(card(page).locator("#qa")).not.toContainText("anki:");
+    await expect(page.locator(".notice")).toHaveText("Can't play clip.mp4: only audio files are supported.");
+    await expect(page.locator("video")).toHaveCount(0);
+    expect(requests.filter((url) => url.endsWith("clip.mp4"))).toEqual([]);
 });

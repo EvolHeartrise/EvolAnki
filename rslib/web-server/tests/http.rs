@@ -456,7 +456,7 @@ fn media_is_served_safely() {
     let reply = server.get("/sp%20ace%20%C3%A9.txt");
     assert_eq!(reply.text(), "0123456789");
 
-    // ranges are needed for audio/video seeking
+    // ranges are needed for audio seeking
     let host = server.host();
     let range = [("Host", host.as_str()), ("Range", "bytes=2-4")];
     let reply = server.raw("GET", "/sp%20ace%20%C3%A9.txt", &range, b"");

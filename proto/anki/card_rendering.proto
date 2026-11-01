@@ -49,9 +49,7 @@ message ExtractAvTagsResponse {
 }
 
 message AVTag {
-  oneof value {
-    string sound_or_video = 1;
-  }
+  string sound = 1;
 }
 
 message ExtractLatexRequest {

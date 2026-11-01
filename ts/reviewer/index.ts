@@ -70,20 +70,6 @@ export function _queueAction(action: Callback): void {
     _updatingQueue = _updatingQueue.then(action);
 }
 
-function setInnerHTML(element: Element, html: string): void {
-    for (const oldVideo of element.getElementsByTagName("video")) {
-        oldVideo.pause();
-
-        while (oldVideo.firstChild) {
-            oldVideo.removeChild(oldVideo.firstChild);
-        }
-
-        oldVideo.load();
-    }
-
-    element.innerHTML = html;
-}
-
 const renderError = (type: string) => (error: unknown): string => {
     const errorMessage = String(error).substring(0, 2000);
     let errorStack: string;
@@ -125,9 +111,9 @@ export async function _updateQA(
     qa.style.opacity = "0";
 
     try {
-        setInnerHTML(qa, html);
+        qa.innerHTML = html;
     } catch (error) {
-        setInnerHTML(qa, renderError("html")(error));
+        qa.innerHTML = renderError("html")(error);
     }
 
     await _runHook(onUpdateHook);

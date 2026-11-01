@@ -35,7 +35,7 @@ trait Write {
         for node in nodes {
             match node {
                 Node::Text(s) => self.write_text(&mut buf, s),
-                Node::SoundOrVideo(r) => self.write_sound(&mut buf, r),
+                Node::Sound(r) => self.write_sound(&mut buf, r),
                 Node::Directive(directive) => self.write_directive(&mut buf, directive),
             };
         }
@@ -112,9 +112,7 @@ impl Write for AvExtractor {
     fn write_sound(&mut self, buf: &mut String, resource: &str) {
         self.write_play_tag(buf);
         self.tags.push(anki_proto::card_rendering::AvTag {
-            value: Some(anki_proto::card_rendering::av_tag::Value::SoundOrVideo(
-                decode_entities(resource).into(),
-            )),
+            sound: decode_entities(resource).into(),
         });
     }
 }

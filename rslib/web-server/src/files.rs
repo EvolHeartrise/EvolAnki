@@ -101,15 +101,7 @@ fn mime_for_path(path: &str) -> &'static str {
         "wav" => "audio/wav",
         "flac" => "audio/flac",
         "aac" => "audio/aac",
-        "mp4" | "m4v" => "video/mp4",
-        "webm" => "video/webm",
         "ogg" => "audio/ogg",
-        "ogv" => "video/ogg",
-        "mov" => "video/quicktime",
-        "mkv" => "video/x-matroska",
-        "avi" => "video/x-msvideo",
-        "flv" => "video/x-flv",
-        "mpg" | "mpeg" => "video/mpeg",
         "pdf" => "application/pdf",
         "txt" => "text/plain",
         _ => "application/octet-stream",
@@ -326,8 +318,7 @@ pub(crate) async fn media(state: &AppState, path: &str, request: Request) -> Res
         Err(_) => return invalid_path(StatusCode::NOT_FOUND, path),
     }
 
-    // ServeFile adds conditional and range requests, which audio/video seeking
-    // needs
+    // ServeFile adds conditional and range requests, which audio seeking needs
     let mut response = match ServeFile::new(&full).oneshot(request).await {
         Ok(response) => response.into_response(),
         Err(err) => return text_response(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
