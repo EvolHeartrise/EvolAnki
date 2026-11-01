@@ -1,0 +1,29 @@
+[package]
+name = "evolanki-sched-golden"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+rust-version.workspace = true
+description = "Records scheduling behaviour as JSON with a pinned clock, so builds can be diffed"
+
+[[bin]]
+path = "src/main.rs"
+name = "sched-golden"
+
+[build-dependencies]
+anki_proto_gen.workspace = true
+anyhow.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+anki.workspace = true
+evolanki-server = { path = "../web-server" }
+prost.workspace = true
+prost-reflect.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
