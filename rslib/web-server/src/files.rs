@@ -145,8 +145,20 @@ fn is_sveltekit_route(path: &str) -> Option<&'static str> {
     SVELTEKIT_ROUTES.iter().find(|r| **r == first).copied()
 }
 
+/// The Host of a request, which guard.rs has already checked.
+pub(crate) fn request_host(request: &Request) -> String {
+    request
+        .headers()
+        .get(header::HOST)
+        .and_then(|host| host.to_str().ok())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+}
+
 /// Handle a GET/HEAD request, in the same order as _extract_request().
 pub async fn serve(state: &AppState, request: Request) -> Response {
+    let host = request_host(&request);
+    let host = host.as_str();
     let raw_path = request.uri().path().to_string();
     let raw_path = raw_path.strip_prefix('/').unwrap_or(&raw_path);
     let Ok(path) = percent_decode_str(raw_path).decode_utf8() else {
@@ -159,25 +171,25 @@ pub async fn serve(state: &AppState, request: Request) -> Response {
         return StatusCode::OK.into_response();
     }
     if path == "favicon.ico" {
-        return bundled(state, "imgs/favicon.ico", &path, None).await;
+        return bundled(state, host, "imgs/favicon.ico", &path, None).await;
     }
     if path == "_anki/frameBase" {
         return frame_base(state, &request);
     }
     if path.is_empty() {
-        return bundled(state, "sveltekit/index.html", &path, Some("")).await;
+        return bundled(state, host, "sveltekit/index.html", &path, Some("")).await;
     }
     if let Some(rest) = path.strip_prefix("_frame/") {
         return frame::serve(state, rest, request).await;
     }
     if let Some(route) = is_sveltekit_route(&path) {
-        return bundled(state, "sveltekit/index.html", &path, Some(route)).await;
+        return bundled(state, host, "sveltekit/index.html", &path, Some(route)).await;
     }
     if path.starts_with("_app/") {
-        return bundled(state, &format!("sveltekit/{path}"), &path, None).await;
+        return bundled(state, host, &format!("sveltekit/{path}"), &path, None).await;
     }
     if let Some(rest) = path.strip_prefix("_anki/") {
-        return bundled(state, rest, &path, None).await;
+        return bundled(state, host, rest, &path, None).await;
     }
     if path.starts_with("_addons/") {
         return text_response(StatusCode::NOT_FOUND, "add-ons are not supported");
@@ -205,6 +217,7 @@ fn frame_base(state: &AppState, request: &Request) -> Response {
 
 pub(crate) async fn bundled(
     state: &AppState,
+    host: &str,
     relative: &str,
     request_path: &str,
     route: Option<&str>,
@@ -237,7 +250,7 @@ pub(crate) async fn bundled(
             let hash = String::from_utf8_lossy(&captures[1]).into_owned();
             format!(
                 "{}; frame-src 'self'",
-                untrusted_sveltekit_csp(state.port, &hash)
+                untrusted_sveltekit_csp(host, &hash)
             )
         } else {
             // the page's own CSP would stop a trusted page's inline scripts
@@ -270,19 +283,11 @@ pub(crate) async fn bundled(
 }
 
 /// Scripts may only come from our bundled paths, so a script in a media file or
-/// note field can't run. Pages can be opened via either allowed host.
-fn untrusted_sveltekit_csp(port: u16, script_hash: &str) -> String {
-    let sources: Vec<String> = ["127.0.0.1", "localhost"]
-        .iter()
-        .flat_map(|host| {
-            ["_anki", "_app"]
-                .iter()
-                .map(move |dir| format!("http://{host}:{port}/{dir}/"))
-        })
-        .collect();
+/// note field can't run. These are per Host, as the server has many names.
+fn untrusted_sveltekit_csp(host: &str, script_hash: &str) -> String {
     format!(
-        "script-src {} {script_hash}; form-action 'none'; {TRUSTED_PAGE_CSP}",
-        sources.join(" ")
+        "script-src http://{host}/_anki/ http://{host}/_app/ {script_hash}; \
+         form-action 'none'; {TRUSTED_PAGE_CSP}"
     )
 }
 

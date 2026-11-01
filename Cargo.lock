@@ -1018,6 +1018,8 @@ dependencies = [
  "prost-reflect",
  "rand 0.10.1",
  "regex",
+ "rusqlite",
+ "rustix",
  "serde",
  "serde_json",
  "tempfile",

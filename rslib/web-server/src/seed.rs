@@ -211,7 +211,6 @@ fn add_notetype(backend: &Backend, basic: i64, seed: SeedNotetype) -> Result<()>
     notetype.templates.truncate(1);
     let template = &mut notetype.templates[0];
     template.ord = None;
-    template.id = None;
     let config = template.config.as_mut().context("no template config")?;
     config.q_format = seed.front;
     config.a_format = seed.back;

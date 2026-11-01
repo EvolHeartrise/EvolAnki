@@ -1,16 +1,29 @@
 #!/usr/bin/env bash
-# Build the web assets and server, then serve a collection on 127.0.0.1.
-#   tools/run-web [path/to/collection.anki2] [extra evolanki-server args]
+# Build the web assets and server, then serve a collection on this network.
+#   tools/run-web [--release] [path/to/collection.anki2] [extra evolanki-server args]
 # With no path, a demo collection in out/web-dev is created on first use.
+# --release builds with optimisations, which is what to use for real.
 set -e
-cd "$(dirname "$0")/.."
 
+profile=()
+if [ "$1" = "--release" ]; then
+    profile=(--release)
+    shift
+fi
+
+# resolved here, as the rest runs from the top of the repo
+collection=
+if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then
+    collection=$(realpath -m -- "$1")
+    shift
+fi
+
+cd "$(dirname "$0")/.."
 ./ninja web
 
 export CARGO_TARGET_DIR="$PWD/out/rust"
-if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then
-    collection=$1
-    shift
-    exec cargo run -p evolanki-server -- --collection "$collection" "$@"
+serve=(cargo run "${profile[@]}" -p evolanki-server -- --web-root "$PWD/out/web")
+if [ -n "$collection" ]; then
+    exec "${serve[@]}" --collection "$collection" "$@"
 fi
-exec cargo run -p evolanki-server -- --collection out/web-dev/demo.anki2 --create --seed-demo "$@"
+exec "${serve[@]}" --collection "$PWD/out/web-dev/demo.anki2" --create --seed-demo "$@"

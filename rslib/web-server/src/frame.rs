@@ -56,12 +56,15 @@ pub async fn serve(state: &AppState, rest: &str, request: Request) -> Response {
         .strip_prefix(state.frame_token.as_str())
         .and_then(|path| path.strip_prefix('/'));
     let mut response = match path {
-        Some("m/") => return document(state, request.uri().query() == Some("static")),
+        Some("m/") => {
+            let host = files::request_host(&request);
+            return document(state, &host, request.uri().query() == Some("static"));
+        }
         Some(path) => {
             if let Some(file) = path.strip_prefix("m/") {
                 files::media(state, file, request).await
             } else if let Some(file) = path.strip_prefix("a/").filter(|f| is_frame_asset(f)) {
-                files::bundled(state, file, file, None).await
+                files::bundled(state, &files::request_host(&request), file, file, None).await
             } else {
                 return StatusCode::NOT_FOUND.into_response();
             }
@@ -82,7 +85,7 @@ pub async fn serve(state: &AppState, rest: &str, request: Request) -> Response {
     response
 }
 
-fn document(state: &AppState, is_static: bool) -> Response {
+fn document(state: &AppState, host: &str, is_static: bool) -> Response {
     let nonce = new_token();
     let (head, style, body) = if is_static {
         ("", STATIC_STYLE, STATIC_BODY)
@@ -100,7 +103,7 @@ fn document(state: &AppState, is_static: bool) -> Response {
             (header::CACHE_CONTROL, "no-store".to_string()),
             (
                 header::CONTENT_SECURITY_POLICY,
-                document_csp(state, is_static, &nonce),
+                document_csp(state, host, is_static, &nonce),
             ),
         ],
         html,
@@ -113,40 +116,20 @@ fn document(state: &AppState, is_static: bool) -> Response {
 /// can connect anywhere, or load anything from outside the prefix, and the sandbox
 /// directive holds even if the page is opened directly instead of through the
 /// iframe that asks for it.
-fn document_csp(state: &AppState, is_static: bool, nonce: &str) -> String {
-    let port = state.port;
-    let token = &state.frame_token;
-    let hosts = [
-        format!("http://127.0.0.1:{port}"),
-        format!("http://localhost:{port}"),
-    ];
-    let ours = hosts
-        .iter()
-        .map(|host| format!("{host}/_frame/{token}/"))
-        .collect::<Vec<_>>()
-        .join(" ");
+fn document_csp(state: &AppState, host: &str, is_static: bool, nonce: &str) -> String {
+    let origin = format!("http://{host}");
+    let ours = format!("{origin}/_frame/{}/", state.frame_token);
     let scripts = if is_static {
         format!("'nonce-{nonce}'")
     } else {
-        let mathjax = hosts
-            .iter()
-            .map(|host| {
-                format!(
-                    "{host}/_frame/{token}/a/js/mathjax.js \
-                     {host}/_frame/{token}/a/js/vendor/mathjax/"
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        format!("'nonce-{nonce}' {mathjax}")
+        format!("'nonce-{nonce}' {ours}a/js/mathjax.js {ours}a/js/vendor/mathjax/")
     };
     format!(
         "default-src 'none'; script-src {scripts}; style-src 'unsafe-inline' {ours}; \
          img-src data: blob: {ours}; media-src data: blob: {ours}; font-src data: {ours}; \
          connect-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; \
          worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; \
-         frame-ancestors {} {}; sandbox allow-scripts",
-        hosts[0], hosts[1]
+         frame-ancestors {origin}; sandbox allow-scripts"
     )
 }
 

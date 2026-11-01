@@ -69,7 +69,7 @@ impl Fixture {
             .arg(self.collection())
             .arg("--web-root")
             .arg(self.dir.path().join("web"))
-            .args(["--port", "0"])
+            .args(["--port", "0", "--host", "127.0.0.1"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         cmd
@@ -257,27 +257,12 @@ fn rpc_behaviour_matches_mediasrv() {
     let server = fixture.start();
 
     // binary output
-    let reply = server.rpc_raw(
-        "getConfigJson",
-        &generic::String {
-            val: "schedVer".into(),
-        }
-        .encode_to_vec(),
-    );
+    let reply = server.rpc_raw("getGraphPreferences", b"");
     assert_eq!(reply.status, 200);
     assert_eq!(
         reply.header("content-type").as_deref(),
         Some("application/binary")
     );
-
-    // a missing config key is null, not an error
-    let json: generic::Json = server.rpc(
-        "getConfigJson",
-        &generic::String {
-            val: "no such key".into(),
-        },
-    );
-    assert_eq!(json.json, b"null");
 
     // backend errors are a 500 with the message as plain text
     let reply = server.rpc_raw("getCard", &DeckId { did: 123 }.encode_to_vec());
@@ -360,6 +345,7 @@ fn bad_hosts_and_origins_are_refused() {
     for bad in [
         "evil.example",
         "evil.example:80",
+        "8.8.8.8",
         "127.0.0.1",
         "localhost:1",
     ] {
@@ -382,6 +368,24 @@ fn bad_hosts_and_origins_are_refused() {
         server.raw("GET", &absolute, &[("Host", &host)], b"").status,
         403
     );
+
+    let bad_ip = format!("8.8.8.8:{}", server.port);
+    assert_eq!(server.raw("GET", "/graphs", &[("Host", &bad_ip)], b"").status, 403);
+    let named = format!("evil.example:{}", server.port);
+    assert_eq!(server.raw("GET", "/graphs", &[("Host", &named)], b"").status, 403);
+
+    // private addresses are fine, with an Origin to match
+    let private = format!("192.168.7.7:{}", server.port);
+    assert_eq!(
+        server.raw("POST", path, &[("Host", &private), binary], b"").status,
+        200
+    );
+    let origin = format!("http://{private}");
+    let headers = [("Host", private.as_str()), ("Origin", origin.as_str()), binary];
+    assert_eq!(server.raw("POST", path, &headers, b"").status, 200);
+    let local_origin = format!("http://{host}");
+    let headers = [("Host", private.as_str()), ("Origin", local_origin.as_str()), binary];
+    assert_eq!(server.raw("POST", path, &headers, b"").status, 403);
 
     // other sites
     for origin in ["https://evil.example", "null", "http://localhost:1"] {
@@ -503,6 +507,14 @@ fn pages_have_the_expected_headers() {
         assert!(csp.contains("script-src http://127.0.0.1:"), "{csp}");
         assert!(!csp.contains("unsafe-inline"), "{csp}");
     }
+
+    // and they name whichever host was used
+    let private = format!("192.168.7.7:{}", server.port);
+    let reply = server.raw("GET", "/review", &[("Host", &private)], b"");
+    assert_eq!(reply.status, 200);
+    let csp = reply.header("content-security-policy").unwrap();
+    assert!(csp.contains(&format!("script-src http://{private}/_anki/")), "{csp}");
+    assert!(!csp.contains("127.0.0.1"), "{csp}");
 
     // removed pages are just media paths now
     assert_eq!(server.get("/editor/").status, 404);
@@ -656,9 +668,14 @@ fn fails_with(fixture: &Fixture, args: &[&str], message: &str) {
 #[test]
 fn refuses_unsafe_startup() {
     let fixture = Fixture::new();
-    for host in ["0.0.0.0", "::", "192.168.1.1", "localhost"] {
-        fails_with(&fixture, &["--create", "--host", host], "refusing to bind");
-    }
+    let output = Command::new(binary())
+        .arg("--collection")
+        .arg(fixture.collection())
+        .args(["--create", "--host", "localhost"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("invalid value"));
     assert!(!fixture.collection().exists());
 
     fails_with(&fixture, &[], "pass --create");
@@ -667,12 +684,138 @@ fn refuses_unsafe_startup() {
     let output = Command::new(binary())
         .arg("--collection")
         .arg(fixture.collection())
-        .args(["--create", "--port", "0", "--web-root", "/nonexistent"])
+        .args([
+            "--create",
+            "--port",
+            "0",
+            "--host",
+            "127.0.0.1",
+            "--web-root",
+            "/nonexistent",
+        ])
         .output()
         .unwrap();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("not found"));
     assert!(!fixture.collection().exists());
+}
+
+#[test]
+fn listens_on_the_network_by_default_and_says_so() {
+    let fixture = Fixture::new();
+    let mut child = Command::new(binary())
+        .arg("--collection")
+        .arg(fixture.collection())
+        .arg("--web-root")
+        .arg(fixture.dir.path().join("web"))
+        .args(["--port", "0", "--create", "--allow-host", "Phone.Example"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    let mut lines = vec![];
+    loop {
+        let mut line = String::new();
+        stdout.read_line(&mut line).unwrap();
+        let done = line.contains("WARNING") || line.is_empty();
+        lines.push(line);
+        if done {
+            break;
+        }
+    }
+    let port = lines[0].trim().rsplit(':').next().unwrap().to_string();
+    assert!(lines[0].starts_with("Listening on http://127.0.0.1:"), "{lines:?}");
+    assert!(lines.last().unwrap().contains("no login"), "{lines:?}");
+    let server = Server {
+        child,
+        stdout,
+        port: port.parse().unwrap(),
+    };
+    // --allow-host, and its case doesn't matter
+    let named = format!("phone.example:{port}");
+    assert_eq!(server.raw("GET", "/graphs", &[("Host", &named)], b"").status, 200);
+    let other = format!("tablet.example:{port}");
+    assert_eq!(server.raw("GET", "/graphs", &[("Host", &other)], b"").status, 403);
+    server.stop();
+}
+
+/// The owner's collection has this stock notetype, with no notes.
+#[test]
+fn a_collection_with_the_removed_image_occlusion_notetype_opens() {
+        let fixture = Fixture::new();
+    let seed = fixture.dir.path().join("seed.json");
+    fs::write(
+        &seed,
+        r#"{"notetypes": [{"name": "Image Occlusion", "fields": ["Occlusion", "Image", "Header",
+            "Back Extra", "Comments"], "front": "{{cloze:Occlusion}}<script>anki.setup()</script>",
+            "back": "{{cloze:Occlusion}}", "original_stock_kind": 6}]}"#,
+    )
+    .unwrap();
+    let server = fixture.start_with(&["--create", "--seed-file", seed.to_str().unwrap()]);
+    server.stop();
+
+    // the pages work on it, and it survives being opened again
+    let server = fixture.start();
+    let _: DeckConfigsForUpdate = server.rpc("getDeckConfigsForUpdate", &DeckId { did: 1 });
+    let _: anki_proto::decks::DeckTreeNode =
+        server.rpc("deckTree", &anki_proto::decks::DeckTreeRequest { now: 1 });
+    server.stop();
+    let db = rusqlite::Connection::open(fixture.collection()).unwrap();
+    let mut names = db.prepare("select name from notetypes").unwrap();
+    let names: Vec<String> = names
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert!(names.iter().any(|name| name == "Image Occlusion"), "{names:?}");
+}
+
+/// Everything the pages import from the generated client must be on the allow-list,
+/// and nothing else.
+#[test]
+fn allow_list_matches_the_pages() {
+    fn walk(dir: &Path, found: &mut std::collections::BTreeSet<String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                walk(&path, found);
+                continue;
+            }
+            let name = path.to_string_lossy().to_string();
+            if !(name.ends_with(".ts") || name.ends_with(".svelte")) || name.contains(".test.") {
+                continue;
+            }
+            let text = fs::read_to_string(&path).unwrap();
+            let mut rest = text.as_str();
+            while let Some(end) = rest.find("from \"@generated/backend\"") {
+                let start = rest[..end].rfind("import").unwrap();
+                let names = &rest[start..end];
+                let names = &names[names.find('{').unwrap() + 1..names.rfind('}').unwrap()];
+                for name in names.split(',') {
+                    let name = name.split(" as ").next().unwrap().trim();
+                    if !name.is_empty() {
+                        found.insert(name.to_string());
+                    }
+                }
+                rest = &rest[end + 1..];
+            }
+        }
+    }
+    let ts = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../ts");
+    let mut used = Default::default();
+    for dir in ["routes", "lib", "reviewer"] {
+        walk(&ts.join(dir), &mut used);
+    }
+    let rpc = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/rpc.rs")).unwrap();
+    let list = &rpc[rpc.find("ALLOWED: &[&str] = &[").unwrap()..];
+    let list = &list[..list.find("];").unwrap()];
+    let allowed: std::collections::BTreeSet<String> = list
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix('"')?.strip_suffix("\","))
+        .map(str::to_string)
+        .collect();
+    assert_eq!(used, allowed);
 }
 
 #[test]

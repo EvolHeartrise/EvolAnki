@@ -12,31 +12,26 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use anki::backend::Backend;
-use anki_proto::backend::backend_error::Kind;
 use anki_proto::backend::BackendError;
 use anki_proto::backend::BackendInit;
-use anki_proto::generic;
 use anyhow::anyhow;
 use axum::http::StatusCode;
 use prost::Message;
 
 include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 
-/// RPCs passed straight to the backend, which is all that a browser can reach.
-/// This server has no login, so it holds what the pages use and nothing else;
-/// see `allow_list_matches_the_pages` in tests/http.rs.
+/// The RPCs that a browser can reach. This server has no login, so it's what the
+/// pages use and nothing else, which `allow_list_matches_the_pages` in tests/http.rs
+/// enforces. An admin tool would link the backend rather than use these.
 pub const ALLOWED: &[&str] = &[
     // CollectionService
     "latestProgress",
     "setWantsAbort",
-    "getCustomColours",
     "getUndoStatus",
     "undo",
-    "redo",
     // DeckService
     "deckTree",
     "getDeck",
-    "getDeckNames",
     "getCurrentDeck",
     "setCurrentDeck",
     "setDeckCollapsed",
@@ -44,18 +39,13 @@ pub const ALLOWED: &[&str] = &[
     "i18nResources",
     // NotesService
     "getNote",
-    "getFieldNames",
     // NotetypesService
     "getNotetype",
-    "getNotetypeNames",
     // StatsService
     "cardStats",
-    "getReviewLogs",
     "graphs",
     "getGraphPreferences",
     "setGraphPreferences",
-    // TagsService
-    "completeTag",
     // SchedulerService: reviewing
     "getQueuedCards",
     "answerCard",
@@ -63,12 +53,10 @@ pub const ALLOWED: &[&str] = &[
     "stateIsLeech",
     "congratsInfo",
     "studiedToday",
-    "schedTimingToday",
     // SchedulerService: FSRS tools on the deck options page
     "computeFsrsParams",
     "computeOptimalRetention",
     "evaluateParamsLegacy",
-    "getOptimalRetentionParameters",
     "simulateFsrsReview",
     "simulateFsrsWorkload",
     // DeckConfigService
@@ -84,10 +72,7 @@ pub const ALLOWED: &[&str] = &[
     "extractClozeForTyping",
     "compareAnswer",
     "encodeIriPaths",
-    "decodeIriPaths",
-    "htmlToTextLine",
-    // ConfigService (getConfigJson is in run())
-    "setConfigJson",
+    // ConfigService
     "getConfigBool",
     // CardsService
     "getCard",
@@ -103,16 +88,11 @@ static INDEXES: LazyLock<HashMap<&'static str, (u32, u32)>> = LazyLock::new(|| {
 pub struct RpcError {
     pub status: StatusCode,
     pub message: String,
-    kind: Option<Kind>,
 }
 
 impl RpcError {
     fn new(status: StatusCode, message: String) -> Self {
-        Self {
-            status,
-            message,
-            kind: None,
-        }
+        Self { status, message }
     }
 }
 
@@ -138,11 +118,7 @@ pub fn call(backend: &Backend, method: &str, input: &[u8]) -> Result<Vec<u8>, Rp
     backend
         .run_service_method(service_idx, method_idx, input)
         .map_err(|bytes| match BackendError::decode(bytes.as_slice()) {
-            Ok(err) => RpcError {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
-                kind: Kind::try_from(err.kind).ok(),
-                message: err.message,
-            },
+            Ok(err) => RpcError::new(StatusCode::INTERNAL_SERVER_ERROR, err.message),
             Err(err) => RpcError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("undecodable backend error: {err}"),
@@ -163,23 +139,13 @@ pub fn call_typed<O: Message + Default>(
 
 /// Handle a request from a page. Blocking.
 pub fn run(backend: &Backend, method: &str, input: &[u8]) -> Result<Vec<u8>, RpcError> {
-    match method {
-        // mediasrv.py: a missing key reads as JSON null, not an error
-        "getConfigJson" => match call(backend, method, input) {
-            Err(RpcError {
-                kind: Some(Kind::NotFoundError),
-                ..
-            }) => Ok(generic::Json {
-                json: b"null".to_vec(),
-            }
-            .encode_to_vec()),
-            other => other,
-        },
-        _ if ALLOWED.contains(&method) => call(backend, method, input),
-        _ => Err(RpcError::new(
+    if ALLOWED.contains(&method) {
+        call(backend, method, input)
+    } else {
+        Err(RpcError::new(
             StatusCode::NOT_FOUND,
             format!("{method} not found"),
-        )),
+        ))
     }
 }
 
@@ -189,7 +155,7 @@ mod test {
 
     #[test]
     fn allowed_methods_exist_in_the_backend() {
-        for &method in ALLOWED.iter().chain(&["getConfigJson"]) {
+        for &method in ALLOWED {
             assert!(INDEXES.contains_key(method), "unknown method {method}");
         }
     }
@@ -205,6 +171,12 @@ mod test {
             "addMediaFromPath",
             "getAbsoluteMediaPath",
             "exportAnkiPackage",
+            "buryOrSuspendCards",
+            "unburyDeck",
+            "setFlag",
+            "changeNotetype",
+            "getConfigJson",
+            "setConfigJson",
         ] {
             assert!(!ALLOWED.contains(&method), "{method}");
         }

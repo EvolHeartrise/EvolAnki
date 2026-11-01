@@ -33,6 +33,8 @@ export class Server {
             "0",
             "--web-root",
             WEB_ROOT,
+            "--host",
+            "127.0.0.1",
         ], { stdio: ["ignore", "pipe", "inherit"] });
         return new Promise((resolve, reject) => {
             child.once("exit", (code) => reject(new Error(`server exited: ${code}`)));
