@@ -16,6 +16,7 @@ members = [
   "rslib/io",
   "rslib/process",
   "rslib/proto",
+  "rslib/sched-golden",
   "rslib/web-server",
 ]
 resolver = "2"
