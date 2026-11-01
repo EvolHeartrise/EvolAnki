@@ -16,7 +16,6 @@
         "**/*-lock.json",
         "docs/*.md",
         "licenses.json",
-        "docs-site",
         "target",
         "extra",
         "ts/.svelte-kit",

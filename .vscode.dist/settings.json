@@ -6,10 +6,6 @@
         "**/node_modules/*/**": true,
         "out/**": true
     },
-    // Prevents IDE errors with anchors in headings for the MDX extension, e.g. {#my-anchor}
-    "files.associations": {
-        "*.mdx": "markdown"
-    },
     "rust-analyzer.check.allTargets": false,
     "rust-analyzer.files.exclude": ["out", "node_modules"],
     "rust-analyzer.procMacro.enable": true,

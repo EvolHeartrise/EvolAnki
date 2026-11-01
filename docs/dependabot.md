@@ -58,11 +58,9 @@ Actions are pinned by SHA. Dependabot **security alerts are not generated for SH
 
 CI runs `cargo deny check` on pushes and on PRs that touch `Cargo.lock`, `Cargo.toml`, or `.deny.toml`. Failures often look like Dependabot work but are not something Dependabot can finish, especially when the crate sits behind a git dependency.
 
-Worked example: [RUSTSEC-2026-0258](https://github.com/ankitects/anki/issues/5364) needed a `reqwest` bump inside the [ankitects/linkcheck](https://github.com/ankitects/linkcheck) fork, not a one-line change in this repo.
-
 1. Open the `RUSTSEC-…` advisory and note the crate and patched versions.
 2. See whether Dependabot already opened a security PR that bumps a crate we depend on directly. If CI is green, merge it.
-3. If the crate is **transitive through a git dep** (`linkcheck`, `percent-encoding-iri`, …):
+3. If the crate is **transitive through a git dep** (`percent-encoding-iri`, …):
     - Land the bump in the fork.
     - Point `Cargo.toml` at the new `rev`.
     - Run `cargo update -p <crate>` (and any other crates the advisory names) so `Cargo.lock` moves.

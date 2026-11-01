@@ -5,7 +5,6 @@
         "svelte.svelte-vscode",
         "zxh404.vscode-proto3",
         "usernamehw.errorlens",
-        "eamodio.gitlens",
-        "unifiedjs.vscode-mdx"
+        "eamodio.gitlens"
     ]
 }
