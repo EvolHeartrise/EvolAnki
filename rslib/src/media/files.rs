@@ -136,7 +136,7 @@ pub(crate) fn normalize_nfc_filename(mut fname: Cow<'_, str>) -> Cow<'_, str> {
 /// but can be accessed as NFC. On these devices, if the filename
 /// is otherwise valid, the filename is returned as NFC.
 #[allow(clippy::collapsible_else_if)]
-pub(crate) fn filename_if_normalized(fname: &str) -> Option<Cow<'_, str>> {
+pub fn filename_if_normalized(fname: &str) -> Option<Cow<'_, str>> {
     if cfg!(target_vendor = "apple") {
         if !is_nfc(fname) {
             let as_nfc = fname.chars().nfc().collect::<String>();

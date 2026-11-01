@@ -22,8 +22,8 @@ include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 
 /// The RPCs that a browser can reach. This server has no login, so it's what
 /// the pages use and nothing else, which `allow_list_matches_the_pages` in
-/// tests/http.rs enforces. An admin tool would link the backend rather than use
-/// these.
+/// tests/http.rs enforces. `evolanki-admin` doesn't go through here: it calls
+/// [call] from its own Unix socket, which isn't reachable over HTTP.
 pub const ALLOWED: &[&str] = &[
     // CollectionService
     "latestProgress",

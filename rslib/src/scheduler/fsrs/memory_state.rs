@@ -434,6 +434,22 @@ impl Collection {
         })
     }
 
+    /// For a collection whose flag is already on, yet may have cards with no
+    /// memory state, such as after importing scheduling from an SM-2 client.
+    /// Clears the undo queue, so check [Self::count_missing_memory_states] first.
+    pub fn add_missing_fsrs_memory_states(&mut self) -> Result<()> {
+        self.transact_no_undo(|col| col.add_missing_memory_states())
+    }
+
+    /// How many reviewed cards have no memory state.
+    pub fn count_missing_memory_states(&self) -> Result<u32> {
+        Ok(self.storage.db().query_row(
+            "select count() from cards where type != 0 and ivl > 0 and data not like '%\"s\":%'",
+            [],
+            |row| row.get(0),
+        )?)
+    }
+
     /// Only cards without a memory state are written to, and only their FSRS
     /// fields: due dates, intervals, ease factors and revlogs are left alone.
     fn add_missing_memory_states(&mut self) -> Result<()> {

@@ -4,11 +4,9 @@
 //! A single-user web server around Anki's Rust backend, with no login, for
 //! one's own network. See docs/web-server.md.
 
-mod backups;
 mod files;
 mod frame;
 mod guard;
-mod rpc;
 mod seed;
 
 use std::future::IntoFuture;
@@ -21,9 +19,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anki::backend::Backend;
-use anki_proto::collection::CloseCollectionRequest;
-use anki_proto::collection::OpenCollectionRequest;
-use anki_proto::generic;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
@@ -41,8 +36,13 @@ use clap::Parser;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 
-use crate::backups::Backups;
-use crate::rpc::call_typed;
+use evolanki_server::admin::socket::AdminSocket;
+use evolanki_server::admin::Admin;
+use evolanki_server::backups;
+use evolanki_server::backups::Backups;
+use evolanki_server::collection::close_collection;
+use evolanki_server::collection::open_collection;
+pub(crate) use evolanki_server::rpc;
 
 /// Enough for any page's request; media uploads will want a dedicated route.
 const MAX_REQUEST_BYTES: usize = 64 * 1024 * 1024;
@@ -150,6 +150,16 @@ async fn run(args: Args) -> Result<()> {
         Duration::from_secs(args.backup_interval_secs),
     ));
 
+    // Local tools reach the collection through this, as it's locked to this
+    // process. Only over a private Unix socket, never TCP; see docs/admin-cli.md.
+    let admin = Arc::new(Admin::new(
+        backend.clone(),
+        backups.clone(),
+        &args.collection,
+        media_dir.clone(),
+    ));
+    let admin_socket = AdminSocket::start(admin).await?;
+
     let hostname = machine_hostname();
     let state = Arc::new(AppState {
         backend: backend.clone(),
@@ -172,8 +182,9 @@ async fn run(args: Args) -> Result<()> {
 
     let served = serve_until_signal(listener, app, backend.clone()).await;
     periodic.abort();
+    admin_socket.stop();
     backups::take_if_changed_blocking(backups, backend.clone()).await;
-    let closed = close_collection(backend).await;
+    let closed = close_blocking(backend).await;
     served?;
     closed
 }
@@ -251,39 +262,6 @@ fn check_web_root(web_root: &Path) -> Result<()> {
         );
     }
     Ok(())
-}
-
-/// Returns the media folder.
-fn open_collection(backend: &Backend, path: &Path) -> Result<PathBuf> {
-    let parent = path.parent().filter(|p| !p.as_os_str().is_empty());
-    let parent = parent.unwrap_or(Path::new("."));
-    std::fs::create_dir_all(parent).with_context(|| parent.display().to_string())?;
-    let path = parent.canonicalize()?.join(
-        path.file_name()
-            .context("collection path has no filename")?,
-    );
-
-    // same layout as media_paths_from_col_path() in upstream Anki, so that
-    // collections are interchangeable with a desktop profile
-    let media_dir = path.with_extension("media");
-    let media_db = path.with_extension("media.db2");
-    std::fs::create_dir_all(&media_dir)?;
-
-    let utf8 = |p: &Path| {
-        p.to_str()
-            .map(str::to_string)
-            .with_context(|| format!("path is not UTF-8: {}", p.display()))
-    };
-    let _: generic::Empty = call_typed(
-        backend,
-        "openCollection",
-        &OpenCollectionRequest {
-            collection_path: utf8(&path)?,
-            media_folder_path: utf8(&media_dir)?,
-            media_db_path: utf8(&media_db)?,
-        },
-    )?;
-    Ok(media_dir)
 }
 
 /// Pages and the API share one entry point, as in mediasrv.py.
@@ -380,19 +358,11 @@ async fn serve_until_signal(listener: TcpListener, app: Router, backend: Backend
     }
 }
 
-async fn close_collection(backend: Backend) -> Result<()> {
+async fn close_blocking(backend: Backend) -> Result<()> {
     // waits for any running operation to release the collection
-    tokio::task::spawn_blocking(move || {
-        call_typed::<generic::Empty>(
-            &backend,
-            "closeCollection",
-            &CloseCollectionRequest {
-                downgrade_to_schema11: false,
-            },
-        )
-    })
-    .await
-    .context("closing the collection panicked")??;
+    tokio::task::spawn_blocking(move || close_collection(&backend))
+        .await
+        .context("closing the collection panicked")??;
     println!("Collection closed");
     Ok(())
 }

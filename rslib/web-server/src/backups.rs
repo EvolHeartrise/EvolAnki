@@ -72,6 +72,11 @@ impl Backups {
 
     /// Back up the open collection, however long the backend is busy for.
     pub fn take(&self, backend: &Backend) {
+        self.report(self.try_take(backend));
+    }
+
+    /// The same, for callers that must not go on without one.
+    pub fn try_take(&self, backend: &Backend) -> Result<PathBuf> {
         let mut stamp = None;
         let result = self.write(|destination| {
             backend.with_collection(|col| {
@@ -83,7 +88,12 @@ impl Backups {
         if result.is_ok() {
             *self.last_stamp.lock().unwrap() = stamp;
         }
-        self.report(result);
+        result
+    }
+
+    /// Where these go.
+    pub fn folder(&self) -> &Path {
+        &self.folder
     }
 
     /// Treat the collection as it is now as already backed up.
