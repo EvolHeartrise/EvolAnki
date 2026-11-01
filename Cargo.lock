@@ -1806,19 +1806,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "minilints"
-version = "0.0.0"
-dependencies = [
- "anki_io",
- "anki_process",
- "anyhow",
- "camino",
- "serde_json",
- "walkdir",
- "which",
-]
-
-[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

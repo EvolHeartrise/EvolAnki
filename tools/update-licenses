@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Regenerate cargo/licenses.json and ts/licenses.json. Run after changing dependencies.
+
+set -e
+cd "$(dirname "$0")/.."
+export PATH="$PWD/out/extracted/node/bin:$PATH"
+
+cargo install cargo-license@0.7.0
+cargo-license --json --manifest-path rslib/web-server/Cargo.toml |
+    python3 -c '
+import json, sys
+crates = json.load(sys.stdin)
+for crate in crates:
+    crate.pop("version", None)
+sys.stdout.write(json.dumps(crates, indent=2, sort_keys=True, ensure_ascii=False))
+' > cargo/licenses.json.new
+mv cargo/licenses.json.new cargo/licenses.json
+
+./node_modules/.bin/license-checker-rseidelsohn --production --json \
+    --excludePackages anki --relativeLicensePath \
+    --relativeModulePath > ts/licenses.json

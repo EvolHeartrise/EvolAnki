@@ -89,13 +89,9 @@ lint:
 fix-lint:
     {{ ninja }} fix:eslint
 
-# Run minilints (copyright, contributors, licenses)
-minilints:
-    {{ ninja }} check:minilints
-
-# Fix minilints (update licenses.json)
-fix-minilints:
-    {{ ninja }} fix:minilints
+# Regenerate cargo/licenses.json and ts/licenses.json
+update-licenses:
+    tools/update-licenses
 
 # Sync translation files
 ftl-sync:

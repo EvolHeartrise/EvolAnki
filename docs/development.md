@@ -56,7 +56,8 @@ out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.
 
 ```
 ./ninja format        # formatting
-./ninja fix           # eslint, copyright headers, cargo/licenses.json
+./ninja fix           # eslint
+tools/update-licenses # cargo/licenses.json, ts/licenses.json
 cargo clippy --fix    # clippy
 ```
 

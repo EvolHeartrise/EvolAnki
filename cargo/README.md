@@ -1,4 +1,4 @@
 This folder contains:
 
-- a list of Rust crate licenses, which is checked/updated with ./ninja [check|fix]:minilints
+- a list of Rust crate licenses, which is updated with tools/update-licenses
 - a nightly toolchain definition for formatting

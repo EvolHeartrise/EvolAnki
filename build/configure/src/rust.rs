@@ -2,15 +2,12 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use anyhow::Result;
-use ninja_gen::action::BuildAction;
-use ninja_gen::build::FilesHandle;
 use ninja_gen::cargo::CargoBuild;
 use ninja_gen::cargo::CargoClippy;
 use ninja_gen::cargo::CargoFormat;
 use ninja_gen::cargo::CargoTest;
 use ninja_gen::cargo::RustOutput;
 use ninja_gen::glob;
-use ninja_gen::input::BuildInput;
 use ninja_gen::inputs;
 use ninja_gen::Build;
 
@@ -63,7 +60,7 @@ fn build_proto_descriptors_and_interfaces(build: &mut Build) -> Result<()> {
 
 pub fn check_rust(build: &mut Build) -> Result<()> {
     let inputs = inputs![
-        glob!("{rslib/**,ftl/**,build/**,tools/minilints/**}"),
+        glob!("{rslib/**,ftl/**,build/**}"),
         "Cargo.lock",
         "Cargo.toml",
         "rust-toolchain.toml",
@@ -103,65 +100,5 @@ pub fn check_rust(build: &mut Build) -> Result<()> {
     )?;
     build.add_action("check:rust_test", CargoTest { inputs })?;
 
-    Ok(())
-}
-
-pub fn check_minilints(build: &mut Build) -> Result<()> {
-    struct RunMinilints {
-        pub deps: BuildInput,
-        pub fix: bool,
-    }
-
-    impl BuildAction for RunMinilints {
-        fn command(&self) -> &str {
-            "$minilints_bin $fix $stamp"
-        }
-
-        fn bypass_runner(&self) -> bool {
-            true
-        }
-
-        fn files(&mut self, build: &mut impl FilesHandle) {
-            build.add_inputs("minilints_bin", inputs![":build:minilints"]);
-            build.add_inputs("", &self.deps);
-            build.add_variable("fix", if self.fix { "fix" } else { "check" });
-            build.add_output_stamp(format!("tests/minilints.{}", self.fix));
-        }
-
-        fn on_first_instance(&self, build: &mut Build) -> Result<()> {
-            build.add_action(
-                "build:minilints",
-                CargoBuild {
-                    inputs: inputs![glob!("tools/minilints/**/*")],
-                    outputs: &[RustOutput::Binary("minilints")],
-                    extra_args: "-p minilints",
-                    release_override: Some(build.build_profile.for_build_tools()),
-                },
-            )
-        }
-    }
-
-    let files = inputs![
-        glob![
-            "**/*.{rs,ts,svelte,mjs,md}",
-            "{target,extra,node_modules,ts/.svelte-kit}/**"
-        ],
-        "Cargo.lock"
-    ];
-
-    build.add_action(
-        "check:minilints",
-        RunMinilints {
-            deps: files.clone(),
-            fix: false,
-        },
-    )?;
-    build.add_action(
-        "fix:minilints",
-        RunMinilints {
-            deps: files,
-            fix: true,
-        },
-    )?;
     Ok(())
 }

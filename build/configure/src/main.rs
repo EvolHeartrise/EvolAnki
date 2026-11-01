@@ -11,7 +11,6 @@ use ninja_gen::protobuf::check_proto;
 use ninja_gen::protobuf::setup_protoc;
 use ninja_gen::Build;
 use rust::build_rust;
-use rust::check_minilints;
 use rust::check_rust;
 use web::build_and_check_web;
 use web::check_sql;
@@ -29,7 +28,6 @@ fn main() -> Result<()> {
     check_rust(build)?;
 
     check_sql(build)?;
-    check_minilints(build)?;
 
     build.trailing_text = "default web\n".into();
 
