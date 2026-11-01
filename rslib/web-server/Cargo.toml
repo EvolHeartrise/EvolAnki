@@ -1,0 +1,37 @@
+[package]
+name = "evolanki-server"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+rust-version.workspace = true
+description = "Local, single-user web server around Anki's Rust backend"
+
+[[bin]]
+path = "src/main.rs"
+name = "evolanki-server"
+
+[build-dependencies]
+anki_proto.workspace = true
+anki_proto_gen.workspace = true
+anyhow.workspace = true
+inflections.workspace = true
+prost-reflect.workspace = true
+
+[dependencies]
+anki.workspace = true
+anki_proto.workspace = true
+anyhow.workspace = true
+axum.workspace = true
+clap.workspace = true
+percent-encoding = "2.3.2"
+prost.workspace = true
+regex.workspace = true
+tokio = { workspace = true, features = ["net", "time", "sync"] }
+tower = "0.5"
+tower-http = { workspace = true, features = ["fs"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

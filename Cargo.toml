@@ -19,6 +19,7 @@ members = [
   "rslib/process",
   "rslib/proto",
   "rslib/sync",
+  "rslib/web-server",
   "tools/minilints",
 ]
 resolver = "2"

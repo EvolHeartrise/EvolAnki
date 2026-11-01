@@ -1213,6 +1213,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "evolanki-server"
+version = "0.0.0"
+dependencies = [
+ "anki",
+ "anki_proto",
+ "anki_proto_gen",
+ "anyhow",
+ "axum",
+ "clap",
+ "inflections",
+ "percent-encoding",
+ "prost",
+ "prost-reflect",
+ "regex",
+ "tempfile",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
