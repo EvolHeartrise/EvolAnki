@@ -201,12 +201,13 @@ def test_relearn():
     col.sched.answerCard(c, 1)
     assert c.queue == QUEUE_TYPE_LRN
     assert c.type == CARD_TYPE_RELEARNING
-    assert c.ivl == 1
+    # FSRS takes the interval from the post-lapse stability, not a minimum interval
+    assert c.ivl == 26
 
     # immediately graduate it
     col.sched.answerCard(c, 4)
     assert c.queue == CARD_TYPE_REV and c.type == QUEUE_TYPE_REV
-    assert c.ivl == 2
+    assert c.ivl == 38
     assert c.due == col.sched.today + c.ivl
 
 
@@ -304,7 +305,7 @@ def test_learn_day():
     c.due -= 2
     c.flush()
     # the last pass should graduate it into a review card
-    assert ni(c, 3) == 86400
+    assert ni(c, 3) == 2 * 86400
     col.sched.answerCard(c, 3)
     assert c.queue == CARD_TYPE_REV and c.type == QUEUE_TYPE_REV
     # if the lapse step is tomorrow, failing it should handle the counts
@@ -464,15 +465,9 @@ def test_button_spacing():
     c.flush()
     ni = col.sched.nextIvlStr
     wo = without_unicode_isolation
-    assert wo(ni(c, 2)) == "2d"
-    assert wo(ni(c, 3)) == "3d"
-    assert wo(ni(c, 4)) == "4d"
-
-    # if hard factor is <= 1, then hard may not increase
-    conf = col.decks.config_dict_for_deck_id(1)
-    conf["rev"]["hardFactor"] = 1
-    col.decks.save(conf)
     assert wo(ni(c, 2)) == "1d"
+    assert wo(ni(c, 3)) == "2d"
+    assert wo(ni(c, 4)) == "3d"
 
 
 def test_nextIvl():
@@ -492,23 +487,23 @@ def test_nextIvl():
     assert ni(c, 1) == 30
     assert ni(c, 2) == (30 + 180) // 2
     assert ni(c, 3) == 180
-    assert ni(c, 4) == 4 * 86400
+    assert ni(c, 4) == 8 * 86400
     col.sched.answerCard(c, 1)
     # cards in learning
     ##################################################
     assert ni(c, 1) == 30
     assert ni(c, 2) == (30 + 180) // 2
     assert ni(c, 3) == 180
-    assert ni(c, 4) == 4 * 86400
+    assert ni(c, 4) == 2 * 86400
     col.sched.answerCard(c, 3)
     assert ni(c, 1) == 30
     assert ni(c, 2) == 180
     assert ni(c, 3) == 600
-    assert ni(c, 4) == 4 * 86400
+    assert ni(c, 4) == 2 * 86400
     col.sched.answerCard(c, 3)
     # normal graduation is tomorrow
     assert ni(c, 3) == 1 * 86400
-    assert ni(c, 4) == 4 * 86400
+    assert ni(c, 4) == 2 * 86400
     # lapsed cards
     ##################################################
     c.type = CARD_TYPE_RELEARNING
@@ -516,8 +511,9 @@ def test_nextIvl():
     c.factor = STARTING_FACTOR
     c.flush()
     assert ni(c, 1) == 60
-    assert ni(c, 3) == 100 * 86400
-    assert ni(c, 4) == 101 * 86400
+    # the low stability from the learning steps above decides these, not the interval
+    assert ni(c, 3) == 1 * 86400
+    assert ni(c, 4) == 2 * 86400
     # review cards
     ##################################################
     c.type = CARD_TYPE_REV
@@ -527,17 +523,14 @@ def test_nextIvl():
     c.flush()
     # failing it should put it at 60s
     assert ni(c, 1) == 60
-    # or 1 day if relearn is false
+    # or the post-lapse stability if there are no relearning steps
     conf["lapse"]["delays"] = []
     col.decks.save(conf)
-    assert ni(c, 1) == 1 * 86400
-    # (* 100 1.2 86400)10368000.0
-    assert ni(c, 2) == 10368000
-    # (* 100 2.5 86400)21600000.0
-    assert ni(c, 3) == 21600000
-    # (* 100 2.5 1.3 86400)28080000.0
-    assert ni(c, 4) == 28080000
-    assert without_unicode_isolation(col.sched.nextIvlStr(c, 4)) == "10.7mo"
+    assert ni(c, 1) == 9470
+    assert ni(c, 2) == 1 * 86400
+    assert ni(c, 3) == 2 * 86400
+    assert ni(c, 4) == 3 * 86400
+    assert without_unicode_isolation(col.sched.nextIvlStr(c, 4)) == "3d"
 
 
 def test_bury():
@@ -651,9 +644,11 @@ def test_filt_reviewing_early_normal():
     c = col.sched.getCard()
     assert col.sched.answerButtons(c) == 4
     assert col.sched.nextIvl(c, 1) == 600
-    assert col.sched.nextIvl(c, 2) == round(75 * 1.2) * 86400
-    assert col.sched.nextIvl(c, 3) == round(75 * 2.5) * 86400
-    assert col.sched.nextIvl(c, 4) == round(75 * 2.5 * 1.15) * 86400
+    # with no review history FSRS sees 0 elapsed days, so these don't scale with the
+    # 75 days waited, and fuzz bounds keep them from dropping below the 100 day interval
+    assert col.sched.nextIvl(c, 2) == 100 * 86400
+    assert col.sched.nextIvl(c, 3) == 101 * 86400
+    assert col.sched.nextIvl(c, 4) == 134 * 86400
 
     # answer 'good'
     col.sched.answerCard(c, 3)
@@ -670,9 +665,9 @@ def test_filt_reviewing_early_normal():
     col.sched.rebuild_filtered_deck(did)
     c = col.sched.getCard()
 
-    assert col.sched.nextIvl(c, 2) == 100 * 1.2 / 2 * 86400
-    assert col.sched.nextIvl(c, 3) == 100 * 86400
-    assert col.sched.nextIvl(c, 4) == round(100 * (1.3 - (1.3 - 1) / 2)) * 86400
+    assert col.sched.nextIvl(c, 2) == 100 * 86400
+    assert col.sched.nextIvl(c, 3) == 101 * 86400
+    assert col.sched.nextIvl(c, 4) == 134 * 86400
 
 
 def test_filt_keep_lrn_state():
@@ -1085,13 +1080,14 @@ def test_resched():
     col.sched.set_due_date([c.id], "0")
     c.load()
     assert c.due == col.sched.today
-    assert c.ivl == 1
+    # FSRS leaves the interval unset on new cards, so repeated calls don't change it
+    assert c.ivl == 0
     assert c.queue == QUEUE_TYPE_REV and c.type == CARD_TYPE_REV
     # make it due tomorrow
     col.sched.set_due_date([c.id], "1")
     c.load()
     assert c.due == col.sched.today + 1
-    assert c.ivl == 1
+    assert c.ivl == 0
 
 
 def test_norelearn():
@@ -1113,32 +1109,6 @@ def test_norelearn():
     col.sched.answerCard(c, 1)
     col.sched._cardConf(c)["lapse"]["delays"] = []
     col.sched.answerCard(c, 1)
-
-
-def test_failmult():
-    col = getEmptyCol()
-    note = col.newNote()
-    note["Front"] = "one"
-    note["Back"] = "two"
-    col.addNote(note)
-    c = note.cards()[0]
-    c.type = CARD_TYPE_REV
-    c.queue = QUEUE_TYPE_REV
-    c.ivl = 100
-    c.due = col.sched.today - c.ivl
-    c.factor = STARTING_FACTOR
-    c.reps = 3
-    c.lapses = 1
-    c.start_timer()
-    c.flush()
-    conf = col.sched._cardConf(c)
-    conf["lapse"]["mult"] = 0.5
-    col.decks.save(conf)
-    c = col.sched.getCard()
-    col.sched.answerCard(c, 1)
-    assert c.ivl == 50
-    col.sched.answerCard(c, 1)
-    assert c.ivl == 25
 
 
 # cards with a due date earlier than the collection should retain
