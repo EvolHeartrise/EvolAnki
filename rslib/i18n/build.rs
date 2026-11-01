@@ -4,7 +4,6 @@
 mod check;
 mod extract;
 mod gather;
-mod python;
 mod typescript;
 mod write_strings;
 
@@ -28,7 +27,6 @@ fn main() -> Result<()> {
     write_strings(&map, &modules, "strings.rs", "All");
 
     typescript::write_ts_interface(&modules)?;
-    python::write_py_interface(&modules)?;
 
     // write strings.json file to requested path
     if let Some(path) = option_env!("STRINGS_JSON") {

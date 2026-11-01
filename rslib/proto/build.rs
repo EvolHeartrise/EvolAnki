@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-pub mod python;
 pub mod rust;
 pub mod typescript;
 
@@ -14,7 +13,6 @@ fn main() -> Result<()> {
 
     let pool = rust::write_rust_protos(descriptors_path)?;
     let (_, services) = get_services(&pool);
-    python::write_python_interface(&services)?;
     typescript::write_ts_interface(&services)?;
 
     Ok(())

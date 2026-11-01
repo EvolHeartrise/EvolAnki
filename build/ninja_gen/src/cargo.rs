@@ -17,7 +17,6 @@ use crate::Build;
 pub enum RustOutput<'a> {
     Binary(&'a str),
     StaticLib(&'a str),
-    DynamicLib(&'a str),
     /// (group_name, fully qualified path)
     Data(&'a str, &'a str),
 }
@@ -27,7 +26,6 @@ impl RustOutput<'_> {
         match self {
             RustOutput::Binary(pkg) => pkg,
             RustOutput::StaticLib(pkg) => pkg,
-            RustOutput::DynamicLib(pkg) => pkg,
             RustOutput::Data(name, _) => name,
         }
     }
@@ -35,7 +33,6 @@ impl RustOutput<'_> {
     pub fn path(
         &self,
         rust_base: &Utf8Path,
-        target: Option<&str>,
         build_profile: BuildProfile,
     ) -> String {
         let filename = match *self {
@@ -47,21 +44,9 @@ impl RustOutput<'_> {
                 }
             }
             RustOutput::StaticLib(package) => format!("lib{package}.a"),
-            RustOutput::DynamicLib(package) => {
-                if cfg!(windows) {
-                    format!("{package}.dll")
-                } else if cfg!(target_os = "macos") {
-                    format!("lib{package}.dylib")
-                } else {
-                    format!("lib{package}.so")
-                }
-            }
             RustOutput::Data(_, path) => return path.to_string(),
         };
         let mut path: Utf8PathBuf = rust_base.into();
-        if let Some(target) = target {
-            path = path.join(target);
-        }
         path = path.join(profile_output_dir(build_profile)).join(filename);
         path.to_string()
     }
@@ -80,14 +65,13 @@ fn profile_output_dir(profile: BuildProfile) -> &'static str {
 pub struct CargoBuild<'a> {
     pub inputs: BuildInput,
     pub outputs: &'a [RustOutput<'a>],
-    pub target: Option<&'static str>,
     pub extra_args: &'a str,
     pub release_override: Option<BuildProfile>,
 }
 
 impl BuildAction for CargoBuild<'_> {
     fn command(&self) -> &str {
-        "cargo build $release_arg $target_arg $cargo_flags $extra_args"
+        "cargo build $release_arg $cargo_flags $extra_args"
     }
 
     fn files(&mut self, build: &mut impl FilesHandle) {
@@ -95,11 +79,6 @@ impl BuildAction for CargoBuild<'_> {
             .release_override
             .unwrap_or_else(|| build.build_profile());
         let release_arg = release_build.as_cargo_arg();
-        let target_arg = if let Some(target) = self.target {
-            format!("--target {target}")
-        } else {
-            "".into()
-        };
 
         build.add_inputs("", &self.inputs);
         build.add_inputs(
@@ -107,13 +86,12 @@ impl BuildAction for CargoBuild<'_> {
             inputs![".cargo/config.toml", "rust-toolchain.toml", "Cargo.lock"],
         );
         build.add_variable("release_arg", release_arg);
-        build.add_variable("target_arg", target_arg);
         build.add_variable("extra_args", self.extra_args);
 
         let output_root = Utf8Path::new("$builddir/rust");
         for output in self.outputs {
             let name = output.name();
-            let path = output.path(output_root, self.target, release_build);
+            let path = output.path(output_root, release_build);
             build.add_outputs_ext(name, vec![path], true);
         }
     }
@@ -247,26 +225,5 @@ impl BuildAction for CargoInstall {
 
     fn check_output_timestamps(&self) -> bool {
         true
-    }
-}
-
-pub struct CargoRun {
-    pub binary_name: &'static str,
-    pub cargo_args: &'static str,
-    pub bin_args: &'static str,
-    pub deps: BuildInput,
-}
-
-impl BuildAction for CargoRun {
-    fn command(&self) -> &str {
-        "cargo run --bin $binary $cargo_args -- $bin_args"
-    }
-
-    fn files(&mut self, build: &mut impl FilesHandle) {
-        build.add_inputs("", &self.deps);
-        build.add_variable("binary", self.binary_name);
-        build.add_variable("cargo_args", self.cargo_args);
-        build.add_variable("bin_args", self.bin_args);
-        build.add_outputs("", vec![format!("phony-{}", self.binary_name)]);
     }
 }

@@ -5,8 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-./ninja qt:aqt:data:web:sveltekit qt:aqt:data:web:css qt:aqt:data:web:imgs \
-    qt:aqt:data:web:js qt:aqt:data:web:js:vendor
+./ninja web
 
 export CARGO_TARGET_DIR="$PWD/out/rust"
 if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then

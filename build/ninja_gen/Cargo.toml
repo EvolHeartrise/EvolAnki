@@ -33,10 +33,6 @@ reqwest = { workspace = true, features = ["blocking", "json", "native-tls"] }
 reqwest = { workspace = true, features = ["blocking", "json", "rustls-tls"] }
 
 [[bin]]
-name = "update_uv"
-path = "src/bin/update_uv.rs"
-
-[[bin]]
 name = "update_protoc"
 path = "src/bin/update_protoc.rs"
 

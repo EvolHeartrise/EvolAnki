@@ -18,12 +18,9 @@ use ninja_gen::input::BuildInput;
 use ninja_gen::inputs;
 use ninja_gen::Build;
 
-use crate::platform::overriden_rust_target_triple;
-
 pub fn build_rust(build: &mut Build) -> Result<()> {
     prepare_translations(build)?;
-    build_proto_descriptors_and_interfaces(build)?;
-    build_rsbridge(build)
+    build_proto_descriptors_and_interfaces(build)
 }
 
 fn prepare_translations(build: &mut Build) -> Result<()> {
@@ -53,11 +50,7 @@ fn prepare_translations(build: &mut Build) -> Result<()> {
                 glob!["ftl/{core,core-repo,qt,qt-repo}/**"],
                 ":ftl:repo",
             ],
-            outputs: &[
-                RustOutput::Data("py", "pylib/anki/_fluent.py"),
-                RustOutput::Data("ts", "ts/lib/generated/ftl.ts"),
-            ],
-            target: None,
+            outputs: &[RustOutput::Data("ts", "ts/lib/generated/ftl.ts")],
             extra_args: "-p anki_i18n",
             release_override: None,
         },
@@ -68,7 +61,6 @@ fn prepare_translations(build: &mut Build) -> Result<()> {
         CargoBuild {
             inputs: inputs![glob!["ftl/**"],],
             outputs: &[RustOutput::Binary("ftl")],
-            target: None,
             extra_args: "-p ftl",
             release_override: None,
         },
@@ -87,8 +79,8 @@ fn prepare_translations(build: &mut Build) -> Result<()> {
     build.add_action(
         "ftl-deprecate",
         FtlCommand {
-            args: "deprecate --ftl-roots ftl/core ftl/qt --source-roots pylib qt rslib ts --json-roots ftl/usage",
-            deps: inputs!["ftl/core", "ftl/qt", "pylib", "qt", "rslib", "ts"],
+            args: "deprecate --ftl-roots ftl/core ftl/qt --source-roots rslib ts --json-roots ftl/usage",
+            deps: inputs!["ftl/core", "ftl/qt", "rslib", "ts"],
         },
     )?;
 
@@ -116,7 +108,6 @@ impl BuildAction for FtlCommand {
 fn build_proto_descriptors_and_interfaces(build: &mut Build) -> Result<()> {
     let outputs = vec![
         RustOutput::Data("descriptors.bin", "rslib/proto/descriptors.bin"),
-        RustOutput::Data("py", "pylib/anki/_backend_generated.py"),
         RustOutput::Data("ts", "ts/lib/generated/backend.ts"),
     ];
     build.add_action(
@@ -124,7 +115,6 @@ fn build_proto_descriptors_and_interfaces(build: &mut Build) -> Result<()> {
         CargoBuild {
             inputs: inputs![glob!["{proto,rslib/proto}/**"], ":protoc_binary",],
             outputs: &outputs,
-            target: None,
             extra_args: "-p anki_proto",
             release_override: None,
         },
@@ -132,43 +122,9 @@ fn build_proto_descriptors_and_interfaces(build: &mut Build) -> Result<()> {
     Ok(())
 }
 
-fn build_rsbridge(build: &mut Build) -> Result<()> {
-    let features = if cfg!(target_os = "linux") {
-        "rustls"
-    } else {
-        "native-tls"
-    };
-    build.add_action(
-        "pylib:rsbridge",
-        CargoBuild {
-            inputs: inputs![
-                glob!["{pylib/rsbridge/**,rslib/**}"],
-                // declare a dependency on i18n/proto so they get built first, allowing
-                // things depending on them to build faster, and ensuring
-                // changes to the ftl files trigger a rebuild
-                ":rslib:i18n",
-                ":rslib:proto",
-                // when env vars change the build hash gets updated
-                "$builddir/env",
-                "$builddir/buildhash",
-                // building on Windows requires python3.lib
-                if cfg!(windows) {
-                    inputs![":pyenv:bin"]
-                } else {
-                    inputs![]
-                }
-            ],
-            outputs: &[RustOutput::DynamicLib("rsbridge")],
-            target: overriden_rust_target_triple(),
-            extra_args: &format!("-p rsbridge --features {features}"),
-            release_override: None,
-        },
-    )
-}
-
 pub fn check_rust(build: &mut Build) -> Result<()> {
     let inputs = inputs![
-        glob!("{rslib/**,pylib/rsbridge/**,ftl/**,build/**,tools/minilints/**}"),
+        glob!("{rslib/**,ftl/**,build/**,tools/minilints/**}"),
         "Cargo.lock",
         "Cargo.toml",
         "rust-toolchain.toml",
@@ -192,8 +148,12 @@ pub fn check_rust(build: &mut Build) -> Result<()> {
 
     let inputs = inputs![
         inputs,
-        // defer tests until build has completed; ensure re-run on changes
-        ":pylib:rsbridge"
+        // generated files the crates need; ensure re-run on changes
+        ":rslib:i18n",
+        ":rslib:proto",
+        // when env vars change the build hash gets updated
+        "$builddir/env",
+        "$builddir/buildhash",
     ];
 
     build.add_action(
@@ -235,7 +195,6 @@ pub fn check_minilints(build: &mut Build) -> Result<()> {
                 CargoBuild {
                     inputs: inputs![glob!("tools/minilints/**/*")],
                     outputs: &[RustOutput::Binary("minilints")],
-                    target: None,
                     extra_args: "-p minilints",
                     release_override: Some(build.build_profile.for_build_tools()),
                 },
@@ -245,8 +204,8 @@ pub fn check_minilints(build: &mut Build) -> Result<()> {
 
     let files = inputs![
         glob![
-            "**/*.{py,rs,ts,svelte,mjs,md}",
-            "{target,extra,.mypy_cache,node_modules,ts/.svelte-kit}/**"
+            "**/*.{rs,ts,svelte,mjs,md}",
+            "{target,extra,node_modules,ts/.svelte-kit}/**"
         ],
         "Cargo.lock"
     ];

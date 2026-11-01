@@ -6,7 +6,6 @@ use ninja_gen::action::BuildAction;
 use ninja_gen::copy::CopyFiles;
 use ninja_gen::glob;
 use ninja_gen::hashmap;
-use ninja_gen::input::BuildInput;
 use ninja_gen::inputs;
 use ninja_gen::node::node_archive;
 use ninja_gen::node::CompileSass;
@@ -28,10 +27,10 @@ pub fn build_and_check_web(build: &mut Build) -> Result<()> {
     build_and_check_tslib(build)?;
     build_sveltekit(build)?;
     declare_and_check_other_libraries(build)?;
-    build_and_check_pages(build)?;
-    build_and_check_editor(build)?;
+    build_editable(build)?;
     build_and_check_reviewer(build)?;
     build_and_check_mathjax(build)?;
+    build_web_root(build)?;
     check_web(build)?;
 
     Ok(())
@@ -60,7 +59,6 @@ fn setup_node(build: &mut Build) -> Result<()> {
             "svelte-check",
             "eslint",
             "sass",
-            "tsc",
             "tsx",
             "vite",
             "vitest",
@@ -68,61 +66,7 @@ fn setup_node(build: &mut Build) -> Result<()> {
             "prettier",
         ],
         hashmap! {
-            "jquery" => vec![
-                "jquery/dist/jquery.min.js".into()
-            ],
-            "jquery-ui" => vec![
-                "jquery-ui-dist/jquery-ui.min.js".into()
-            ],
-            "bootstrap-dist" => vec![
-                "bootstrap/dist/js/bootstrap.bundle.min.js".into(),
-            ],
             "mathjax" => MATHJAX_FILES.iter().map(|&v| v.into()).collect(),
-            "mdi_unthemed" => [
-                // saved searches
-                "heart-outline.svg",
-                // today
-                "clock-outline.svg",
-                // state
-                "circle.svg",
-                "circle-outline.svg",
-                // flags
-                "flag-variant.svg",
-                "flag-variant-outline.svg",
-                "flag-variant-off-outline.svg",
-                // decks
-                "book-outline.svg",
-                "book-clock-outline.svg",
-                "book-cog-outline.svg",
-                // notetypes
-                "newspaper.svg",
-                // cardtype
-                "application-braces-outline.svg",
-                // fields
-                "form-textbox.svg",
-                // tags
-                "tag-outline.svg",
-                "tag-off-outline.svg",
-            ].iter().map(|file| format!("@mdi/svg/svg/{file}").into()).collect(),
-            "mdi_themed" => [
-                // sidebar tools
-                "magnify.svg",
-                "selection-drag.svg",
-                // QComboBox arrows
-                "chevron-up.svg",
-                "chevron-down.svg",
-                // QHeaderView arrows
-                "menu-up.svg",
-                "menu-down.svg",
-                // drag handle
-                "drag-vertical.svg",
-                "drag-horizontal.svg",
-                // checkbox
-                "check.svg",
-                "minus-thick.svg",
-                // QRadioButton
-                "circle-medium.svg",
-            ].iter().map(|file| format!("@mdi/svg/svg/{file}").into()).collect(),
         },
     )?;
     Ok(())
@@ -179,77 +123,26 @@ fn declare_and_check_other_libraries(build: &mut Build) -> Result<()> {
     Ok(())
 }
 
-fn build_and_check_pages(build: &mut Build) -> Result<()> {
-    let mut build_page = |name: &str, html: bool, deps: BuildInput| -> Result<()> {
-        let group = format!("ts:{name}");
-        let deps = inputs![deps, glob!(format!("ts/{name}/**"))];
-        let extra_exts = if html { &["css", "html"][..] } else { &["css"] };
-        let entrypoint = if html {
-            format!("ts/routes/{name}/index.ts")
-        } else {
-            format!("ts/lib/{name}/index.ts")
-        };
-        build.add_action(
-            &group,
-            EsbuildScript {
-                script: inputs!["ts/bundle_svelte.mjs"],
-                entrypoint: inputs![entrypoint],
-                output_stem: &format!("ts/{name}/{name}"),
-                deps: deps.clone(),
-                extra_exts,
-            },
-        )?;
-        build.add_dependency("ts:pages", inputs![format!(":{group}")]);
-
-        Ok(())
-    };
-    // we use the generated .css file separately in the legacy editor
-    build_page(
-        "editable",
-        false,
-        inputs![
-            ":ts:lib",
-            ":ts:components",
-            ":ts:domlib",
-            ":ts:sveltelib",
-            ":sass",
-            ":sveltekit",
-        ],
-    )?;
-    build_page(
-        "congrats",
-        true,
-        inputs![":ts:lib", ":ts:components", ":sass", ":sveltekit"],
-    )?;
-
-    Ok(())
-}
-
-/// Only used for the legacy editor page.
-fn build_and_check_editor(build: &mut Build) -> Result<()> {
-    let editor_deps = inputs![
-        ":ts:lib",
-        ":ts:components",
-        ":ts:domlib",
-        ":ts:sveltelib",
-        ":ts:html-filter",
-        ":sass",
-        ":sveltekit",
-        glob!("ts/lib/editable,ts/routes/{editor,image-occlusion}/**")
-    ];
-
+/// `css/editable.css` is loaded by the editor's rich text input.
+fn build_editable(build: &mut Build) -> Result<()> {
     build.add_action(
-        "ts:editor",
+        "ts:editable",
         EsbuildScript {
-            script: "ts/bundle_svelte.mjs".into(),
-            entrypoint: "ts/routes/editor/index.ts".into(),
-            output_stem: "ts/editor/editor",
-            deps: editor_deps.clone(),
+            script: inputs!["ts/bundle_svelte.mjs"],
+            entrypoint: inputs!["ts/lib/editable/index.ts"],
+            output_stem: "ts/editable/editable",
+            deps: inputs![
+                ":ts:lib",
+                ":ts:components",
+                ":ts:domlib",
+                ":ts:sveltelib",
+                ":sass",
+                ":sveltekit",
+                glob!("ts/lib/editable/**"),
+            ],
             extra_exts: &["css"],
         },
-    )?;
-
-    Ok(())
+    )
 }
 
 fn build_and_check_reviewer(build: &mut Build) -> Result<()> {
@@ -277,31 +170,11 @@ fn build_and_check_reviewer(build: &mut Build) -> Result<()> {
             load_paths: vec!["."],
         },
     )?;
-    build.add_action(
-        "ts:reviewer:reviewer_extras_bundle.js",
-        EsbuildScript {
-            script: inputs!["ts/bundle_ts.mjs"],
-            entrypoint: "ts/reviewer/reviewer_extras.ts".into(),
-            output_stem: "ts/reviewer/reviewer_extras_bundle",
-            deps: reviewer_deps.clone(),
-            extra_exts: &[],
-        },
-    )?;
-    build.add_action(
-        "ts:reviewer:reviewer_extras.css",
-        CompileSass {
-            input: inputs!["ts/reviewer/reviewer_extras.scss"],
-            output: "ts/reviewer/reviewer_extras.css",
-            deps: inputs!["ts/routes/image-occlusion/review.scss"],
-            load_paths: vec!["."],
-        },
-    )?;
-
     Ok(())
 }
 
 fn check_web(build: &mut Build) -> Result<()> {
-    let fmt_excluded = "{target,extra,.mypy_cache,ts/.svelte-kit,node_modules,.venv}/**";
+    let fmt_excluded = "{target,extra,ts/.svelte-kit,node_modules}/**";
     let dprint_files = inputs![glob!["**/*.{ts,mjs,js,md,json,toml,scss}", fmt_excluded]];
     let prettier_pattern = "{**/*.svelte,docs-site/**/*.mdx}";
     let prettier_files = inputs![
@@ -362,27 +235,25 @@ fn check_web(build: &mut Build) -> Result<()> {
         },
     )?;
     let eslint_rc = inputs![".eslintrc.cjs"];
-    for folder in ["ts", "qt/aqt/data/web/js"] {
-        let inputs = inputs![glob![format!("{folder}/**"), "ts/.svelte-kit/**"]];
-        build.add_action(
-            "check:eslint",
-            Eslint {
-                folder,
-                inputs: inputs.clone(),
-                eslint_rc: eslint_rc.clone(),
-                fix: false,
-            },
-        )?;
-        build.add_action(
-            "fix:eslint",
-            Eslint {
-                folder,
-                inputs,
-                eslint_rc: eslint_rc.clone(),
-                fix: true,
-            },
-        )?;
-    }
+    let inputs = inputs![glob!["ts/**", "ts/.svelte-kit/**"]];
+    build.add_action(
+        "check:eslint",
+        Eslint {
+            folder: "ts",
+            inputs: inputs.clone(),
+            eslint_rc: eslint_rc.clone(),
+            fix: false,
+        },
+    )?;
+    build.add_action(
+        "fix:eslint",
+        Eslint {
+            folder: "ts",
+            inputs,
+            eslint_rc,
+            fix: true,
+        },
+    )?;
 
     Ok(())
 }
@@ -457,13 +328,61 @@ pub const MATHJAX_FILES: &[&str] = &[
     "mathjax/es5/sre/mathmaps/nemeth.json",
 ];
 
-pub fn copy_mathjax() -> impl BuildAction {
-    RsyncFiles {
-        inputs: inputs![":node_modules:mathjax"],
-        target_folder: "qt/_aqt/data/web/js/vendor/mathjax",
-        strip_prefix: "$builddir/node_modules/mathjax/es5",
-        extra_args: "",
-    }
+/// The folder evolanki-server serves, `out/web`.
+fn build_web_root(build: &mut Build) -> Result<()> {
+    build.add_action(
+        "web:sveltekit",
+        RsyncFiles {
+            inputs: inputs![":sveltekit:folder"],
+            target_folder: "web/",
+            strip_prefix: "$builddir/",
+            extra_args: "-a --delete",
+        },
+    )?;
+    build.add_action(
+        "web:css",
+        CompileSass {
+            input: inputs!["ts/lib/sass/webview.scss"],
+            output: "web/css/webview.css",
+            deps: inputs![":sass"],
+            load_paths: vec![".", "node_modules"],
+        },
+    )?;
+    let ts_css = build.inputs_with_suffix(
+        inputs![":ts:editable", ":ts:reviewer:reviewer.css"],
+        ".css",
+    );
+    build.add_action(
+        "web:css",
+        CopyFiles {
+            inputs: ts_css.into(),
+            output_folder: "web/css",
+        },
+    )?;
+    build.add_action(
+        "web:imgs",
+        CopyFiles {
+            inputs: inputs!["ts/icons/favicon.ico"],
+            output_folder: "web/imgs",
+        },
+    )?;
+    let ts_js = build.inputs_with_suffix(inputs![":ts:reviewer:reviewer.js", ":ts:mathjax"], ".js");
+    build.add_action(
+        "web:js",
+        CopyFiles {
+            inputs: ts_js.into(),
+            output_folder: "web/js",
+        },
+    )?;
+    build.add_action(
+        "web:js:vendor:mathjax",
+        RsyncFiles {
+            inputs: inputs![":node_modules:mathjax"],
+            target_folder: "web/js/vendor/mathjax",
+            strip_prefix: "$builddir/node_modules/mathjax/es5",
+            extra_args: "",
+        },
+    )
 }
 
 fn build_sass(build: &mut Build) -> Result<()> {

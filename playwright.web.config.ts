@@ -1,8 +1,8 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-// Browser tests for evolanki-server. Unlike playwright.config.ts, these need no
-// Python: each test starts the server itself, so it can also restart it.
+// Browser tests for evolanki-server. Each test starts the server itself, so it
+// can also restart it.
 
 import { defineConfig } from "@playwright/test";
 

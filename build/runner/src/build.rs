@@ -63,13 +63,8 @@ pub fn run_build(args: BuildArgs) {
         .arg(&build_file)
         .args(ninja_args)
         .env("PATH", &path)
-        .env(
-            "PYTHONPYCACHEPREFIX",
-            std::path::absolute(build_root.join("pycache")).unwrap(),
-        )
         // commands will not show colors by default, as we do not provide a tty
         .env("FORCE_COLOR", "1")
-        .env("MYPY_FORCE_COLOR", "1")
         .env("TERM", std::env::var("TERM").unwrap_or_default());
     if env::var("NINJA_STATUS").is_err() {
         command.env("NINJA_STATUS", "[%f/%t; %r active; %es] ");

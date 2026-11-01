@@ -8,7 +8,6 @@
 mod archive;
 mod build;
 mod paths;
-mod pyenv;
 mod rsync;
 mod run;
 mod yarn;
@@ -20,8 +19,6 @@ use build::run_build;
 use build::BuildArgs;
 use clap::Parser;
 use clap::Subcommand;
-use pyenv::setup_pyenv;
-use pyenv::PyenvArgs;
 use rsync::rsync_files;
 use rsync::RsyncArgs;
 use run::run_commands;
@@ -37,7 +34,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    Pyenv(PyenvArgs),
     Yarn(YarnArgs),
     Rsync(RsyncArgs),
     Run(RunArgs),
@@ -48,7 +44,6 @@ enum Command {
 
 fn main() -> Result<()> {
     match Cli::parse().command {
-        Command::Pyenv(args) => setup_pyenv(args),
         Command::Run(args) => run_commands(args)?,
         Command::Rsync(args) => rsync_files(args),
         Command::Yarn(args) => setup_yarn(args),

@@ -20,25 +20,13 @@ use anyhow::Result;
 use camino::Utf8Path;
 use walkdir::WalkDir;
 
-const NONSTANDARD_HEADER: &[&str] = &[
-    "./pylib/anki/_vendor/stringcase.py",
-    "./pylib/anki/statsbg.py",
-    "./qt/aqt/mpv.py",
-    "./qt/aqt/winpaths.py",
-];
-
 const IGNORED_FOLDERS: &[&str] = &[
     "./out",
     "./node_modules",
-    "./qt/aqt/forms",
     "./tools/workspace-hack",
     "./target",
-    ".mypy_cache",
     "./extra",
     "./ts/.svelte-kit",
-    "./.venv",
-    "./qt/installer/windows-template",
-    "./qt/installer/mac-template",
 ];
 
 fn main() -> Result<()> {
@@ -83,7 +71,7 @@ impl LintContext {
             let entry = entry.unwrap();
             let path = Utf8Path::from_path(entry.path()).context("utf8")?;
 
-            let exts: HashSet<_> = ["py", "ts", "rs", "svelte", "mjs"]
+            let exts: HashSet<_> = ["ts", "rs", "svelte", "mjs"]
                 .into_iter()
                 .map(Some)
                 .collect();
@@ -255,11 +243,6 @@ fn head_of_file(path: &Utf8Path) -> Result<String> {
 
 fn fix_copyright(path: &Utf8Path) -> Result<()> {
     let header = match path.extension().unwrap() {
-        "py" => {
-            r#"# Copyright: Ankitects Pty Ltd and contributors
-# License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
-"#
-        }
         "ts" | "rs" | "mjs" => {
             r#"// Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html

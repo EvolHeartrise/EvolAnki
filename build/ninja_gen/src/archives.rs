@@ -43,27 +43,6 @@ impl Platform {
             _ => panic!("unsupported os/arch {os} {arch} - PR welcome!"),
         }
     }
-
-    pub fn tls_feature() -> &'static str {
-        match Self::current() {
-            // On Linux, wheels are not allowed to link to OpenSSL, and linking setup
-            // caused pain for AnkiDroid in the past. On other platforms, we stick to
-            // native libraries, for smaller binaries.
-            Platform::LinuxX64 | Platform::LinuxArm => "rustls",
-            _ => "native-tls",
-        }
-    }
-
-    pub fn as_rust_triple(&self) -> &'static str {
-        match self {
-            Platform::LinuxX64 => "x86_64-unknown-linux-gnu",
-            Platform::LinuxArm => "aarch64-unknown-linux-gnu",
-            Platform::MacX64 => "x86_64-apple-darwin",
-            Platform::MacArm => "aarch64-apple-darwin",
-            Platform::WindowsX64 => "x86_64-pc-windows-msvc",
-            Platform::WindowsArm => "aarch64-pc-windows-msvc",
-        }
-    }
 }
 
 /// Append .exe to path if on Windows.

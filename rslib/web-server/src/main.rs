@@ -61,7 +61,7 @@ struct Args {
     #[arg(long, default_value = "127.0.0.1")]
     host: String,
     /// Folder of built web assets, containing sveltekit/index.html.
-    #[arg(long, default_value = "out/qt/_aqt/data/web")]
+    #[arg(long, default_value = "out/web")]
     web_root: PathBuf,
     /// Create the collection if it doesn't exist. Without this, a mistyped
     /// path is an error rather than a new empty collection.
@@ -154,7 +154,7 @@ fn check_web_root(web_root: &Path) -> Result<()> {
     let index = web_root.join("sveltekit/index.html");
     if !index.exists() {
         bail!(
-            "{} not found. Build the pages with `./ninja qt:aqt:data:web:sveltekit`, or \
+            "{} not found. Build the pages with `./ninja web`, or \
              pass --web-root.",
             index.display()
         );

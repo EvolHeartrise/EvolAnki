@@ -31,7 +31,6 @@ impl BuildAction for ConfigureBuild {
             CargoBuild {
                 inputs: inputs![glob!["build/**/*"]],
                 outputs: &[RustOutput::Binary("configure")],
-                target: None,
                 extra_args: "-p configure",
                 release_override: Some(build.build_profile.for_build_tools()),
             },

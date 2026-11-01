@@ -266,26 +266,6 @@ impl BuildAction for SvelteCheck {
     }
 }
 
-pub struct TypescriptCheck {
-    pub tsconfig: BuildInput,
-    pub inputs: BuildInput,
-}
-
-impl BuildAction for TypescriptCheck {
-    fn command(&self) -> &str {
-        "$tsc --noEmit -p $tsconfig"
-    }
-
-    fn files(&mut self, build: &mut impl build::FilesHandle) {
-        build.add_inputs("tsc", inputs![":node_modules:tsc"]);
-        build.add_inputs("tsconfig", &self.tsconfig);
-        build.add_inputs("", &self.inputs);
-        build.add_inputs("", inputs!["yarn.lock"]);
-        let hash = simple_hash(&self.tsconfig);
-        build.add_output_stamp(format!("tests/typescript.{hash}"));
-    }
-}
-
 pub struct Eslint<'a> {
     pub folder: &'a str,
     pub inputs: BuildInput,
@@ -420,46 +400,6 @@ impl BuildAction for CompileSass<'_> {
         build.add_variable("args", args);
 
         build.add_outputs("out", vec![self.output]);
-    }
-}
-
-/// Usually we rely on esbuild to transpile our .ts files on the fly, but when
-/// we want generated code to be able to import a .ts file, we need to use
-/// typescript to generate .js/.d.ts files, or types can't be looked up, and
-/// esbuild can't find the file to bundle.
-pub struct CompileTypescript<'a> {
-    pub ts_files: BuildInput,
-    /// Automatically created.
-    pub out_dir: &'a str,
-    /// Can be used to adjust the output js/dts files to point to out_dir.
-    pub out_path_transform: fn(&str) -> String,
-}
-
-impl BuildAction for CompileTypescript<'_> {
-    fn command(&self) -> &str {
-        "$tsc $in --outDir $out_dir -d --skipLibCheck --types node"
-    }
-
-    fn files(&mut self, build: &mut impl build::FilesHandle) {
-        build.add_inputs("tsc", inputs![":node_modules:tsc"]);
-        build.add_inputs("in", &self.ts_files);
-        build.add_inputs("", inputs!["yarn.lock"]);
-
-        let ts_files = build.expand_inputs(&self.ts_files);
-        let output_files: Vec<_> = ts_files
-            .iter()
-            .flat_map(|f| {
-                let js_path = f.replace(".ts", ".js");
-                let dts_path = f.replace(".ts", ".d.ts");
-                [
-                    (self.out_path_transform)(&js_path),
-                    (self.out_path_transform)(&dts_path),
-                ]
-            })
-            .collect();
-
-        build.create_dir_all("out_dir", self.out_dir);
-        build.add_outputs("", output_files);
     }
 }
 
