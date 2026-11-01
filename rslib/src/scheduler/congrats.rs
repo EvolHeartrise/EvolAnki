@@ -58,7 +58,7 @@ mod test {
                 have_user_buried: false,
                 is_filtered_deck: false,
                 secs_until_next_learn: 86_400,
-                    deck_description: "".to_string()
+                deck_description: "".to_string()
             }
         )
     }

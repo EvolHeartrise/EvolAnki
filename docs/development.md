@@ -2,12 +2,8 @@
 
 ## Requirements
 
-Clone the repo and its submodules into a folder of your choosing. The path must not
+Clone the repo into a folder of your choosing. The path must not
 contain spaces, and should not be too long if you are on Windows.
-
-```
-git submodule update --init
-```
 
 You will need:
 
@@ -71,7 +67,7 @@ output, but make the build much slower.
 
 ## Cleaning up build files
 
-Apart from submodule checkouts, most build files go into the `out/` folder (and
+Most build files go into the `out/` folder (and
 `node_modules` on Windows). You can delete that folder for a clean build, or
 to free space. `tools/clean` keeps downloads, and with `keep-env`, also node_modules.
 

@@ -111,11 +111,11 @@ fn document(state: &AppState, host: &str, is_static: bool) -> Response {
         .into_response()
 }
 
-/// Only our nonced scripts and MathJax can run, and MathJax is limited to its own
-/// files; card and media scripts have neither a nonce nor a matching path. Nothing
-/// can connect anywhere, or load anything from outside the prefix, and the sandbox
-/// directive holds even if the page is opened directly instead of through the
-/// iframe that asks for it.
+/// Only our nonced scripts and MathJax can run, and MathJax is limited to its
+/// own files; card and media scripts have neither a nonce nor a matching path.
+/// Nothing can connect anywhere, or load anything from outside the prefix, and
+/// the sandbox directive holds even if the page is opened directly instead of
+/// through the iframe that asks for it.
 fn document_csp(state: &AppState, host: &str, is_static: bool, nonce: &str) -> String {
     let origin = format!("http://{host}");
     let ours = format!("{origin}/_frame/{}/", state.frame_token);
@@ -141,11 +141,7 @@ mod test {
     fn only_listed_assets_are_exposed() {
         assert!(is_frame_asset("js/reviewer.js"));
         assert!(is_frame_asset("js/vendor/mathjax/tex-chtml-full.js"));
-        for path in [
-            "sveltekit/index.html",
-            "js/vendor/jquery.min.js",
-            "",
-        ] {
+        for path in ["sveltekit/index.html", "js/vendor/jquery.min.js", ""] {
             assert!(!is_frame_asset(path), "{path}");
         }
     }

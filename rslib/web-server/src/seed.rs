@@ -98,7 +98,8 @@ struct SeedNotetype {
     fields: Vec<String>,
     front: String,
     back: String,
-    /// Store this raw value, for a notetype kind that this version doesn't know.
+    /// Store this raw value, for a notetype kind that this version doesn't
+    /// know.
     original_stock_kind: Option<i32>,
 }
 

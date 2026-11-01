@@ -1,18 +1,19 @@
 # EvolAnki
 
-A slim, FSRS-only spaced repetition web app for one person, served locally by
-`evolanki-server`. It is a modified version of
+A slim, FSRS-only spaced repetition web app for one person, served over the local
+network, with no login, by `evolanki-server`. It is a modified version of
 [Anki](https://github.com/ankitects/anki), and isn't affiliated with Anki or its authors.
 
 ## Getting started
 
 ```
-git submodule update --init
 tools/run-web
 ```
 
 That needs Rust and Ninja or N2, and downloads Node. It builds the pages and server, then
-serves a demo collection at <http://127.0.0.1:8765>. See
+serves a demo collection, and prints the addresses to open it at. Use
+`tools/run-web --release path/to/col.anki2` for real. Anyone on your network can reach
+it, so read [what that means](./docs/web-server.md#no-login-what-that-means). See
 [the server docs](./docs/web-server.md) and [Development](./docs/development.md).
 
 ## Changes from Anki
@@ -25,8 +26,12 @@ upstream, as of November 2026, EvolAnki:
 - removed sync and AnkiHub: collection and media sync, the sync server, AnkiWeb and
   GitHub update and add-on lookups, and AnkiDroid's backend support
 - removed installers and packaging (wheels, Briefcase templates, audio packages)
+- removed the editor, importers, card browser, change notetype and image occlusion, and
+  bury, suspend and flag controls in the reviewer
+- removed translations other than English, and upstream's manual
+- no longer runs JavaScript in cards
 - added `evolanki-server` (`rslib/web-server`), and web pages for the deck list, overview
-  and reviewer
+  and reviewer, laid out for phones, with automatic backups
 - always uses FSRS
 
 The full history of changes is in this repository's commits.

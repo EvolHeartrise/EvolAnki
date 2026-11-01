@@ -1,32 +1,30 @@
-# Local web server
+# Web server
 
-`evolanki-server` (`rslib/web-server`) serves a collection to a browser on the
-same machine. It links the Rust backend directly. Building it needs Rust and Node,
-which the build downloads, and what [development.md](development.md) lists.
+`evolanki-server` (`rslib/web-server`) serves a collection to browsers on your network,
+including your phone. It links the Rust backend directly. Building it needs Rust and
+Node, which the build downloads, and what [development.md](development.md) lists.
 
 ## Run
 
 ```
-tools/run-web
+tools/run-web --release path/to/collection.anki2
 ```
 
-This builds what it needs and serves a demo collection from `out/web-dev` at
-<http://127.0.0.1:8765>: choose a deck, then study it. Ctrl+C closes the collection
-cleanly.
+This builds the pages and an optimised server, and serves that collection. It prints the
+addresses to open: type one into your phone's browser. Media comes from the matching
+`.media` folder, as in a desktop profile. Ctrl+C takes a last backup and closes the
+collection cleanly. Opening a collection migrates it to FSRS.
 
-To serve another collection, `tools/run-web path/to/file.anki2`. Media comes from
-the matching `.media` folder, as in a desktop profile. Don't point it at a
-collection you care about yet: there is no backup, and opening one migrates it
-to FSRS.
-
-The repo path must not contain a space, as `./ninja` can't handle that.
+Leave out `--release` for a quicker debug build, and the path for a demo collection in
+`out/web-dev`. It runs from any folder, and the repo path must not contain a space, as
+`./ninja` can't handle that.
 
 ## Build by hand
 
 ```
 ./ninja web
-CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
-out/rust/debug/evolanki-server --collection /tmp/test/col.anki2 --create --seed-demo
+CARGO_TARGET_DIR=$PWD/out/rust cargo build --release -p evolanki-server
+out/rust/release/evolanki-server --collection /tmp/test/col.anki2 --create --seed-demo
 ```
 
 - `--collection PATH`: required. Must exist unless `--create` is given.
@@ -34,76 +32,179 @@ out/rust/debug/evolanki-server --collection /tmp/test/col.anki2 --create --seed-
 - `--seed-demo`: add 20 notes and 5 reviews to a newly created collection.
 - `--seed-file FILE`: add the decks and notes in this JSON file to a newly created
   collection instead. For tests; see `SeedFile` in `src/seed.rs`.
+- `--host IP`: the address to listen on; by default `0.0.0.0`, every interface.
+  `--host 127.0.0.1` keeps it to this machine.
+- `--allow-host NAME`: another name or IP to accept in addresses, such as a VPN's. Can
+  be repeated.
 - `--port N`: default 8765 (also AnkiConnect's default); 0 picks a free port.
-- `--web-root DIR`: default `out/web`, relative to the current folder.
-- `--lang CODE`: default `en`.
+- `--web-root DIR`: the built pages. By default `out/web` in the build tree that holds
+  the binary, wherever you run it from. Pass this if you move the binary.
+- `--backup-interval-secs N`: the least time between backups while reviewing; default
+  1800.
+
+## No login: what that means
+
+**Anyone who can connect to this server can read and change everything in this
+collection.** That means every device on your network: other people's phones on the
+same Wi-Fi, a visitor's laptop, or anything compromised. Nothing is encrypted either, so
+someone on the network can watch your reviews go by. Only run it on a network you trust.
+Never forward its port from a router, or use it on public Wi-Fi. The owner chose this
+over a password, knowing that, and it prints a warning each time it starts.
+
+The server's API is narrow: it can only do what the pages do. It can't delete notes or
+reach files outside the collection's media, but it can answer and undo reviews, and
+change deck options.
 
 ## Security
 
-There's no login, so the server trusts only what it can show came from its own
-pages. It binds to 127.0.0.1 and refuses to do otherwise. All requests need a Host
-of exactly `127.0.0.1:PORT` or `localhost:PORT`, and an Origin matching that Host
-if one is sent. POSTs also need `Content-Type: application/binary` and can't be
-marked cross-site by `Sec-Fetch-Site`. Only the RPCs in `src/rpc.rs` can be called.
+So what remains is keeping *other web sites* out. A page you visit on the internet can
+make your browser send requests to this server, and these checks stop that:
 
-The server is not protected from a local process, or from another user of the
-machine, which can connect to 127.0.0.1 and send any headers it likes.
+- **Host** must be a loopback address, `localhost`, a private or link-local IP address
+  (10.x, 172.16-31.x, 192.168.x, 169.254.x, or IPv6's `fc00::/7` and `fe80::/10`), this
+  machine's name with or without `.local`, or an `--allow-host`, always with the right
+  port. This stops DNS rebinding, where evil.example resolves to your machine and so
+  counts as the same site in your browser. A public IP or any other name gets a 403. So
+  a VPN or `100.x` address needs `--allow-host`.
+- **Origin**, if sent, must match Host. Browsers always send it with a POST.
+- POSTs also need `Content-Type: application/binary`, which another site can't send
+  without a preflight that's never granted, and can't be marked cross-site by
+  `Sec-Fetch-Site` (which browsers leave out on plain HTTP LAN addresses, as they aren't
+  "secure").
+- Only the RPCs in `src/rpc.rs` can be called, and they're exactly what the pages import,
+  which a test checks. The rest get a 404, including everything that names server paths.
+
+None of this stops another device, or a local process, from connecting and sending any
+headers it likes. That's the risk described above.
 
 ### Card content and deck descriptions
 
-Cards can come from anyone's shared deck, so their HTML and scripts are untrusted.
-They run in an iframe with `sandbox="allow-scripts"` and no `allow-same-origin`
-(`ts/lib/components/SandboxedFrame.svelte`), loading the document in
-`src/card_frame.html`. In layers:
+Cards can come from anyone's shared deck, so their HTML is untrusted, and **scripts in
+cards don't run at all**, unlike in desktop Anki. Templates with their own JavaScript show
+as if it wasn't there. In layers:
 
-- The frame's origin is opaque, so it can't read the parent, and the server's Origin
-  check refuses its API calls.
-- Its CSP has `connect-src 'none'`, and images, media, fonts and external scripts
-  only from `/_frame/<token>/`. The CSP repeats the sandbox, in case the document is
-  opened directly. Remote images and other outside content don't load.
+- The iframe has `sandbox="allow-scripts"` and no `allow-same-origin`
+  (`ts/lib/components/SandboxedFrame.svelte`), loading the document in
+  `src/card_frame.html`. The scripts are for our own loader.
+- Its CSP allows only scripts with a nonce made for that response, and MathJax's files
+  under `a/js/`. There's no `unsafe-inline`, so `<script>`, `onclick`, `onerror` and
+  `javascript:` links are all refused. There's no `unsafe-eval` either. The reviewer
+  sets content with `innerHTML`, which doesn't start scripts by itself.
+- Should something get past that, the frame's origin is opaque, so it can't read the
+  parent, and the server's Origin check refuses its API calls.
+- The CSP has `connect-src 'none'`, and images, media and fonts only from
+  `/_frame/<token>/`, repeating the sandbox in case the document is opened directly.
+  Remote images and other outside content don't load.
 - The token is random per run. That prefix alone has `Cross-Origin-Resource-Policy:
   cross-origin` and `Access-Control-Allow-Origin: null`, so a sandboxed frame can
   load media, while other sites still can't embed it, and it holds only media and the
   few assets in `is_frame_asset()`. It answers nothing but GET and HEAD.
 - The page gets the prefix from `/_anki/frameBase`, which refuses cross-site callers.
 - The page and frame talk over a private `MessagePort`, handed over before there is
-  any card code in the frame, which then only has it in a closure. The page doesn't
+  any card content in the frame, which then only has it in a closure. The page doesn't
   listen to window messages at all. Messages are validated
-  (`ts/lib/tslib/frame-protocol.ts`), and the frame forwards keys only from events
-  with `isTrusted`. So a card can't answer, undo or suspend anything; `pycmd()` in a
-  card can only play its own audio or reveal its answer.
+  (`ts/lib/tslib/frame-protocol.ts`), and the frame forwards keys and clicks only from
+  events with `isTrusted`.
 - Pages that embed frames have `frame-src 'self'`, which blocks a card sending its
-  frame to another site. If a frame loads anything a second time, it's replaced and
+  frame to another site, with `<meta http-equiv="refresh">`, the one way it can still
+  move without a script. If a frame loads anything a second time, it's replaced and
   gets a new port, and a card that keeps doing this isn't shown.
 
-Deck descriptions use the same document with `?static`, whose scripts need a nonce
-that the content can't know, so nothing in them runs, inline handlers included.
+What cards relied on inline handlers for is handled by the frame: play buttons and the
+`{{hint:}}` filter's link are data attributes for a click listener.
 
-The frame can still make requests that no CSP covers, such as navigating itself or
-WebRTC, so a card could send its own content somewhere. It has no access to anything
-else in the collection. Keep that in mind when a card shows something sensitive.
+A card can still send what it contains to another site by being clicked: following a
+link opens in a new tab, as a link should. Nothing else in the collection is reachable.
 
-A card's `localStorage` throws and dialogs do nothing, because of the sandbox.
+## Backups
+
+The server keeps copies of the collection in a `backups` folder beside it, named like
+`col-2026-11-01-05.30.12.anki2`. There's no UI and nothing to set up. It takes one:
+
+- at every start, before opening the collection, so before anything can upgrade it;
+- every 30 minutes at most while there have been changes;
+- at shutdown, if something changed since the last.
+
+They're made with SQLite's online backup API on the collection's own connection, while no
+operation is running, and each is checked with `quick_check` before it gets its final
+name. A live file is never just copied. A review waits for the moment that takes.
+
+**Kept:** the latest 48, plus the last one of each of the latest 30 days that have any,
+so at most 78. Older ones are deleted, as are temporary files from a crash; nothing
+else in that folder is touched. Each is the size of the collection.
+
+**If a backup fails**, reviewing carries on, and it says `BACKUP FAILED` on stderr each
+time. Check that output if you run it unattended, for a full disk especially.
+
+**Media isn't included.** Nothing in this app changes media files, as there's no editor
+or importer, so one copy of the `.media` folder taken once is enough, until an admin
+tool adds some. Back it up then, along with these, to another disk. All of this is on
+one disk, so it doesn't protect you from losing that.
+
+### Restoring
+
+1. Stop the server.
+2. Move the broken collection out of the way, with its `-wal` and `-shm` files if they
+   exist. It's essential not to leave those behind, as they'd be replayed into the
+   restored copy:
+   ```
+   mv col.anki2 col.anki2.broken
+   mv col.anki2-wal col.anki2-wal.broken
+   mv col.anki2-shm col.anki2-shm.broken
+   ```
+3. Copy the backup you want into its place. Copy, so that the backup stays:
+   ```
+   cp backups/col-2026-11-01-05.30.12.anki2 col.anki2
+   ```
+4. Start the server. It takes a new backup of what you restored, and reviews carry on
+   from there. `a_backup_can_be_restored` in `tests/http.rs` follows these steps.
+
+Backups are ordinary collections, so `sqlite3` or a desktop Anki can read them too.
+
+## Phones
+
+The pages are laid out for a phone: 44px targets, answer buttons along the bottom edge,
+room for a notch, and no sideways scrolling. Add it to your home screen if you like.
+
+Phones won't play sound until you've tapped something, which the reviewer deals with:
+your tap on Study Now also starts its audio element, which then may play freely. If
+it's refused anyway, such as after reloading the reviewer, a **Tap to play sound** button
+appears and plays what was held back.
+
+`ts/tests/web/mobile.spec.ts` runs all this in Playwright's Chromium, with Chrome's
+real autoplay policy, and its WebKit, with emulated devices. WebKit on Linux has no
+autoplay policy to speak of, so that one is acted out with a stand-in that refuses
+until a tap. **None of this has been on an actual phone.** Things to check on one: that
+autoplay works after Study Now on iOS Safari in particular (it depends on the one-tap
+"unlock" above), TTS voices, the on-screen keyboard over type-in answers, safe-area insets
+on a notch, and how your audio formats play. iOS has no `.ogg`/`.opus` support before
+Safari 18.4, and neither platform plays `.mkv` or `.avi` reliably. A file that can't
+play is skipped.
 
 ## Differences from desktop Anki
 
-- Custom scheduling isn't run: `getSchedulingStatesWithContext` and
-  `setSchedulingStates` still answer 501, card scripts can't reach them, and deck
-  options hides the setting. The stored value is kept.
-- TTS tags and video are not played, and `[latex]` isn't rendered. Flags, marks,
-  timeboxing, auto advance, `reviewExtra`, editing and card info aren't in the reviewer.
+- Scripts in cards don't run, so nor does custom scheduling.
+- `[sound:]` files play in the page, one after another. Those with a video extension show
+  in a player under the card, which plays whatever the browser supports.
+- `{{tts}}` and `[anki:tts]` use the browser's `speechSynthesis`. Voices are whatever
+  the device has: first any named in the tag, then one for its language.
+- English only.
+- `[latex]` isn't rendered. Marks, timeboxing, auto advance, `reviewExtra`, editing,
+  burying, suspending and flags aren't in the reviewer. Automatic leech suspension and
+  its notice, undo, and type-in answers are.
+- No pages for: adding or editing cards, the browser, changing a notetype, importing,
+  filtered decks, custom study, or managing decks and tags. Their Rust code stays for an
+  admin tool to use. It isn't reachable over HTTP.
+- Deck options has no easy days section. Stored values are used as before; with none,
+  every day counts as normal. The load balancer has no control either, and stays on
+  unless the collection's config says otherwise.
 
 ## Differences from desktop Anki's mediasrv.py
 
 - `updateDeckConfigs` returns when the save is done, with the real output.
   mediasrv.py started a Qt background op, returned nothing, and closed the dialog
   on success. The page shows progress itself, then returns to the deck.
-- `congratsInfo` no longer moves a main window to the overview, and reports
-  `bridgeCommandsSupported: false`, as those links need Qt.
 - The `Anki-Op-Changes` header is ignored. It drove on_op_finished() in Qt.
-- FrontendService methods that drive Qt answer 501 with an explanation; see
-  `UNSUPPORTED` in `src/rpc.rs`. `deckOptionsReady` succeeds and does nothing.
-- RPCs that name server paths or fetch URLs are not exposed; see `ALLOWED`.
 - `/_addons/` isn't served, and neither are the legacy `/_anki/foo.js` remappings.
 
 ## Tests
@@ -113,5 +214,6 @@ CARGO_TARGET_DIR=$PWD/out/rust cargo test -p evolanki-server
 out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts
 ```
 
-Both create throwaway collections in temporary folders. The Playwright tests
-need the assets from above and a built server binary.
+Both create throwaway collections in temporary folders. The Playwright tests need the
+assets from above, a debug server binary, and Chromium and WebKit
+(`playwright install chromium webkit`). Set `EVOLANKI_SHOTS=folder` for screenshots.

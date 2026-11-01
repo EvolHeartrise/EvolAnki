@@ -2,12 +2,13 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 //! Request checks. There's no login, and anyone on the network can talk to this
-//! server. What these checks stop is other web sites using a visitor's browser to
-//! do that:
+//! server. What these checks stop is other web sites using a visitor's browser
+//! to do that:
 //!
-//! - The Host check defeats DNS rebinding, where evil.example resolves to one of
-//!   our addresses and so counts as same-origin in the browser. A name that isn't
-//!   ours, or an IP address that isn't private, can't be someone visiting us.
+//! - The Host check defeats DNS rebinding, where evil.example resolves to one
+//!   of our addresses and so counts as same-origin in the browser. A name that
+//!   isn't ours, or an IP address that isn't private, can't be someone visiting
+//!   us.
 //! - The Origin, Sec-Fetch-Site and Content-Type checks stop other sites from
 //!   driving the API. application/binary is not a CORS-safelisted type, so a
 //!   cross-origin fetch would need a preflight, and we never grant one.
@@ -110,8 +111,8 @@ impl AllowedHosts {
     }
 }
 
-/// The name and port of a Host value, which must have a port. A browser leaves it
-/// out for port 80, which isn't a port we expect to run on without root.
+/// The name and port of a Host value, which must have a port. A browser leaves
+/// it out for port 80, which isn't a port we expect to run on without root.
 fn split_host_port(host: &str) -> Option<(&str, u16)> {
     let (name, port) = host.rsplit_once(':')?;
     // refuses "+80" and the like, which u16's parser would take
@@ -129,8 +130,8 @@ fn parse_ip_literal(name: &str) -> Option<IpAddr> {
     name.parse::<Ipv4Addr>().ok().map(IpAddr::V4)
 }
 
-/// Loopback, private and link-local. IPv4-mapped IPv6 and the like aren't, as no
-/// browser needs them.
+/// Loopback, private and link-local. IPv4-mapped IPv6 and the like aren't, as
+/// no browser needs them.
 fn ip_is_local(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(ip) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
@@ -321,8 +322,22 @@ mod test {
     fn absolute_targets() {
         let mut headers = HeaderMap::new();
         headers.append("host", HeaderValue::from_static("127.0.0.1:8765"));
-        assert!(check(&Method::GET, Some("127.0.0.1:8765"), &headers, &hosts(), false).is_ok());
-        assert!(check(&Method::GET, Some("evil.example"), &headers, &hosts(), false).is_err());
+        assert!(check(
+            &Method::GET,
+            Some("127.0.0.1:8765"),
+            &headers,
+            &hosts(),
+            false
+        )
+        .is_ok());
+        assert!(check(
+            &Method::GET,
+            Some("evil.example"),
+            &headers,
+            &hosts(),
+            false
+        )
+        .is_err());
     }
 
     #[test]

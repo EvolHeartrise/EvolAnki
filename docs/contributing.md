@@ -43,14 +43,6 @@ That's not to say there's no value in refactoring. But such changes are usually 
 in a PR that happens to be working in the same area - for example, making small changes
 to the code as part of fixing a bug, or a larger refactor when introducing a new feature.
 
-## Translations
-
-For information on adding new translatable strings to Anki, please see
-[the translation guide](https://anki.mintlify.app/translators/anki/developers).
-
-For information on translating the documentation, please see
-[translating the manual](https://anki.mintlify.app/translators/anki/manual).
-
 ## Tests Must Pass
 
 Please make sure 'ninja check' completes successfully before submitting code.

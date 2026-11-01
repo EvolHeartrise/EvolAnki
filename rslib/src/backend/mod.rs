@@ -89,6 +89,15 @@ impl Backend {
         )
     }
 
+    /// Run a closure with exclusive use of the open collection, for what isn't
+    /// an RPC: evolanki-server's backups. Waits for any running operation.
+    pub fn with_collection<F, T>(&self, func: F) -> Result<T>
+    where
+        F: FnOnce(&mut Collection) -> Result<T>,
+    {
+        self.with_col(func)
+    }
+
     /// Useful for operations that function with a closed collection, such as
     /// a colpkg import. For collection operations, you can use
     /// [Collection::new_progress_handler] instead.

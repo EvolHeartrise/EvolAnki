@@ -269,7 +269,8 @@ fn rpc_behaviour_matches_mediasrv() {
     assert_eq!(reply.status, 500);
     assert!(!reply.text().is_empty());
     let reply = server.rpc_raw("getDeckConfigsForUpdate", b"\xff\xff\xff");
-    assert_eq!(reply.status, 500);}
+    assert_eq!(reply.status, 500);
+}
 
 #[test]
 fn methods_off_the_allow_list_are_refused() {
@@ -370,21 +371,41 @@ fn bad_hosts_and_origins_are_refused() {
     );
 
     let bad_ip = format!("8.8.8.8:{}", server.port);
-    assert_eq!(server.raw("GET", "/graphs", &[("Host", &bad_ip)], b"").status, 403);
+    assert_eq!(
+        server
+            .raw("GET", "/graphs", &[("Host", &bad_ip)], b"")
+            .status,
+        403
+    );
     let named = format!("evil.example:{}", server.port);
-    assert_eq!(server.raw("GET", "/graphs", &[("Host", &named)], b"").status, 403);
+    assert_eq!(
+        server
+            .raw("GET", "/graphs", &[("Host", &named)], b"")
+            .status,
+        403
+    );
 
     // private addresses are fine, with an Origin to match
     let private = format!("192.168.7.7:{}", server.port);
     assert_eq!(
-        server.raw("POST", path, &[("Host", &private), binary], b"").status,
+        server
+            .raw("POST", path, &[("Host", &private), binary], b"")
+            .status,
         200
     );
     let origin = format!("http://{private}");
-    let headers = [("Host", private.as_str()), ("Origin", origin.as_str()), binary];
+    let headers = [
+        ("Host", private.as_str()),
+        ("Origin", origin.as_str()),
+        binary,
+    ];
     assert_eq!(server.raw("POST", path, &headers, b"").status, 200);
     let local_origin = format!("http://{host}");
-    let headers = [("Host", private.as_str()), ("Origin", local_origin.as_str()), binary];
+    let headers = [
+        ("Host", private.as_str()),
+        ("Origin", local_origin.as_str()),
+        binary,
+    ];
     assert_eq!(server.raw("POST", path, &headers, b"").status, 403);
 
     // other sites
@@ -513,7 +534,10 @@ fn pages_have_the_expected_headers() {
     let reply = server.raw("GET", "/review", &[("Host", &private)], b"");
     assert_eq!(reply.status, 200);
     let csp = reply.header("content-security-policy").unwrap();
-    assert!(csp.contains(&format!("script-src http://{private}/_anki/")), "{csp}");
+    assert!(
+        csp.contains(&format!("script-src http://{private}/_anki/")),
+        "{csp}"
+    );
     assert!(!csp.contains("127.0.0.1"), "{csp}");
 
     // removed pages are just media paths now
@@ -538,7 +562,7 @@ fn pages_have_the_expected_headers() {
 }
 
 fn reply_is_web_app(server: &Server, path: &str) -> bool {
-    server.get(path).text().contains("evolanki-web")
+    server.get(path).text().contains("/_anki/theme.js")
 }
 
 /// The API must stay shut to a sandboxed frame, whose origin is "null", while
@@ -725,7 +749,10 @@ fn listens_on_the_network_by_default_and_says_so() {
         }
     }
     let port = lines[0].trim().rsplit(':').next().unwrap().to_string();
-    assert!(lines[0].starts_with("Listening on http://127.0.0.1:"), "{lines:?}");
+    assert!(
+        lines[0].starts_with("Listening on http://127.0.0.1:"),
+        "{lines:?}"
+    );
     assert!(lines.last().unwrap().contains("no login"), "{lines:?}");
     let server = Server {
         child,
@@ -734,16 +761,246 @@ fn listens_on_the_network_by_default_and_says_so() {
     };
     // --allow-host, and its case doesn't matter
     let named = format!("phone.example:{port}");
-    assert_eq!(server.raw("GET", "/graphs", &[("Host", &named)], b"").status, 200);
+    assert_eq!(
+        server
+            .raw("GET", "/graphs", &[("Host", &named)], b"")
+            .status,
+        200
+    );
     let other = format!("tablet.example:{port}");
-    assert_eq!(server.raw("GET", "/graphs", &[("Host", &other)], b"").status, 403);
+    assert_eq!(
+        server
+            .raw("GET", "/graphs", &[("Host", &other)], b"")
+            .status,
+        403
+    );
     server.stop();
+}
+
+fn backup_files(fixture: &Fixture) -> Vec<PathBuf> {
+    let folder = fixture.dir.path().join("backups");
+    let mut files: Vec<PathBuf> = fs::read_dir(&folder)
+        .map(|entries| entries.map(|e| e.unwrap().path()).collect())
+        .unwrap_or_default();
+    // not by name, as two within a second have a suffix, which sorts first
+    files.sort_by_key(|file| fs::metadata(file).unwrap().modified().unwrap());
+    files
+}
+
+/// (notes, cards, reviews, a sum over what reviews change)
+fn contents(path: &Path) -> (i64, i64, i64, i64) {
+    let db =
+        rusqlite::Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .unwrap();
+    db.query_row(
+        "select (select count() from notes), (select count() from cards),
+            (select count() from revlog),
+            (select sum(due + ivl + reps + lapses + queue) from cards)",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    )
+    .unwrap()
+}
+
+fn quick_check(path: &Path) {
+    anki::storage::verify_copied_collection(path).unwrap();
+}
+
+fn answer_next(server: &Server) -> bool {
+    use anki_proto::scheduler::card_answer::Rating;
+    use anki_proto::scheduler::CardAnswer;
+    use anki_proto::scheduler::GetQueuedCardsRequest;
+    use anki_proto::scheduler::QueuedCards;
+
+    let queued: QueuedCards = server.rpc(
+        "getQueuedCards",
+        &GetQueuedCardsRequest {
+            fetch_limit: 1,
+            intraday_learning_only: false,
+        },
+    );
+    let Some(queued) = queued.cards.into_iter().next() else {
+        return false;
+    };
+    let states = queued.states.unwrap();
+    let _: OpChanges = server.rpc(
+        "answerCard",
+        &CardAnswer {
+            card_id: queued.card.unwrap().id,
+            current_state: states.current,
+            new_state: states.easy,
+            rating: Rating::Easy as i32,
+            answered_at_millis: 1_700_000_000_000,
+            milliseconds_taken: 1000,
+        },
+    );
+    true
+}
+
+#[test]
+fn backups_at_start_and_shutdown_open_and_match() {
+    let fixture = Fixture::new();
+    let server = fixture.start_seeded();
+    assert_eq!(backup_files(&fixture).len(), 1, "one at start");
+    assert!(answer_next(&server));
+    server.stop();
+
+    let files = backup_files(&fixture);
+    assert_eq!(files.len(), 2, "one at shutdown, as a review happened");
+    quick_check(&files[1]);
+    assert_eq!(contents(&files[1]), contents(&fixture.collection()));
+    assert_ne!(contents(&files[0]).2, contents(&files[1]).2);
+    // a copy stands alone, with no WAL to lose
+    assert!(!PathBuf::from(format!("{}-wal", files[1].display())).exists());
+    assert!(!files.iter().any(|f| f.to_string_lossy().ends_with(".tmp")));
+
+    // Another start copies the file as it was before opening. Nothing changes, so
+    // there's no call for another at shutdown.
+    let server = fixture.start();
+    assert_eq!(backup_files(&fixture).len(), 3);
+    server.stop();
+    let files = backup_files(&fixture);
+    assert_eq!(files.len(), 3);
+    assert_eq!(contents(&files[2]), contents(&fixture.collection()));
+}
+
+/// Reviews keep arriving while copies are taken. Each must be complete and
+/// consistent, and an interval that's up with no changes takes none.
+#[test]
+fn backups_taken_during_reviews_are_consistent() {
+    let fixture = Fixture::new();
+    let seed = fixture.dir.path().join("seed.json");
+    let notes: Vec<String> = (0..60)
+        .map(|i| format!(r#"{{"notetype": "Basic", "fields": ["q{i}", "a"]}}"#))
+        .collect();
+    fs::write(&seed, format!(r#"{{"notes": [{}]}}"#, notes.join(","))).unwrap();
+    let server = fixture.start_with(&[
+        "--create",
+        "--seed-file",
+        seed.to_str().unwrap(),
+        "--backup-interval-secs",
+        "1",
+    ]);
+    // the default limit on new cards a day is too few for this
+    let (info, _) = new_per_day(&server);
+    let mut config = info.all_config[0].config.clone().unwrap();
+    config.config.as_mut().unwrap().new_per_day = 100;
+    let _: OpChanges = server.rpc(
+        "updateDeckConfigs",
+        &UpdateDeckConfigsRequest {
+            target_deck_id: 1,
+            configs: vec![config],
+            mode: UpdateDeckConfigsMode::Normal as i32,
+            limits: info.current_deck.as_ref().unwrap().limits,
+            fsrs: true,
+            ..Default::default()
+        },
+    );
+    let start = std::time::Instant::now();
+    let mut answered = 0;
+    while start.elapsed() < std::time::Duration::from_millis(4500) {
+        assert!(answer_next(&server), "ran out of cards");
+        answered += 1;
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    assert!(answered > 10, "{answered}");
+
+    let during = backup_files(&fixture);
+    assert!(during.len() >= 3, "{during:?}");
+
+    // with nothing changing, no more arrive
+    std::thread::sleep(std::time::Duration::from_millis(2500));
+    let settled = backup_files(&fixture).len();
+    std::thread::sleep(std::time::Duration::from_millis(2500));
+    assert_eq!(backup_files(&fixture).len(), settled);
+    server.stop();
+
+    let files = backup_files(&fixture);
+    let mut previous = 0;
+    for file in &files {
+        quick_check(file);
+        let (notes, cards, reviews, _) = contents(file);
+        assert_eq!((notes, cards), (60, 60), "{}", file.display());
+        // each answer is a whole transaction, and copies are in order
+        assert!(reviews >= previous, "{}", file.display());
+        previous = reviews;
+    }
+    assert!(previous >= answered);
+    assert_eq!(
+        contents(files.last().unwrap()),
+        contents(&fixture.collection())
+    );
+}
+
+#[test]
+fn a_failing_backup_is_loud_but_reviewing_carries_on() {
+    let fixture = Fixture::new();
+    // so the folder can't be made
+    fs::write(fixture.dir.path().join("backups"), "in the way").unwrap();
+    let mut server =
+        fixture.start_with(&["--create", "--seed-demo", "--backup-interval-secs", "1"]);
+    assert!(answer_next(&server));
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+    assert!(answer_next(&server));
+
+    let pid = server.child.id().to_string();
+    assert!(Command::new("kill").arg(&pid).status().unwrap().success());
+    let mut output = String::new();
+    server.stdout.read_to_string(&mut output).unwrap();
+    assert!(output.contains("Collection closed"), "{output}");
+    let mut errors = String::new();
+    server
+        .child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut errors)
+        .unwrap();
+    assert!(errors.contains("BACKUP FAILED"), "{errors}");
+    assert!(server.child.wait().unwrap().success());
+    // what it could write, it did
+    assert_eq!(contents(&fixture.collection()).2, 7);
+}
+
+/// The procedure in docs/web-server.md.
+#[test]
+fn a_backup_can_be_restored() {
+    let fixture = Fixture::new();
+    let server = fixture.start_seeded();
+    assert!(answer_next(&server));
+    server.stop();
+    let good = backup_files(&fixture).pop().unwrap();
+    let good_contents = contents(&good);
+
+    // Work that's to be lost, including from a server that never got to close.
+    let server = fixture.start();
+    assert!(answer_next(&server));
+    let mut server = server;
+    server.child.kill().unwrap();
+    server.child.wait().unwrap();
+    drop(server);
+
+    let collection = fixture.collection();
+    for suffix in ["", "-wal", "-shm"] {
+        let path = PathBuf::from(format!("{}{suffix}", collection.display()));
+        if path.exists() {
+            fs::rename(&path, format!("{}{suffix}.broken", collection.display())).unwrap();
+        }
+    }
+    fs::copy(&good, &collection).unwrap();
+
+    let server = fixture.start();
+    assert!(answer_next(&server), "reviews carry on from the backup");
+    server.stop();
+    let (notes, cards, reviews, _) = contents(&collection);
+    assert_eq!((notes, cards), (good_contents.0, good_contents.1));
+    assert_eq!(reviews, good_contents.2 + 1);
 }
 
 /// The owner's collection has this stock notetype, with no notes.
 #[test]
 fn a_collection_with_the_removed_image_occlusion_notetype_opens() {
-        let fixture = Fixture::new();
+    let fixture = Fixture::new();
     let seed = fixture.dir.path().join("seed.json");
     fs::write(
         &seed,
@@ -768,11 +1025,14 @@ fn a_collection_with_the_removed_image_occlusion_notetype_opens() {
         .unwrap()
         .map(Result::unwrap)
         .collect();
-    assert!(names.iter().any(|name| name == "Image Occlusion"), "{names:?}");
+    assert!(
+        names.iter().any(|name| name == "Image Occlusion"),
+        "{names:?}"
+    );
 }
 
-/// Everything the pages import from the generated client must be on the allow-list,
-/// and nothing else.
+/// Everything the pages import from the generated client must be on the
+/// allow-list, and nothing else.
 #[test]
 fn allow_list_matches_the_pages() {
     fn walk(dir: &Path, found: &mut std::collections::BTreeSet<String>) {

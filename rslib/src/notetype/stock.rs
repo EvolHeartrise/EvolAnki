@@ -204,7 +204,10 @@ mod test {
 
         let stored = col.storage.get_notetype(nt.id)?.unwrap();
         assert_eq!(stored.config.original_stock_kind, IMAGE_OCCLUSION);
-        assert_eq!(stored.config.original_stock_kind(), OriginalStockKind::Unknown);
+        assert_eq!(
+            stored.config.original_stock_kind(),
+            OriginalStockKind::Unknown
+        );
         // an error, as for any notetype without a known stock kind
         assert!(col.restore_notetype_to_stock(nt.id.into(), None).is_err());
         col.remove_notetype(nt.id)?;

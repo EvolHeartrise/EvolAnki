@@ -860,3 +860,51 @@ mod test {
         Ok(())
     }
 }
+
+/// Copy a database with SQLite's online backup, so a live one stays consistent:
+/// a plain file copy could tear a write, or miss what's in the WAL. Replaces
+/// nothing, as the destination must be a new file. Doesn't need the collation
+/// or functions of a collection.
+pub fn copy_database(source: &Connection, destination: &Path) -> Result<()> {
+    let mut output = Connection::open(destination)?;
+    {
+        let backup = rusqlite::backup::Backup::new(source, &mut output)?;
+        // in one step: the caller holds the collection, so it can't change, and
+        // this way nothing can restart the copy
+        if !matches!(backup.step(-1)?, rusqlite::backup::StepResult::Done) {
+            return Err(AnkiError::db_error(
+                "database copy stopped early",
+                DbErrorKind::Other,
+            ));
+        }
+    }
+    // the header came from the source, and a copy has no use for a WAL file
+    output.pragma_update(None, "journal_mode", "delete")?;
+    Ok(())
+}
+
+/// Check a copy of a collection, opened without changing it. This is everything
+/// but the indexes' contents, which is what takes the time.
+pub fn verify_copied_collection(path: &Path) -> Result<()> {
+    let db = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    db.create_collation("unicase", unicase_compare)?;
+    let result: String = db.pragma_query_value(None, "quick_check", |row| row.get(0))?;
+    if result != "ok" {
+        return Err(AnkiError::db_error(result, DbErrorKind::Corrupt));
+    }
+    let _: i64 = db.query_row("select count() from notes", [], |row| row.get(0))?;
+    Ok(())
+}
+
+impl SqliteStorage {
+    /// Something that changes when reviews or edits do, for telling if a backup
+    /// is needed. Reads little, as it's asked for regularly.
+    pub fn change_stamp(&self) -> Result<(i64, i64, i64)> {
+        Ok(self.db.query_row(
+            "select (select mod from col), (select count() from revlog), \
+             (select coalesce(max(id), 0) from revlog)",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?)
+    }
+}

@@ -18,6 +18,8 @@ mod upgrades;
 
 use std::fmt::Write;
 
+pub use sqlite::copy_database;
+pub use sqlite::verify_copied_collection;
 pub(crate) use sqlite::ProcessTextFlags;
 pub(crate) use sqlite::SqliteStorage;
 

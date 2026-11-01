@@ -1,9 +1,10 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-//! A single-user web server around Anki's Rust backend, with no login, for one's
-//! own network. See docs/web-server.md.
+//! A single-user web server around Anki's Rust backend, with no login, for
+//! one's own network. See docs/web-server.md.
 
+mod backups;
 mod files;
 mod frame;
 mod guard;
@@ -40,6 +41,7 @@ use clap::Parser;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 
+use crate::backups::Backups;
 use crate::rpc::call_typed;
 
 /// Enough for any page's request; media uploads will want a dedicated route.
@@ -70,6 +72,9 @@ struct Args {
     /// out/web in the build tree this binary lives in, wherever it's run from.
     #[arg(long)]
     web_root: Option<PathBuf>,
+    /// Least seconds between backups while the collection is changing.
+    #[arg(long, default_value_t = 1800, value_parser = clap::value_parser!(u64).range(1..))]
+    backup_interval_secs: u64,
     /// Create the collection if it doesn't exist. Without this, a mistyped
     /// path is an error rather than a new empty collection.
     #[arg(long)]
@@ -118,6 +123,12 @@ async fn run(args: Args) -> Result<()> {
         .with_context(|| format!("couldn't listen on {}:{}", args.host, args.port))?;
     let port = listener.local_addr()?.port();
 
+    let backups = Backups::new(&args.collection)?;
+    // before opening it can change anything, such as by upgrading it
+    if existed {
+        backups.take_of_closed_file(&args.collection);
+    }
+
     let backend = rpc::new_backend()?;
     let media_dir = open_collection(&backend, &args.collection)?;
     if args.seed_demo && !existed {
@@ -126,6 +137,18 @@ async fn run(args: Args) -> Result<()> {
     if let (Some(path), false) = (&args.seed_file, existed) {
         seed::seed_from_file(&backend, path)?;
     }
+
+    if existed {
+        backups.remember_state(&backend);
+    } else {
+        backups.take(&backend);
+    }
+    let backups = Arc::new(backups);
+    let periodic = tokio::spawn(backups::run_periodically(
+        backups.clone(),
+        backend.clone(),
+        Duration::from_secs(args.backup_interval_secs),
+    ));
 
     let hostname = machine_hostname();
     let state = Arc::new(AppState {
@@ -148,6 +171,8 @@ async fn run(args: Args) -> Result<()> {
     print_network_urls(args.host, hostname.as_deref(), port);
 
     let served = serve_until_signal(listener, app, backend.clone()).await;
+    periodic.abort();
+    backups::take_if_changed_blocking(backups, backend.clone()).await;
     let closed = close_collection(backend).await;
     served?;
     closed
