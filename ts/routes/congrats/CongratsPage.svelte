@@ -7,9 +7,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { congratsInfo } from "@generated/backend";
     import * as tr from "@generated/ftl";
     import { bridgeLink } from "@tslib/bridgecommand";
+    import { isWebApp } from "@tslib/webapp";
 
     import Col from "$lib/components/Col.svelte";
     import Container from "$lib/components/Container.svelte";
+    import UntrustedHtml from "$lib/components/UntrustedHtml.svelte";
 
     import { buildNextLearnMsg } from "./lib";
     import { onMount } from "svelte";
@@ -17,6 +19,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let info: CongratsInfoResponse;
     export let refreshPeriodically = true;
 
+    const webApp = isWebApp();
     const congrats = tr.schedulingCongratulationsFinished();
     let nextLearnMsg: string;
     $: nextLearnMsg = buildNextLearnMsg(info);
@@ -58,6 +61,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 <p>{today_new}</p>
             {/if}
 
+            <slot />
+
             {#if info.bridgeCommandsSupported}
                 {#if info.haveSchedBuried || info.haveUserBuried}
                     <p>
@@ -74,7 +79,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
             {#if info.deckDescription}
                 <div class="description">
-                    {@html info.deckDescription}
+                    {#if webApp}
+                        <UntrustedHtml html={info.deckDescription} />
+                    {:else}
+                        {@html info.deckDescription}
+                    {/if}
                 </div>
             {/if}
         </div>

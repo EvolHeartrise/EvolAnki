@@ -15,6 +15,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
 
+    import { isWebApp } from "@tslib/webapp";
     import CardStateCustomizer from "./CardStateCustomizer.svelte";
     import type { DeckOptionsState } from "./lib";
     import SpinBoxFloatRow from "./SpinBoxFloatRow.svelte";
@@ -52,7 +53,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             global: true,
         },
     };
-    const helpSections: HelpItem[] = Object.values(settings);
+    // customScheduling is last, so this doesn't change any section's index
+    const helpSections: HelpItem[] = Object.values(settings).filter(
+        (item) => !isWebApp() || item !== settings.customScheduling,
+    );
 
     $: maxIntervalWarningClass =
         $config.maximumReviewInterval < 50 ? "alert-danger" : "alert-warning";
@@ -203,13 +207,16 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             ></Warning>
         </Item>
 
-        <Item>
-            <CardStateCustomizer
-                title={settings.customScheduling.title}
-                on:click={() =>
-                    openHelpModal(Object.keys(settings).indexOf("customScheduling"))}
-                bind:value={$cardStateCustomizer}
-            />
-        </Item>
+        {#if !isWebApp()}
+            <!-- the web app's reviewer doesn't run custom scheduling -->
+            <Item>
+                <CardStateCustomizer
+                    title={settings.customScheduling.title}
+                    on:click={() =>
+                        openHelpModal(Object.keys(settings).indexOf("customScheduling"))}
+                    bind:value={$cardStateCustomizer}
+                />
+            </Item>
+        {/if}
     </DynamicallySlottable>
 </TitledContainer>

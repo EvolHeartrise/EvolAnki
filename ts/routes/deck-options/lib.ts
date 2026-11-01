@@ -10,6 +10,8 @@ import type {
 } from "@generated/anki/deck_config_pb";
 import { DeckConfig, DeckConfig_Config, DeckConfigsForUpdate_CurrentDeck_Limits } from "@generated/anki/deck_config_pb";
 import { updateDeckConfigs } from "@generated/backend";
+import { runWithBackendProgress } from "@tslib/progress";
+import { isWebApp } from "@tslib/webapp";
 import { localeCompare } from "@tslib/i18n";
 import { promiseWithResolver } from "@tslib/promise";
 import { cloneDeep, isEqual, isEqualWith } from "lodash-es";
@@ -66,10 +68,10 @@ export class DeckOptionsState {
     readonly daysSinceLastOptimization: Writable<number>;
     readonly currentPresetName: Writable<string>;
     /** Used to detect if there are any pending changes */
-    readonly originalConfigsPromise: Promise<AllConfigs>;
+    originalConfigsPromise: Promise<AllConfigs>;
     readonly originalConfigsResolve: (value: AllConfigs) => void;
 
-    private targetDeckId: DeckOptionsId;
+    readonly targetDeckId: DeckOptionsId;
     private configs: ConfigWithCount[];
     private selectedIdx: number;
     private configListSetter!: (val: ConfigListEntry[]) => void;
@@ -282,6 +284,8 @@ export class DeckOptionsState {
         await updateDeckConfigs(
             this.dataForSaving(mode),
         );
+        // what's now saved is what later changes should be compared with
+        this.originalConfigsPromise = Promise.resolve(cloneDeep(this.getAllConfigs()));
     }
 
     private onCurrentConfigChanged(config: DeckConfig_Config): void {
@@ -452,6 +456,28 @@ export class ValueTab {
     setValue(value: number): void {
         this.value = value;
         this.setter(value);
+    }
+}
+
+/** Set while a save is running; the current step's description, if any. */
+export const saveInProgress = writable<{ label: string } | null>(null);
+
+/** Qt shows its own progress for a save, as it runs it in the background. */
+export async function saveWithProgress(
+    state: DeckOptionsState,
+    mode: UpdateDeckConfigsMode,
+): Promise<void> {
+    if (!isWebApp()) {
+        return state.save(mode);
+    }
+    saveInProgress.set({ label: "" });
+    try {
+        await runWithBackendProgress(() => state.save(mode), (progress) => {
+            const value = progress.value.value;
+            saveInProgress.set({ label: typeof value === "string" ? value : "" });
+        });
+    } finally {
+        saveInProgress.set(null);
     }
 }
 

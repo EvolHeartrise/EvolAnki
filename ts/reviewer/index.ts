@@ -27,12 +27,14 @@ declare const MathJax: any;
 let mathjaxLoading: Promise<void> | null = window?.["MathJax"]?.startup?.promise ?? null;
 
 function _lazyLoadMathJax(): Promise<void> {
+    // Set by the web app's sandboxed card frame, which can't load from /_anki/.
+    const assets: string = globalThis.ankiAssetBase ?? "/_anki/";
     return mathjaxLoading || (mathjaxLoading = new Promise((resolve, reject) => {
         const configScript = document.createElement("script");
-        configScript.src = "/_anki/js/mathjax.js";
+        configScript.src = `${assets}js/mathjax.js`;
         configScript.onload = () => {
             const mathjaxScript = document.createElement("script");
-            mathjaxScript.src = "/_anki/js/vendor/mathjax/tex-chtml-full.js";
+            mathjaxScript.src = `${assets}js/vendor/mathjax/tex-chtml-full.js`;
             mathjaxScript.onload = () => resolve();
             mathjaxScript.onerror = () => reject(new Error("Failed to load MathJax"));
             document.head.appendChild(mathjaxScript);

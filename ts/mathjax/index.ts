@@ -23,7 +23,8 @@ window.MathJax = {
     loader: {
         load: packagesForLoading(packages),
         paths: {
-            mathjax: "/_anki/js/vendor/mathjax",
+            // the web app's card frame sets a base it is able to load from
+            mathjax: `${globalThis.ankiAssetBase ?? "/_anki/"}js/vendor/mathjax`,
         },
     },
     startup: {

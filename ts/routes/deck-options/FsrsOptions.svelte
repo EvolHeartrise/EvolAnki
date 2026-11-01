@@ -21,7 +21,13 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import SwitchRow from "$lib/components/SwitchRow.svelte";
 
     import GlobalLabel from "./GlobalLabel.svelte";
-    import { commitEditing, fsrsParams, type DeckOptionsState, ValueTab } from "./lib";
+    import {
+        commitEditing,
+        fsrsParams,
+        type DeckOptionsState,
+        saveWithProgress,
+        ValueTab,
+    } from "./lib";
     import SpinBoxFloatRow from "./SpinBoxFloatRow.svelte";
     import Warning from "./Warning.svelte";
     import ParamsInputRow from "./ParamsInputRow.svelte";
@@ -346,7 +352,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     async function computeAllParams(): Promise<void> {
         if (confirm(tr.deckConfigFsrsConfirmSaveAndOptimize())) {
             await commitEditing();
-            await state.save(UpdateDeckConfigsMode.COMPUTE_ALL_PARAMS);
+            await saveWithProgress(state, UpdateDeckConfigsMode.COMPUTE_ALL_PARAMS);
             window.location.reload();
         }
     }

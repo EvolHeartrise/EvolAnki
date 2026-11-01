@@ -3,7 +3,7 @@ Copyright: Ankitects Pty Ltd and contributors
 License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
-    import { bridgeCommand } from "@tslib/bridgecommand";
+    import { bridgeCommand, bridgeCommandsAvailable } from "@tslib/bridgecommand";
     import type { Component } from "svelte";
     import { writable } from "svelte/store";
 
@@ -23,7 +23,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let controller: Component<any> | null = RangeBox;
 
     function browserSearch(event: CustomEvent) {
-        bridgeCommand(`browserSearch: ${$search} ${event.detail.query}`);
+        // there is no card browser in the web app yet
+        if (bridgeCommandsAvailable()) {
+            bridgeCommand(`browserSearch: ${$search} ${event.detail.query}`);
+        }
     }
 </script>
 

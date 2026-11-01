@@ -19,7 +19,8 @@ export class Server {
         return `http://127.0.0.1:${this.port}`;
     }
 
-    static start(collection: string): Promise<Server> {
+    /** With no seed file, a new collection gets the demo content. */
+    static start(collection: string, seedFile?: string): Promise<Server> {
         if (!existsSync(BINARY)) {
             throw new Error(`${BINARY} is missing; see docs/web-server.md`);
         }
@@ -27,7 +28,7 @@ export class Server {
             "--collection",
             collection,
             "--create",
-            "--seed-demo",
+            ...(seedFile ? ["--seed-file", seedFile] : ["--seed-demo"]),
             "--port",
             "0",
             "--web-root",

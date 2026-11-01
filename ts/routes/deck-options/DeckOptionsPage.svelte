@@ -22,7 +22,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import FsrsOptionsOuter from "./FsrsOptionsOuter.svelte";
     import HtmlAddon from "./HtmlAddon.svelte";
     import LapseOptions from "./LapseOptions.svelte";
-    import type { DeckOptionsState } from "./lib";
+    import { type DeckOptionsState, saveInProgress } from "./lib";
     import NewOptions from "./NewOptions.svelte";
     import TimerOptions from "./TimerOptions.svelte";
     import EasyDays from "./EasyDays.svelte";
@@ -146,6 +146,15 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     </Container>
 </div>
 
+{#if $saveInProgress}
+    <div class="saving" role="status">
+        <div>Saving…</div>
+        {#if $saveInProgress.label}
+            <div>{$saveInProgress.label}</div>
+        {/if}
+    </div>
+{/if}
+
 <style lang="scss">
     @use "$lib/sass/breakpoints" as bp;
 
@@ -164,5 +173,18 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 gap: 20px;
             }
         }
+    }
+
+    .saving {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5em;
+        align-items: center;
+        justify-content: center;
+        color: var(--fg);
+        background: color-mix(in srgb, var(--canvas) 80%, transparent);
     }
 </style>

@@ -13,6 +13,7 @@ $carousel-transition: var(--transition);
 @import "bootstrap/scss/badge";
 @import "$lib/sass/bootstrap-forms";
 @import "$lib/sass/bootstrap-tooltip";
+@import "$lib/sass/card-counts";
 
 input[type="text"],
 input[type="date"],
@@ -33,4 +34,20 @@ html {
 [dir="rtl"] .modal-header .btn-close {
     padding: 1rem 1rem !important;
     margin: -1rem auto -1rem -1rem !important;
+}
+
+// Qt injects these into its webviews, after this file. In the web app they're
+// all there is. :where() keeps them from outranking anything else.
+:where(html) {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color-scheme: light;
+}
+
+:where(html.night-mode) {
+    color-scheme: dark;
+}
+
+:where(body) {
+    background-color: var(--canvas);
+    color: var(--fg);
 }

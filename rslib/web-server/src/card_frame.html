@@ -13,7 +13,6 @@ window.parent.postMessage, but nothing in the parent listens for that.
 <script nonce="@NONCE@">
 (function () {
     "use strict";
-    const isStatic = location.search === "?static";
     window.ankiAssetBase = new URL("../a/", document.baseURI).href;
     let post = null;
 
@@ -32,6 +31,8 @@ window.parent.postMessage, but nothing in the parent listens for that.
         switch (msg.type) {
             case "question":
                 setTheme(msg.dark);
+                // before the card's scripts run, which Qt only manages from the second card
+                document.body.className = msg.bodyClass;
                 window._showQuestion(msg.html, msg.answer, msg.bodyClass);
                 window._queueAction(() => post({ type: "shown", seq: msg.seq }));
                 break;
@@ -116,8 +117,6 @@ window.parent.postMessage, but nothing in the parent listens for that.
             post({ type: "reveal" });
         }
     };
-
-    setTheme(isStatic && location.hash === "#night");
 })();
 </script>
 <link rel="stylesheet" href="../a/css/webview.css">
