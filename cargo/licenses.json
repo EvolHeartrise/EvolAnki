@@ -340,14 +340,6 @@
     "description": "Bindings to Core Foundation for macOS",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
-    "name": "core-foundation",
-    "repository": "https://github.com/servo/core-foundation-rs"
-  },
-  {
-    "authors": "The Servo Project Developers",
-    "description": "Bindings to Core Foundation for macOS",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
     "name": "core-foundation-sys",
     "repository": "https://github.com/servo/core-foundation-rs"
   },
@@ -521,7 +513,7 @@
   },
   {
     "authors": "Ankitects Pty Ltd and contributors <https://faqs.ankiweb.net/>",
-    "description": "Local, single-user web server around Anki's Rust backend",
+    "description": "Single-user web server around Anki's Rust backend",
     "license": "AGPL-3.0-or-later",
     "license_file": null,
     "name": "evolanki-server",
@@ -657,14 +649,6 @@
   },
   {
     "authors": null,
-    "description": "The futures-rs procedural macro implementations.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "futures-macro",
-    "repository": "https://github.com/rust-lang/futures-rs"
-  },
-  {
-    "authors": null,
     "description": "The asynchronous `Sink` trait for the futures-rs library.",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -718,22 +702,6 @@
     "license_file": null,
     "name": "getrandom",
     "repository": "https://github.com/rust-random/getrandom"
-  },
-  {
-    "authors": "The Rand Project Developers",
-    "description": "A small cross-platform library for retrieving random data from system source",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "getrandom",
-    "repository": "https://github.com/rust-random/getrandom"
-  },
-  {
-    "authors": "Carl Lerche <me@carllerche.com>|Sean McArthur <sean@seanmonstar.com>",
-    "description": "An HTTP/2 client and server",
-    "license": "MIT",
-    "license_file": null,
-    "name": "h2",
-    "repository": "https://github.com/hyperium/h2"
   },
   {
     "authors": "Amanieu d'Antras <amanieu@gmail.com>",
@@ -1520,14 +1488,6 @@
     "repository": "https://github.com/jhpratt/powerfmt"
   },
   {
-    "authors": "The CryptoCorrosion Contributors",
-    "description": "Cross-platform cryptography-oriented low-level SIMD library.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "ppv-lite86",
-    "repository": "https://github.com/cryptocorrosion/cryptocorrosion"
-  },
-  {
     "authors": "Emilio Cobos Álvarez <emilio@crisal.io>",
     "description": "A library intending to be a base dependency to expose a precomputed hash",
     "license": "MIT",
@@ -1669,38 +1629,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "name": "rand",
-    "repository": "https://github.com/rust-random/rand"
-  },
-  {
-    "authors": "The Rand Project Developers|The Rust Project Developers",
-    "description": "Random number generators and other randomness functionality.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "rand",
-    "repository": "https://github.com/rust-random/rand"
-  },
-  {
-    "authors": "The Rand Project Developers|The Rust Project Developers|The CryptoCorrosion Contributors",
-    "description": "ChaCha random number generator",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "rand_chacha",
-    "repository": "https://github.com/rust-random/rand"
-  },
-  {
-    "authors": "The Rand Project Developers|The Rust Project Developers|The CryptoCorrosion Contributors",
-    "description": "ChaCha random number generator",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "rand_chacha",
-    "repository": "https://github.com/rust-random/rand"
-  },
-  {
-    "authors": "The Rand Project Developers|The Rust Project Developers",
-    "description": "Core random number generator traits and tools for implementation.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "rand_core",
     "repository": "https://github.com/rust-random/rand"
   },
   {
@@ -2144,22 +2072,6 @@
     "repository": "https://github.com/mystor/synstructure"
   },
   {
-    "authors": "Mullvad VPN",
-    "description": "Bindings to SystemConfiguration framework for macOS",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "system-configuration",
-    "repository": "https://github.com/mullvad/system-configuration-rs"
-  },
-  {
-    "authors": "Mullvad VPN",
-    "description": "Low level bindings to SystemConfiguration framework for macOS",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "system-configuration-sys",
-    "repository": "https://github.com/mullvad/system-configuration-rs"
-  },
-  {
     "authors": "Steven Allen <steven@stebalien.com>|The Rust Project Developers|Ashley Mannix <ashleymannix@live.com.au>|Jason White <me@jasonwhite.io>",
     "description": "A library for managing temporary files and directories.",
     "license": "Apache-2.0 OR MIT",
@@ -2174,14 +2086,6 @@
     "license_file": null,
     "name": "tendril",
     "repository": "https://github.com/servo/html5ever"
-  },
-  {
-    "authors": "Andrew Chin <achin@eminence32.net>",
-    "description": "Gets the size of your Linux or Windows terminal",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "terminal_size",
-    "repository": "https://github.com/eminence/terminal-size"
   },
   {
     "authors": "David Tolnay <dtolnay@gmail.com>",
@@ -2286,14 +2190,6 @@
     "license_file": null,
     "name": "tokio-macros",
     "repository": "https://github.com/tokio-rs/tokio"
-  },
-  {
-    "authors": "Daniel Abramov <dabramov@snapview.de>|Alexey Galakhov <agalakhov@snapview.de>",
-    "description": "Tokio binding for Tungstenite, the Lightweight stream-based WebSocket implementation",
-    "license": "MIT",
-    "license_file": null,
-    "name": "tokio-tungstenite",
-    "repository": "https://github.com/snapview/tokio-tungstenite"
   },
   {
     "authors": "Tokio Contributors <team@tokio.rs>",
@@ -2406,14 +2302,6 @@
     "license_file": null,
     "name": "try-lock",
     "repository": "https://github.com/seanmonstar/try-lock"
-  },
-  {
-    "authors": "Alexey Galakhov|Daniel Abramov",
-    "description": "Lightweight stream-based WebSocket implementation",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "tungstenite",
-    "repository": "https://github.com/snapview/tungstenite-rs"
   },
   {
     "authors": "Jacob Brown <kardeiz@gmail.com>",
@@ -2825,14 +2713,6 @@
   },
   {
     "authors": "Microsoft",
-    "description": "Windows registry",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "windows-registry",
-    "repository": "https://github.com/microsoft/windows-rs"
-  },
-  {
-    "authors": "Microsoft",
     "description": "Windows error handling",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -3118,22 +2998,6 @@
     "license_file": null,
     "name": "yoke-derive",
     "repository": "https://github.com/unicode-org/icu4x"
-  },
-  {
-    "authors": "Joshua Liebow-Feeser <joshlf@google.com>|Jack Wrenn <jswrenn@amazon.com>",
-    "description": "Zerocopy makes zero-cost memory manipulation effortless. We write \"unsafe\" so you don't have to.",
-    "license": "Apache-2.0 OR BSD-2-Clause OR MIT",
-    "license_file": null,
-    "name": "zerocopy",
-    "repository": "https://github.com/google/zerocopy"
-  },
-  {
-    "authors": "Joshua Liebow-Feeser <joshlf@google.com>|Jack Wrenn <jswrenn@amazon.com>",
-    "description": "Custom derive for traits from the zerocopy crate",
-    "license": "Apache-2.0 OR BSD-2-Clause OR MIT",
-    "license_file": null,
-    "name": "zerocopy-derive",
-    "repository": "https://github.com/google/zerocopy"
   },
   {
     "authors": "Manish Goregaokar <manishsmail@gmail.com>",

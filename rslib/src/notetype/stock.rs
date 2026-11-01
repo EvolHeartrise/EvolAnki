@@ -209,7 +209,7 @@ mod test {
             OriginalStockKind::Unknown
         );
         // an error, as for any notetype without a known stock kind
-        assert!(col.restore_notetype_to_stock(nt.id.into(), None).is_err());
+        assert!(col.restore_notetype_to_stock(nt.id, None).is_err());
         col.remove_notetype(nt.id)?;
         Ok(())
     }
