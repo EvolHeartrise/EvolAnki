@@ -25,7 +25,6 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use axum::body::Bytes;
-use axum::extract::DefaultBodyLimit;
 use axum::extract::Request;
 use axum::extract::State;
 use axum::http::header;
@@ -125,7 +124,6 @@ async fn run(args: Args) -> Result<()> {
     });
     let app = Router::new()
         .fallback(handle)
-        .layer(DefaultBodyLimit::max(MAX_REQUEST_BYTES))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             guard::check_request,

@@ -1,8 +1,8 @@
 # Local web server
 
 `evolanki-server` (`rslib/web-server`) serves a collection to a browser on the
-same machine. It links the Rust backend directly; Python and Qt are not used at
-build or run time, beyond what the pages' build scripts do.
+same machine. It links the Rust backend directly, with no Python or Qt at run time.
+Building it doesn't set up the Python environment either.
 
 ## Run
 

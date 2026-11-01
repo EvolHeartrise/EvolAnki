@@ -10,5 +10,5 @@
             "@generated/*": ["./out/ts/lib/generated/*"]
         }
     },
-    "include": ["playwright.config.ts", "ts/tests/e2e/**/*.ts"]
+    "include": ["playwright.config.ts", "playwright.web.config.ts", "ts/tests/e2e/**/*.ts", "ts/tests/web/**/*.ts"]
 }
