@@ -363,11 +363,92 @@ pub(crate) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<V
 mod test {
     use std::borrow::Cow;
 
+    use tempfile::tempdir;
+
+    use crate::media::files::add_data_to_folder_uniquely;
     use crate::media::files::add_hash_suffix_to_file_stem;
     use crate::media::files::normalize_filename;
     use crate::media::files::sha1_of_data;
     use crate::media::files::truncate_filename;
     use crate::media::MAX_MEDIA_FILENAME_LENGTH;
+
+    #[test]
+    fn adding() {
+        let dir = tempdir().unwrap();
+        let dpath = dir.path();
+
+        // no existing file case
+        let h1 = sha1_of_data(b"hello");
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "test.mp3", b"hello", h1).unwrap(),
+            "test.mp3"
+        );
+
+        // same contents case
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "test.mp3", b"hello", h1).unwrap(),
+            "test.mp3"
+        );
+
+        // same contents, filenames differ only by case
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "Test.mp3", b"hello", h1).unwrap(),
+            "test.mp3"
+        );
+
+        // different contents, filenames differ only by case
+        let h2 = sha1_of_data(b"hello1");
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "Test.mp3", b"hello1", h2).unwrap(),
+            "test-88fdd585121a4ccb3d1540527aee53a77c77abb8.mp3"
+        );
+
+        // same contents, filenames differ only by case
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "test.mp3", b"hello1", h2).unwrap(),
+            "test-88fdd585121a4ccb3d1540527aee53a77c77abb8.mp3"
+        );
+
+        // filename normalisation
+        assert_eq!(normalize_filename("cafe\u{301}.mp3"), "caf\u{e9}.mp3");
+
+        let h3 = sha1_of_data(b"hello3");
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "caf\u{e9}.mp3", b"hello3", h3).unwrap(),
+            "caf\u{e9}.mp3"
+        );
+
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "cafe\u{301}.mp3", b"hello3", h3).unwrap(),
+            "caf\u{e9}.mp3"
+        );
+
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "Cafe\u{301}.mp3", b"hello3", h3).unwrap(),
+            "caf\u{e9}.mp3"
+        );
+
+        let h4 = sha1_of_data(b"hello4");
+        assert_eq!(
+            add_data_to_folder_uniquely(dpath, "Cafe\u{301}.mp3", b"hello4", h4).unwrap(),
+            "caf\u{e9}-8f0bc65da355c6cb184de9d17bfe1baaeefbd443.mp3"
+        );
+
+        let mut written_files = std::fs::read_dir(dpath)
+            .unwrap()
+            .map(|d| d.unwrap().file_name().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        written_files.sort();
+        assert_eq!(
+            written_files,
+            vec![
+                "caf\u{e9}-8f0bc65da355c6cb184de9d17bfe1baaeefbd443.mp3",
+                "caf\u{e9}.mp3",
+                "test-88fdd585121a4ccb3d1540527aee53a77c77abb8.mp3",
+                "test.mp3",
+            ]
+        );
+    }
 
     #[test]
     fn normalize() {

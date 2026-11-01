@@ -211,8 +211,6 @@ fn deck_names_to_proto(names: Vec<(DeckId, String)>) -> anki_proto::decks::DeckN
 #[cfg(test)]
 mod tests {
 
-    use strum::IntoEnumIterator;
-
     use super::*;
     use crate::decks::FilteredDeck;
     use crate::decks::FilteredSearchOrder;

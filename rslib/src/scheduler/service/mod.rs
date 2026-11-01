@@ -324,6 +324,7 @@ mod tests {
 
     use crate::card::CardQueue;
     use crate::card::CardType;
+    use crate::config::SchedulerVersion;
     use crate::prelude::*;
     use crate::services::SchedulerService;
     use crate::tests::NoteAdder;
@@ -367,6 +368,71 @@ mod tests {
         )
         .unwrap();
         card_id
+    }
+
+    #[test]
+    fn custom_study_extends_new_limit() {
+        let mut col = Collection::new();
+
+        let _ = SchedulerService::custom_study(
+            &mut col,
+            anki_proto::scheduler::CustomStudyRequest {
+                deck_id: 1,
+                value: Some(anki_proto::scheduler::custom_study_request::Value::NewLimitDelta(5)),
+            },
+        )
+        .unwrap();
+
+        let counts =
+            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
+                .unwrap();
+        assert_eq!(counts.new, -5, "new limit was extended by the delta");
+    }
+
+    #[test]
+    fn extend_limits_subtracts_from_studied_counts() {
+        let mut col = Collection::new();
+
+        // Pretend 5 new / 5 review cards were already studied today.
+        let usn = col.usn().unwrap();
+        let today = col.timing_today().unwrap().days_elapsed;
+        col.update_deck_stats(
+            today,
+            usn,
+            anki_proto::scheduler::UpdateStatsRequest {
+                deck_id: 1,
+                new_delta: 5,
+                review_delta: 5,
+                millisecond_delta: 0,
+            },
+        )
+        .unwrap();
+
+        // Extending the limits lowers the studied counts, freeing up more cards.
+        SchedulerService::extend_limits(
+            &mut col,
+            anki_proto::scheduler::ExtendLimitsRequest {
+                deck_id: 1,
+                new_delta: 2,
+                review_delta: 1,
+            },
+        )
+        .unwrap();
+
+        let counts =
+            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
+                .unwrap();
+        assert_eq!(counts.new, 3, "5 studied minus a limit extension of 2");
+        assert_eq!(counts.review, 4, "5 studied minus a limit extension of 1");
+    }
+
+    #[test]
+    fn upgrade_switches_collection_to_v2() {
+        let mut col = Collection::new();
+
+        col.upgrade_to_v2_scheduler().unwrap();
+
+        assert_eq!(col.scheduler_version(), SchedulerVersion::V2);
     }
 
     #[test]

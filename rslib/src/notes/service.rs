@@ -135,6 +135,54 @@ mod test {
     use crate::services::NotesService;
 
     #[test]
+    fn remove_notes() -> Result<()> {
+        let mut col = Collection::new();
+        let nt = col.basic_notetype();
+        let mut note_ids = vec![];
+        let mut remaining_nids = vec![];
+        for idx in 0..10 {
+            let mut note = nt.new_note();
+            col.add_note(&mut note, DeckId(1))?;
+            if idx < 3 {
+                note_ids.push(note.id.0);
+            } else {
+                remaining_nids.push(note.id.0);
+            }
+        }
+        let card_ids: Vec<_> = remaining_nids
+            .iter()
+            .copied()
+            .flat_map(|nid| {
+                col.cards_of_note(anki_proto::notes::NoteId { nid })
+                    .unwrap()
+                    .cids
+            })
+            .collect();
+        let response = NotesService::remove_notes(
+            &mut col,
+            RemoveNotesRequest {
+                // note_ids takes precedence
+                note_ids: note_ids.clone(),
+                // An invalid ID to confirm card_ids is unused when note_ids is set
+                card_ids: [0].into(),
+            },
+        )?;
+        assert_eq!(response.count as usize, note_ids.len());
+        assert_ne!(response.changes, None);
+        let response = NotesService::remove_notes(
+            &mut col,
+            RemoveNotesRequest {
+                note_ids: vec![],
+                card_ids: card_ids.clone(),
+            },
+        )?;
+        assert_eq!(response.count as usize, card_ids.len());
+        assert_ne!(response.changes, None);
+
+        Ok(())
+    }
+
+    #[test]
     fn note_added() -> Result<()> {
         let mut col = Collection::new();
         let nt = col.basic_notetype();
