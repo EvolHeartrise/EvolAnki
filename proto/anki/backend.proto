@@ -22,12 +22,6 @@ message BackendInit {
   bool server = 3;
 }
 
-message I18nBackendInit {
-  // Language identifiers in the same format as BackendInit.preferred_langs.
-  repeated string preferred_langs = 4;
-  string locale_folder_path = 5;
-}
-
 message BackendError {
   enum Kind {
     INVALID_INPUT = 0;

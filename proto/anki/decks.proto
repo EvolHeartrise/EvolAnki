@@ -138,11 +138,6 @@ message Deck {
   }
 }
 
-message AddOrUpdateDeckLegacyRequest {
-  bytes deck = 1;
-  bool preserve_usn_and_mtime = 2;
-}
-
 message DeckTreeRequest {
   // if non-zero, counts for the provided timestamp will be included
   int64 now = 1;
@@ -200,11 +195,6 @@ message DeckNames {
 message DeckNameId {
   int64 id = 1;
   string name = 2;
-}
-
-message ReparentDecksRequest {
-  repeated int64 deck_ids = 1;
-  int64 new_parent = 2;
 }
 
 message RenameDeckRequest {

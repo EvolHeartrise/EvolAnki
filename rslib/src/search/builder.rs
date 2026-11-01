@@ -150,11 +150,6 @@ impl SearchNode {
         }
     }
 
-    /// Construct [SearchNode] from an unescaped notetype name.
-    pub fn from_notetype_name(name: &str) -> Self {
-        Self::Notetype(escape_anki_wildcards_for_search_node(name))
-    }
-
     pub fn from_note_ids<I: IntoIterator<Item = N>, N: Into<NoteId>>(ids: I) -> Self {
         Self::NoteIds(ids.into_iter().map(Into::into).join(","))
     }

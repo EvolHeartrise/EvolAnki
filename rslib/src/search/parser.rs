@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::sync::LazyLock;
 
-use anki_proto::search::search_node::FieldSearchMode as FieldSearchModeProto;
 use nom::branch::alt;
 use nom::bytes::complete::escaped;
 use nom::bytes::complete::is_not;
@@ -54,16 +53,6 @@ pub enum FieldSearchMode {
     Normal,
     Regex,
     NoCombining,
-}
-
-impl From<FieldSearchModeProto> for FieldSearchMode {
-    fn from(mode: FieldSearchModeProto) -> Self {
-        match mode {
-            FieldSearchModeProto::Normal => Self::Normal,
-            FieldSearchModeProto::Regex => Self::Regex,
-            FieldSearchModeProto::Nocombining => Self::NoCombining,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

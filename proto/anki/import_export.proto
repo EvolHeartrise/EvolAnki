@@ -198,22 +198,6 @@ message CsvMetadata {
   MatchScope match_scope = 16;
 }
 
-message ExportCardCsvRequest {
-  string out_path = 1;
-  bool with_html = 2;
-  ExportLimit limit = 3;
-}
-
-message ExportNoteCsvRequest {
-  string out_path = 1;
-  bool with_html = 2;
-  bool with_tags = 3;
-  bool with_deck = 4;
-  bool with_notetype = 5;
-  bool with_guid = 6;
-  ExportLimit limit = 7;
-}
-
 message ExportLimit {
   oneof limit {
     generic.Empty whole_collection = 1;

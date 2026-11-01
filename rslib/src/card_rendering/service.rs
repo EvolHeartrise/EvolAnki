@@ -153,7 +153,6 @@ mod test {
     use anki_proto::card_rendering::RenderExistingCardRequest;
     use anki_proto::card_rendering::RenderMarkdownRequest;
     
-    use anki_proto::card_rendering::RenderUncommittedCardRequest;
     
     
     

@@ -141,11 +141,6 @@ message SchedTimingTodayResponse {
   int64 next_day_at = 2;
 }
 
-message StudiedTodayMessageRequest {
-  uint32 cards = 1;
-  double seconds = 2;
-}
-
 message UpdateStatsRequest {
   int64 deck_id = 1;
   int32 new_delta = 2;
@@ -181,15 +176,6 @@ message ScheduleCardsAsNewRequest {
   optional Context context = 5;
 }
 
-message ScheduleCardsAsNewDefaultsRequest {
-  ScheduleCardsAsNewRequest.Context context = 1;
-}
-
-message ScheduleCardsAsNewDefaultsResponse {
-  bool restore_position = 1;
-  bool reset_counts = 2;
-}
-
 message SetDueDateRequest {
   repeated int64 card_ids = 1;
   string days = 2;
@@ -207,11 +193,6 @@ message SortCardsRequest {
   uint32 step_size = 3;
   bool randomize = 4;
   bool shift_existing = 5;
-}
-
-message SortDeckRequest {
-  int64 deck_id = 1;
-  bool randomize = 2;
 }
 
 message SchedulingStates {
@@ -281,32 +262,6 @@ message SchedulingContext {
   optional float desired_retention = 4;
 }
 
-message CustomStudyDefaultsRequest {
-  int64 deck_id = 1;
-}
-
-message CustomStudyDefaultsResponse {
-  message Tag {
-    string name = 1;
-    bool include = 2;
-    bool exclude = 3;
-  }
-
-  repeated Tag tags = 1;
-  uint32 extend_new = 2;
-  uint32 extend_review = 3;
-  uint32 available_new = 4;
-  uint32 available_review = 5;
-  // in v3, counts for children are provided separately
-  uint32 available_new_in_children = 6;
-  uint32 available_review_in_children = 7;
-}
-
-message RepositionDefaultsResponse {
-  bool random = 1;
-  bool shift = 2;
-}
-
 message ComputeFsrsParamsRequest {
   /// The search used to gather cards for training
   string search = 1;
@@ -320,32 +275,6 @@ message ComputeFsrsParamsResponse {
   repeated float params = 1;
   uint32 fsrs_items = 2;
   optional bool health_check_passed = 3;
-}
-
-message ComputeFsrsParamsFromItemsRequest {
-  repeated FsrsItem items = 1;
-}
-
-message FsrsBenchmarkRequest {
-  repeated FsrsItem train_set = 1;
-}
-
-message FsrsBenchmarkResponse {
-  repeated float params = 1;
-}
-
-message ExportDatasetRequest {
-  uint32 min_entries = 1;
-  string target_path = 2;
-}
-
-message FsrsItem {
-  repeated FsrsReview reviews = 1;
-}
-
-message FsrsReview {
-  uint32 rating = 1;
-  uint32 delta_t = 2;
 }
 
 message SimulateFsrsReviewRequest {

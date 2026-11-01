@@ -57,11 +57,6 @@ message FsrsMemoryState {
   float difficulty = 2;
 }
 
-message UpdateCardsRequest {
-  repeated Card cards = 1;
-  bool skip_undo_entry = 2;
-}
-
 message RemoveCardsRequest {
   repeated int64 card_ids = 1;
 }

@@ -9,7 +9,6 @@ package anki.notes;
 
 import "anki/notetypes.proto";
 import "anki/collection.proto";
-import "anki/decks.proto";
 import "anki/cards.proto";
 
 service NotesService {
@@ -54,50 +53,14 @@ message AddNoteResponse {
   int64 note_id = 2;
 }
 
-message AddNotesRequest {
-  repeated AddNoteRequest requests = 1;
-}
-
-message AddNotesResponse {
-  collection.OpChanges changes = 1;
-  repeated int64 nids = 2;
-}
-
 message UpdateNotesRequest {
   repeated Note notes = 1;
   bool skip_undo_entry = 2;
 }
 
-message DefaultsForAddingRequest {
-  int64 home_deck_of_current_review_card = 1;
-}
-
-message DeckAndNotetype {
-  int64 deck_id = 1;
-  int64 notetype_id = 2;
-}
-
 message RemoveNotesRequest {
   repeated int64 note_ids = 1;
   repeated int64 card_ids = 2;
-}
-
-message ClozeNumbersInNoteResponse {
-  repeated uint32 numbers = 1;
-}
-
-message AfterNoteUpdatesRequest {
-  repeated int64 nids = 1;
-  bool mark_notes_modified = 2;
-  bool generate_cards = 3;
-}
-
-message FieldNamesForNotesRequest {
-  repeated int64 nids = 1;
-}
-
-message FieldNamesForNotesResponse {
-  repeated string fields = 1;
 }
 
 message NoteFieldsCheckResponse {

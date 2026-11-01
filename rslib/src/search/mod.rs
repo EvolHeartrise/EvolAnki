@@ -11,7 +11,6 @@ pub(crate) mod writer;
 pub use builder::JoinSearches;
 pub use builder::Negated;
 pub use builder::SearchBuilder;
-pub use parser::parse as parse_search;
 pub use parser::FieldSearchMode;
 pub use parser::Node;
 pub use parser::PropertyKind;

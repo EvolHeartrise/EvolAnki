@@ -572,7 +572,7 @@ pub(crate) mod test {
         include_bytes!("../../tests/support/mediacheck.anki2");
 
     use std::collections::HashMap;
-    use std::path::Path;
+    
 
     use anki_io::create_dir;
     use anki_io::read_to_string;

@@ -66,16 +66,6 @@ message OpChanges {
   bool study_queues = 10;
 }
 
-// Allows frontend code to extract changes from other messages like
-// ImportResponse without decoding other potentially large fields.
-message OpChangesOnly {
-  collection.OpChanges changes = 1;
-}
-
-message NestedOpChanges {
-  OpChangesOnly changes = 1;
-}
-
 message OpChangesWithCount {
   OpChanges changes = 1;
   uint32 count = 2;
@@ -140,15 +130,4 @@ message ComputeMemoryProgress {
   uint32 current_cards = 1;
   uint32 total_cards = 2;
   string label = 3;
-}
-
-message CreateBackupRequest {
-  string backup_folder = 1;
-  // Create a backup even if the configured interval hasn't elapsed yet.
-  bool force = 2;
-  bool wait_for_completion = 3;
-}
-
-message GetCustomColoursResponse {
-  repeated string colours = 1;
 }
