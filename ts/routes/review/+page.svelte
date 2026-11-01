@@ -43,7 +43,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         avRefsToPlayIcons,
         fillInComparison,
         finishRendering,
-        mediaUrl,
         parseTypeAnswer,
         pendingNotice,
         replaceTypeAnswer,
@@ -52,6 +51,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         typeAnswerInput,
         withStyle,
     } from "./lib";
+    import { MediaPlayer, unlockMedia } from "./media";
 
     export let data: PageData;
 
@@ -99,8 +99,13 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     let timerSeq = -1;
     let timer = new AnswerTimer();
     let resolveTyped: ((value: string) => void) | null = null;
-    let audioQueue: string[] = [];
-    let audio: HTMLAudioElement;
+    let mediaBlocked = false;
+    let videoShowing = false;
+    let mediaContainer: HTMLElement;
+    const player = new MediaPlayer(data.frameBase, {
+        onBlocked: (blocked) => (mediaBlocked = blocked),
+        onVideo: (showing) => (videoShowing = showing),
+    });
 
     const ratingButtons: [CardAnswer_Rating, string, string][] = [
         [CardAnswer_Rating.AGAIN, tr.studyingAgain(), "again"],
@@ -268,7 +273,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     async function nextCard(): Promise<void> {
         side = "transition";
-        stopAudio();
+        player.stop();
         error = "";
         try {
             queued = await getQueuedCards(
@@ -308,7 +313,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             }
             side = "question";
             if (rendered.autoplay) {
-                playTags(rendered.questionTags);
+                player.play(rendered.questionTags);
             }
         } catch (err) {
             showFailure(err);
@@ -333,7 +338,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             sendAnswer();
             side = "answer";
             if (rendered.autoplay) {
-                playTags(rendered.answerTags);
+                player.play(rendered.answerTags);
             }
         } catch (err) {
             showFailure(err);
@@ -403,40 +408,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         await nextCard();
     }
 
-    // Audio
+    // Audio and video
     // ---------------------------------------------------------
-
-    function stopAudio(): void {
-        audioQueue = [];
-        audio?.pause();
-    }
-
-    /** Replaces what's playing. TTS tags have nothing to play them yet. */
-    function playTags(tags: AVTag[]): void {
-        audioQueue = tags.flatMap((tag) =>
-            tag.value.case === "soundOrVideo" ? [tag.value.value] : [],
-        );
-        playNext();
-    }
-
-    function playNext(): void {
-        const filename = audioQueue.shift();
-        if (filename === undefined) {
-            return;
-        }
-        audio.src = mediaUrl(data.frameBase, filename);
-        // Browsers may refuse until the page has had some interaction. There's
-        // nothing to do about that but let the user press replay.
-        audio.play().catch((err) => {
-            if (err.name !== "AbortError") {
-                console.debug(err);
-            }
-        });
-    }
 
     function replay(): void {
         if (rendered && side !== "transition") {
-            playTags(
+            player.play(
                 tagsToReplay(
                     shownSide,
                     rendered.questionTags,
@@ -451,7 +428,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         const tags = tagSide === "q" ? rendered?.questionTags : rendered?.answerTags;
         const tag = tags?.[index];
         if (tag) {
-            playTags([tag]);
+            player.play([tag]);
         }
     }
 
@@ -489,6 +466,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     function onKeyDown(event: KeyboardEvent): void {
+        unlockMedia();
         if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {
             return;
         }
@@ -557,18 +535,22 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     $: currentQueue = current?.queue;
+    $: hasMedia =
+        !!rendered &&
+        (rendered.questionTags.length > 0 || rendered.answerTags.length > 0);
 
     onMount(() => {
+        player.mount(mediaContainer);
         nextCard();
     });
 
     onDestroy(() => {
         clearTimeout(noticeTimer);
-        stopAudio();
+        player.unmount();
     });
 </script>
 
-<svelte:window on:keydown={onKeyDown} />
+<svelte:window on:keydown={onKeyDown} on:click={unlockMedia} />
 
 <div class="reviewer">
     <div class="card-area">
@@ -587,14 +569,26 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         <div class="notice error" role="alert">{error}</div>
     {/if}
 
-    <audio bind:this={audio} on:ended={playNext} on:error={playNext} hidden></audio>
+    <div
+        class="media"
+        class:video-showing={videoShowing}
+        bind:this={mediaContainer}
+    ></div>
+
+    {#if mediaBlocked}
+        <button class="btn btn-primary play-blocked" on:click={() => player.resume()}>
+            ▶ Tap to play sound
+        </button>
+    {/if}
 
     <footer>
         <div class="tools">
             <button disabled={!undoLabel} title={undoLabel} on:click={performUndo}>
                 {tr.undoUndo()}
             </button>
-            <button on:click={replay}>{tr.actionsReplayAudio()}</button>
+            {#if hasMedia}
+                <button on:click={replay}>{tr.actionsReplayAudio()}</button>
+            {/if}
         </div>
 
         <div class="counts">
@@ -647,8 +641,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     .reviewer {
         display: flex;
         flex-direction: column;
-        // less the height of the navigation in +layout.svelte
-        height: calc(100dvh - 2.5rem);
+        // less the navigation in +layout.svelte; dvh excludes a phone's browser bars
+        height: calc(100vh - var(--app-nav-height));
+        height: calc(100dvh - var(--app-nav-height));
     }
 
     .card-area {
@@ -667,6 +662,26 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         }
     }
 
+    .media {
+        display: none;
+
+        &.video-showing {
+            display: block;
+            background: #000;
+        }
+
+        :global(video) {
+            display: block;
+            width: 100%;
+            max-height: 40vh;
+        }
+    }
+
+    .play-blocked {
+        min-height: 3rem;
+        border-radius: 0;
+    }
+
     footer {
         display: grid;
         grid-template-columns: 1fr auto 1fr;
@@ -674,6 +689,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         align-items: center;
         gap: 0.5em 1em;
         padding: 0.6em 1em;
+        padding-bottom: max(0.6em, env(safe-area-inset-bottom));
+        padding-left: max(1em, env(safe-area-inset-left));
+        padding-right: max(1em, env(safe-area-inset-right));
         border-top: 1px solid var(--border-subtle);
         background: var(--canvas-elevated);
     }
@@ -743,14 +761,32 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         }
     }
 
+    // A phone, or a narrow window: the answer buttons go along the bottom edge,
+    // in reach of a thumb, with the rest above them.
     @media (max-width: 52em) {
         footer {
-            grid-template-columns: 1fr;
-            grid-template-areas: "counts" "actions" "tools";
-            justify-items: center;
+            grid-template-columns: 1fr auto;
+            grid-template-areas: "counts tools" "actions actions";
+            padding-top: 0.25em;
         }
 
-        .tools {
+        .tools button {
+            min-height: 44px;
+            padding: 0 0.9em;
+            font-size: 0.9em;
+        }
+
+        .actions {
+            align-items: stretch;
+            gap: 0.4em;
+        }
+
+        .show-answer,
+        .rating {
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 3.75rem;
+            padding: 0.25em;
             justify-content: center;
         }
     }

@@ -71,7 +71,7 @@ _coverage-ts html='':
 [private]
 _install-playwright-browsers:
     {{ ninja }} node_modules
-    {{ playwright_env }} {{ yarn }} playwright install chromium
+    {{ playwright_env }} {{ yarn }} playwright install chromium webkit
 
 # Check formatting (fast, no build needed)
 fmt:

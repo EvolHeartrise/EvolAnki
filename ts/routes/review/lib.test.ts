@@ -16,6 +16,7 @@ import {
     tagsToReplay,
     typeAnswerInput,
 } from "./lib";
+import { isVideoFile, pickVoice } from "./media";
 
 test("finishRendering injects the front side only into the answer", () => {
     const nodes = [
@@ -88,4 +89,25 @@ test("replay", () => {
 
 test("media urls can't leave the media path", () => {
     expect(mediaUrl("/_frame/t/", "a b#?.mp3")).toBe("/_frame/t/m/a%20b%23%3F.mp3");
+});
+
+test("video files are told from audio by extension", () => {
+    expect(isVideoFile("a.mp4")).toBe(true);
+    expect(isVideoFile("clip.WEBM")).toBe(true);
+    expect(isVideoFile("a.mp3")).toBe(false);
+    expect(isVideoFile("a.ogg")).toBe(false);
+    expect(isVideoFile("noextension")).toBe(false);
+});
+
+test("TTS voices are picked by name, then language, then its region", () => {
+    const voices = [
+        { name: "Alice", lang: "en-GB" },
+        { name: "Bob", lang: "en-US" },
+        { name: "Yuki", lang: "ja_JP" },
+    ];
+    expect(pickVoice(voices, ["Nobody", "Alice"], "en_US")).toBe(0);
+    expect(pickVoice(voices, [], "en_US")).toBe(1);
+    expect(pickVoice(voices, [], "ja_JP")).toBe(2);
+    expect(pickVoice(voices, [], "en_AU")).toBe(0);
+    expect(pickVoice(voices, [], "fr_FR")).toBe(-1);
 });

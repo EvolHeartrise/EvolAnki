@@ -4,7 +4,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import net from "node:net";
-import { tmpdir } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
 
 // Playwright runs from the repo root, where its config lives.
@@ -13,14 +13,15 @@ const BINARY = join(REPO, "out/rust/debug/evolanki-server");
 const WEB_ROOT = join(REPO, "out/web");
 
 export class Server {
-    private constructor(private child: ChildProcess, readonly port: number) {}
+    private constructor(private child: ChildProcess, readonly port: number, readonly startOutput: string) {}
 
     get url(): string {
         return `http://127.0.0.1:${this.port}`;
     }
 
-    /** With no seed file, a new collection gets the demo content. */
-    static start(collection: string, seedFile?: string): Promise<Server> {
+    /** With no seed file, a new collection gets the demo content. `extraArgs` can
+        override the host, which is otherwise loopback, as tests shouldn't be on the LAN. */
+    static start(collection: string, seedFile?: string, extraArgs: string[] = []): Promise<Server> {
         if (!existsSync(BINARY)) {
             throw new Error(`${BINARY} is missing; see docs/web-server.md`);
         }
@@ -33,16 +34,20 @@ export class Server {
             "0",
             "--web-root",
             WEB_ROOT,
-            "--host",
-            "127.0.0.1",
+            ...(extraArgs.length ? extraArgs : ["--host", "127.0.0.1"]),
         ], { stdio: ["ignore", "pipe", "inherit"] });
         return new Promise((resolve, reject) => {
             child.once("exit", (code) => reject(new Error(`server exited: ${code}`)));
+            let output = "";
+            let started = false;
             child.stdout!.setEncoding("utf8").on("data", (text: string) => {
-                const match = text.match(/Listening on http:\/\/127\.0\.0\.1:(\d+)/);
-                if (match) {
+                output += text;
+                const match = output.match(/Listening on http:\/\/127\.0\.0\.1:(\d+)\n/);
+                // the lines after it are printed together, and start with those for a LAN
+                if (match && !started && (!extraArgs.length || output.includes("no login"))) {
+                    started = true;
                     child.removeAllListeners("exit");
-                    resolve(new Server(child, Number(match[1])));
+                    resolve(new Server(child, Number(match[1]), output));
                 }
             });
         });
@@ -75,6 +80,13 @@ export function tempCollection(): { path: string; cleanup: () => void } {
         path: join(dir, "col.anki2"),
         cleanup: () => rmSync(dir, { recursive: true, force: true }),
     };
+}
+
+/** This machine's address on its network, if it has one. */
+export function lanAddress(): string | undefined {
+    return Object.values(networkInterfaces())
+        .flat()
+        .find((address) => address?.family === "IPv4" && !address.internal)?.address;
 }
 
 /** Send a request verbatim, as browsers and fetch() normalise paths and refuse to set Host. */

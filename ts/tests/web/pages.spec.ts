@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { chromium, expect, type Page, test } from "@playwright/test";
 
 import { GetQueuedCardsRequest, QueuedCards } from "../../../out/ts/lib/generated/anki/scheduler_pb";
-import { rawRequest, Server, tempCollection } from "./server";
+import { lanAddress, rawRequest, Server, tempCollection } from "./server";
 
 const NEW_CARDS_LABEL = "New cards/day";
 
@@ -252,6 +252,56 @@ test("DNS rebinding is refused", async () => {
     } finally {
         await browser.close();
     }
+});
+
+test("reachable and usable through this machine's own LAN address", async ({ page }) => {
+    const ip = lanAddress();
+    test.skip(!ip, "this machine has no network address");
+    await server.stop();
+    server = await Server.start(collection.path, undefined, ["--host", "0.0.0.0"]);
+    expect(server.startOutput).toContain(`http://${ip}:${server.port}`);
+    expect(server.startOutput).toMatch(/\.local:\d+/);
+    expect(server.startOutput).toMatch(/WARNING.*no login.*anyone on your network/);
+
+    const problems = failOnPageProblems(page);
+    const lan = `http://${ip}:${server.port}`;
+    await page.goto(lan);
+    await page.locator(`tr[data-deck="Default"] .name a`).click();
+    await page.getByRole("button", { name: "Study Now" }).click();
+    // over plain HTTP this isn't a secure context, and all of it must work regardless
+    expect(await page.evaluate(() => window.isSecureContext)).toBe(false);
+    const card = page.frameLocator("iframe.sandboxed-frame").locator("#qa");
+    await expect(card).toContainText("Question");
+    await page.getByRole("button", { name: "Show Answer" }).click();
+    await expect(card).toContainText("Answer");
+    await page.locator("button[data-rating='3']").click();
+    await expect(page).toHaveURL(/\/review$/);
+    expect(problems).toEqual([]);
+
+    // A page on another origin (here, the same server by another name) is refused,
+    // with the browser's own headers, even though it's loopback and this one is private.
+    await page.goto(`${server.url}/graphs`);
+    const refused = await page.evaluate(async (target) => {
+        const response = await fetch(`${target}/_anki/getGraphPreferences`, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain" },
+            body: "x",
+        }).then((r) => r.status, (e) => String(e.name));
+        return response;
+    }, lan);
+    expect(refused).not.toBe(200);
+    const reply = await rawRequest(
+        server.port,
+        `POST /_anki/undo HTTP/1.1\r\nHost: ${ip}:${server.port}\r\nOrigin: http://evil.example\r\n`
+            + "Content-Type: application/binary\r\nConnection: close\r\nContent-Length: 0\r\n\r\n",
+    );
+    expect(reply).toMatch(/^HTTP\/1\.1 403/);
+    const rebound = await rawRequest(
+        server.port,
+        `GET /graphs HTTP/1.1\r\nHost: 203.0.113.9:${server.port}\r\nConnection: close\r\n\r\n`,
+    );
+    expect(rebound).toMatch(/^HTTP\/1\.1 403/);
 });
 
 test("media paths can't escape the media folder", async ({ page }) => {

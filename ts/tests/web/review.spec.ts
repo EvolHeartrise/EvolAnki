@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { type Browser, expect, type FrameLocator, type Page, test } from "@playwright/test";
+import { type Browser, devices, expect, type FrameLocator, type Page, test } from "@playwright/test";
 
 import { Server, tempCollection } from "./server";
 
@@ -488,7 +488,12 @@ test("the hint filter works without inline handlers", async ({ page }) => {
     await start({
         decks: [{ name: "Hints" }],
         notes: [{ deck: "Hints", notetype: "Hinted", fields: ["question", "the hint text", "a"] }],
-        notetypes: [{ name: "Hinted", fields: ["Front", "Extra", "Back"], front: "{{Front}}{{hint:Extra}}", back: "{{Back}}" }],
+        notetypes: [{
+            name: "Hinted",
+            fields: ["Front", "Extra", "Back"],
+            front: "{{Front}}{{hint:Extra}}",
+            back: "{{Back}}",
+        }],
     });
     const problems = failOnPageProblems(page);
     await study(page, "Hints");
@@ -723,17 +728,22 @@ test("the theme follows the browser's setting, in pages and cards", async ({ bro
         await page.goto(server.url);
         return { context, page, problems };
     };
+    /** Stylesheets arrive with the page's modules, which can be after the load event. */
+    const rendered = (page: Page) => page.locator("main.decks table").waitFor();
     const background = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const font = (page: Page) => page.evaluate(() => getComputedStyle(document.body).fontFamily);
 
     const light = await open("light");
+    // a script in the head sets this, so it needs nothing else to have loaded
     expect(await light.page.evaluate(() => document.documentElement.className)).not.toContain("night-mode");
+    await rendered(light.page);
     expect(await font(light.page)).toContain("sans-serif");
     expect(await font(light.page)).not.toMatch(/^"?Times/);
     const lightBackground = await background(light.page);
 
     const dark = await open("dark");
     expect(await dark.page.evaluate(() => document.documentElement.className)).toContain("night-mode");
+    await rendered(dark.page);
     expect(await background(dark.page)).not.toBe(lightBackground);
 
     await dark.page.emulateMedia({ colorScheme: "light" });
@@ -815,30 +825,50 @@ test("screenshots", async ({ browser }: { browser: Browser }) => {
         ],
         notes: [
             { deck: "Science", notetype: "Basic", fields: [`What is \\(E=mc^2\\)?`, "Mass-energy equivalence"] },
+            { deck: "Science", notetype: "Basic", fields: ["Second", "Card"] },
             BASIC("bonjour", "hello", "Languages::French"),
             { ...BASIC("merci", "thank you", "Languages::French"), due: true },
             BASIC("danke", "thank you", "Languages::German"),
         ],
     });
+    const viewports = {
+        desktop: { viewport: { width: 1100, height: 700 } },
+        mobile: { ...devices["Pixel 7"] },
+    };
     for (const scheme of ["light", "dark"] as const) {
-        const context = await browser.newContext({ colorScheme: scheme, viewport: { width: 1100, height: 700 } });
-        const page = await context.newPage();
-        await page.goto(server.url);
-        await page.locator(`tr[data-deck="Science"]`).waitFor();
-        await page.screenshot({ path: join(dir!, `decks-${scheme}.png`) });
-        await openDeck(page, "Science");
-        await expect(page.frameLocator(".description iframe").locator("b")).toBeVisible();
-        await page.waitForTimeout(100);
-        await page.screenshot({ path: join(dir!, `overview-${scheme}.png`) });
-        await page.getByRole("button", { name: "Study Now" }).click();
-        await expect(card(page).locator("mjx-container")).toBeVisible({ timeout: 20_000 });
-        await page.waitForTimeout(200);
-        await page.screenshot({ path: join(dir!, `question-${scheme}.png`) });
-        await page.keyboard.press("Space");
-        await expect(card(page)).toContainText("Mass-energy");
-        await expect(card(page).locator("mjx-container")).toBeVisible();
-        await page.waitForTimeout(200);
-        await page.screenshot({ path: join(dir!, `answer-${scheme}.png`) });
-        await context.close();
+        for (const [size, options] of Object.entries(viewports)) {
+            const context = await browser.newContext({ ...options, colorScheme: scheme });
+            const page = await context.newPage();
+            const shot = (name: string) => page.screenshot({ path: join(dir!, `${size}-${name}-${scheme}.png`) });
+            await page.goto(server.url);
+            await page.locator(`tr[data-deck="Languages"]`).waitFor();
+            if (await page.locator(`tr[data-deck="French"]`).count() === 0) {
+                await page.locator(`tr[data-deck="Languages"]`).getByRole("button").click();
+                await page.locator(`tr[data-deck="French"]`).waitFor();
+            }
+            await shot("decks");
+            await openDeck(page, "Science");
+            await expect(page.frameLocator(".description iframe").locator("b")).toBeVisible();
+            await page.waitForTimeout(100);
+            await shot("overview");
+            await page.getByRole("button", { name: "Study Now" }).click();
+            await expect(card(page).locator("mjx-container")).toBeVisible({ timeout: 20_000 });
+            await page.waitForTimeout(200);
+            await shot("question");
+            await page.getByRole("button", { name: "Show Answer" }).click();
+            await expect(card(page)).toContainText("Mass-energy");
+            await expect(card(page).locator("mjx-container")).toBeVisible();
+            await page.waitForTimeout(200);
+            await shot("answer");
+            await page.goto(`${server.url}/deck-options/1`);
+            await page.locator(".setting-title", { hasText: "New cards/day" }).first().waitFor();
+            await page.waitForTimeout(100);
+            await shot("options");
+            await page.goto(`${server.url}/graphs`);
+            await page.locator("svg").first().waitFor();
+            await page.waitForTimeout(300);
+            await shot("stats");
+            await context.close();
+        }
     }
 });

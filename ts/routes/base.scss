@@ -51,3 +51,27 @@ html {
     background-color: var(--canvas);
     color: var(--fg);
 }
+
+// Used by +layout.svelte and the reviewer, whose height depends on it.
+:root {
+    --app-nav-height: calc(44px + env(safe-area-inset-top));
+}
+
+// A tap acts at once, rather than waiting to see if it's a double-tap to zoom.
+a,
+button,
+input,
+label,
+select,
+summary {
+    touch-action: manipulation;
+}
+
+// iOS zooms the page when focusing a field with smaller text than this.
+@media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+        font-size: max(1em, 16px);
+    }
+}

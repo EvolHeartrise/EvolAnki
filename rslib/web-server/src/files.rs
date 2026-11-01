@@ -51,8 +51,18 @@ const SVELTEKIT_ROUTES: &[&str] = &[
 /// also stops a card from navigating its frame to another site.
 const FRAMING_SVELTEKIT_ROUTES: &[&str] = &["", "overview", "review", "congrats"];
 
-/// Tells the pages that they aren't in Qt; see ts/lib/tslib/webapp.ts.
-const WEB_APP_META: &[u8] = br#"<head><meta name="evolanki-web" content="1">"#;
+/// Runs before the page first paints, and before its load event. Without it the
+/// theme is only known once the page's modules have loaded and started, which
+/// on a phone at night is a visible flash of white. nightmode.ts then follows
+/// changes.
+const THEME_SCRIPT: &str = r#"(function () {
+    if (matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.documentElement.classList.add("night-mode");
+        document.documentElement.dataset.bsTheme = "dark";
+    }
+})();
+"#;
+const HEAD_WITH_THEME: &[u8] = br#"<head><script src="/_anki/theme.js"></script>"#;
 
 static SVELTEKIT_CSP_META: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
@@ -90,10 +100,16 @@ fn mime_for_path(path: &str) -> &'static str {
         "opus" | "oga" => "audio/ogg",
         "wav" => "audio/wav",
         "flac" => "audio/flac",
+        "aac" => "audio/aac",
         "mp4" | "m4v" => "video/mp4",
         "webm" => "video/webm",
         "ogg" => "audio/ogg",
         "ogv" => "video/ogg",
+        "mov" => "video/quicktime",
+        "mkv" => "video/x-matroska",
+        "avi" => "video/x-msvideo",
+        "flv" => "video/x-flv",
+        "mpg" | "mpeg" => "video/mpeg",
         "pdf" => "application/pdf",
         "txt" => "text/plain",
         _ => "application/octet-stream",
@@ -173,6 +189,13 @@ pub async fn serve(state: &AppState, request: Request) -> Response {
     if path == "favicon.ico" {
         return bundled(state, host, "imgs/favicon.ico", &path, None).await;
     }
+    if path == "_anki/theme.js" {
+        return (
+            [(header::CONTENT_TYPE, "application/javascript")],
+            THEME_SCRIPT,
+        )
+            .into_response();
+    }
     if path == "_anki/frameBase" {
         return frame_base(state, &request);
     }
@@ -248,16 +271,13 @@ pub(crate) async fn bundled(
         let framing = FRAMING_SVELTEKIT_ROUTES.contains(&route);
         let csp = if framing {
             let hash = String::from_utf8_lossy(&captures[1]).into_owned();
-            format!(
-                "{}; frame-src 'self'",
-                untrusted_sveltekit_csp(host, &hash)
-            )
+            format!("{}; frame-src 'self'", untrusted_sveltekit_csp(host, &hash))
         } else {
             // the page's own CSP would stop a trusted page's inline scripts
             data = SVELTEKIT_CSP_META.replace(&data, &b""[..]).into_owned();
             TRUSTED_PAGE_CSP.to_string()
         };
-        data = HEAD_TAG.replace(&data, WEB_APP_META).into_owned();
+        data = HEAD_TAG.replace(&data, HEAD_WITH_THEME).into_owned();
         Some(csp)
     } else if mime == "text/html" {
         Some(TRUSTED_PAGE_CSP.to_string())

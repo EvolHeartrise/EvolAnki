@@ -10,6 +10,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import UntrustedHtml from "$lib/components/UntrustedHtml.svelte";
 
     import { pendingNotice } from "../../review/lib";
+    import { unlockMedia } from "../../review/media";
     import CongratsPage from "../../congrats/CongratsPage.svelte";
     import type { PageData } from "./$types";
 
@@ -23,6 +24,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     $: optionsHref = `/deck-options/${data.did}`;
 
     function study(): Promise<void> {
+        // phones need a tap to let media play later on
+        unlockMedia();
         return goto("/review");
     }
 
@@ -88,6 +91,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         max-width: 44em;
         margin: 1.5em auto;
         padding: 0 1em;
+        padding-left: max(1em, env(safe-area-inset-left));
+        padding-right: max(1em, env(safe-area-inset-right));
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
     h1 {
@@ -111,6 +117,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     .study {
         margin: 1em 0;
+        width: 100%;
+        max-width: 22em;
+        min-height: 3.25rem;
+        font-size: 1.1em;
     }
 
     .description {
@@ -124,6 +134,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         margin-top: 1.5em;
 
         a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 44px;
+            padding: 0 0.5em;
             color: var(--fg-link);
             text-decoration: none;
         }

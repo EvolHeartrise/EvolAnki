@@ -19,8 +19,8 @@ EvolAnki is a slim, FSRS-only spaced repetition web app, modified from Anki. Mai
 just run
 ```
 
-This builds the pages and server, then serves a demo collection at
-http://127.0.0.1:8765. Only use throwaway collections.
+This builds the pages and server, then serves a demo collection, on the network as well
+as at http://127.0.0.1:8765. Only use throwaway collections.
 
 ## Building/checking
 
@@ -42,7 +42,7 @@ lint issues.
 
 Browser e2e tests live in `ts/tests/web/` and run with `just test-e2e`. Each test
 starts evolanki-server on a temporary collection, and drives it with Playwright's
-Chromium.
+Chromium, and WebKit for phones.
 
 Be mindful that some changes (such as modifications to .proto files) may
 need a full build with `just check` first.

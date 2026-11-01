@@ -25,26 +25,28 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 </script>
 
 <tr class="deck" data-deck={node.name}>
-    <td class="name" style:padding-inline-start="{0.5 + depth * 1.25}em">
-        {#if hasChildren}
-            <button
-                class="collapse"
-                aria-expanded={!node.collapsed}
-                aria-label="{node.collapsed ? 'Expand' : 'Collapse'} {node.name}"
-                on:click={toggle}
+    <td class="name" style:padding-inline-start="{0.25 + depth * 1}em">
+        <div class="name-inner">
+            {#if hasChildren}
+                <button
+                    class="collapse"
+                    aria-expanded={!node.collapsed}
+                    aria-label="{node.collapsed ? 'Expand' : 'Collapse'} {node.name}"
+                    on:click={toggle}
+                >
+                    {node.collapsed ? "▸" : "▾"}
+                </button>
+            {:else}
+                <span class="collapse-spacer"></span>
+            {/if}
+            <a
+                class:filtered={node.filtered}
+                href="/overview/{node.deckId}"
+                on:click|preventDefault={() => onOpen(node.deckId)}
             >
-                {node.collapsed ? "▸" : "▾"}
-            </button>
-        {:else}
-            <span class="collapse-spacer"></span>
-        {/if}
-        <a
-            class:filtered={node.filtered}
-            href="/overview/{node.deckId}"
-            on:click|preventDefault={() => onOpen(node.deckId)}
-        >
-            {node.name}
-        </a>
+                {node.name}
+            </a>
+        </div>
     </td>
     <td class="count new-count" class:zero-count={!node.newCount}>{node.newCount}</td>
     <td class="count learn-count" class:zero-count={!node.learnCount}>
@@ -78,13 +80,23 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     td {
-        padding: 0.4em 0.5em;
+        padding: 0 8px;
     }
 
     .name {
         overflow-wrap: anywhere;
 
+        .name-inner {
+            display: flex;
+            align-items: center;
+        }
+
         a {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            min-height: 44px;
+            min-width: 0;
             color: var(--fg);
             text-decoration: none;
 
@@ -100,6 +112,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     .collapse,
     .collapse-spacer {
+        flex: none;
         display: inline-block;
         width: 1.25em;
     }
@@ -110,6 +123,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         background: none;
         color: var(--fg-subtle);
         cursor: pointer;
+        min-height: 44px;
+
+        // a tall ring around a small arrow, after a tap or click, looks like a bug
+        &:focus:not(:focus-visible) {
+            outline: none;
+        }
     }
 
     .count {
@@ -119,14 +138,31 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     .options {
         text-align: center;
+        padding: 0;
 
         a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
             color: var(--fg-subtle);
             text-decoration: none;
 
             &:hover {
                 color: var(--fg);
             }
+        }
+    }
+
+    @media (pointer: coarse), (max-width: 30em) {
+        .collapse,
+        .collapse-spacer {
+            width: 2em;
+        }
+
+        td {
+            padding: 0 5px;
         }
     }
 </style>

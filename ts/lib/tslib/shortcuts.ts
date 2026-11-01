@@ -170,4 +170,3 @@ export function registerShortcut(
 
     return on(target, event, handler);
 }
-

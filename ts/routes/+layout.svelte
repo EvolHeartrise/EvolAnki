@@ -27,7 +27,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         display: flex;
         justify-content: center;
         gap: 1.5em;
-        height: 2.5rem;
+        box-sizing: border-box;
+        height: var(--app-nav-height);
+        padding-top: env(safe-area-inset-top);
         align-items: center;
         border-bottom: 1px solid var(--border-subtle);
         background: var(--canvas-elevated);
@@ -35,7 +37,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         a {
             color: var(--fg);
             text-decoration: none;
-            padding: 0.25em 0.5em;
+            display: inline-flex;
+            align-items: center;
+            min-height: 44px;
+            min-width: 44px;
+            justify-content: center;
+            padding: 0 0.75em;
             border-radius: var(--border-radius);
 
             &:hover {

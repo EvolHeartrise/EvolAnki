@@ -60,6 +60,28 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         max-width: 44em;
         margin: 1.5em auto;
         padding: 0 1em;
+        padding-left: max(1em, env(safe-area-inset-left));
+        padding-right: max(1em, env(safe-area-inset-right));
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    @media (pointer: coarse) {
+        th {
+            padding-inline: 5px;
+        }
+    }
+
+    @media (max-width: 30em) {
+        .decks {
+            margin-top: 0.5em;
+            padding-left: max(0.25em, env(safe-area-inset-left));
+            padding-right: max(0.25em, env(safe-area-inset-right));
+        }
+
+        th {
+            font-size: 0.85em;
+            padding-inline: 5px;
+        }
     }
 
     table {
@@ -68,7 +90,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     th {
-        padding: 0.4em 0.5em;
+        padding: 0.4em 8px;
         font-weight: 600;
         text-align: end;
         white-space: nowrap;
