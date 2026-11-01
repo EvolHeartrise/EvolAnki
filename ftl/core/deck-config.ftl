@@ -84,17 +84,6 @@ deck-config-relearning-steps-tooltip =
     button on a review card will show it again 10 minutes later. If no delays
     are provided, the card will have its interval changed, without entering
     relearning. { -deck-config-delay-hint }
-deck-config-leech-threshold-tooltip =
-    The number of times `Again` needs to be pressed on a review card before it is
-    marked as a leech. Leeches are cards that consume a lot of your time, and
-    when a card is marked as a leech, it's a good idea to rewrite it, delete it, or
-    think of a mnemonic to help you remember it.
-# See actions-suspend-card and scheduling-tag-only for the wording
-deck-config-leech-action-tooltip =
-    `Tag Only`: Add a 'leech' tag to the note, and display a pop-up.
-    
-    `Suspend Card`: In addition to tagging the note, hide the card until it is
-    manually unsuspended.
 
 ## Gather order and sort order of cards
 
@@ -418,7 +407,6 @@ deck-config-clear-last-simulate = Clear Last Simulation
 deck-config-fsrs-simulator-radio-count = Reviews
 deck-config-advanced-settings = Advanced Settings
 deck-config-smooth-graph = Smooth graph
-deck-config-suspend-leeches = Suspend leeches
 deck-config-save-options-to-preset = Save Changes to Preset
 deck-config-save-options-to-preset-confirm = Overwrite the options in your current preset with the options that are currently set in the simulator?
 # Radio button in the FSRS simulation diagram (Deck options -> FSRS) selecting

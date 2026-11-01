@@ -1,11 +1,9 @@
 studying-again = Again
-studying-card-was-a-leech = Card was a leech.
 studying-delete-note = Delete Note
 studying-easy = Easy
 studying-empty = Empty
 studying-good = Good
 studying-hard = Hard
-studying-it-has-been-suspended = It has been suspended.
 studying-please-run-toolsempty-cards = Please run Tools>Empty Cards
 studying-show-answer = Show Answer
 studying-study-now = Study Now

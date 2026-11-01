@@ -109,7 +109,6 @@ impl CardStateUpdater {
                     as u32,
                 ease_factor,
                 lapses,
-                leeched: false,
                 memory_state,
             }
             .into(),
@@ -127,7 +126,6 @@ impl CardStateUpdater {
                         elapsed_days: interval,
                         ease_factor,
                         lapses,
-                        leeched: false,
                         memory_state,
                     },
                 }

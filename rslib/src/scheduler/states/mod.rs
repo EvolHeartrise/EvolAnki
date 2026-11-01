@@ -58,18 +58,6 @@ impl CardState {
         }
     }
 
-    /// Returns underlying review state, if it exists.
-    pub(crate) fn review_state(self) -> Option<ReviewState> {
-        match self {
-            CardState::Normal(state) => state.review_state(),
-            CardState::Filtered(state) => state.review_state(),
-        }
-    }
-
-    pub(crate) fn leeched(self) -> bool {
-        self.review_state().map(|r| r.leeched).unwrap_or_default()
-    }
-
     /// Returns the position if it's a [NewState].
     pub(super) fn new_position(&self) -> Option<u32> {
         match self {
@@ -101,7 +89,6 @@ pub(crate) struct StateContext<'a> {
     pub easy_multiplier: f32,
     pub interval_multiplier: f32,
     pub maximum_review_interval: u32,
-    pub leech_threshold: u32,
     pub load_balancer_ctx: Option<LoadBalancerContext<'a>>,
 
     // relearning
@@ -136,7 +123,6 @@ impl StateContext<'_> {
             easy_multiplier: 1.3,
             interval_multiplier: 1.0,
             maximum_review_interval: 36500,
-            leech_threshold: 8,
             load_balancer_ctx: None,
             relearn_steps: LearningSteps::new(&[10.0]),
             lapse_multiplier: 0.0,

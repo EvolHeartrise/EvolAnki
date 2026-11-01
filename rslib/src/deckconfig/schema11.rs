@@ -205,23 +205,11 @@ pub struct RevConfSchema11 {
     other: HashMap<String, Value>,
 }
 
-#[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone)]
-#[repr(u8)]
-#[derive(Default)]
-pub enum LeechAction {
-    Suspend = 0,
-    #[default]
-    TagOnly = 1,
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LapseConfSchema11 {
     #[serde(deserialize_with = "default_on_invalid")]
     delays: Vec<f32>,
-    #[serde(deserialize_with = "default_on_invalid")]
-    leech_action: LeechAction,
-    leech_fails: u32,
     min_int: u32,
     mult: f32,
 
@@ -259,8 +247,6 @@ impl Default for LapseConfSchema11 {
     fn default() -> Self {
         LapseConfSchema11 {
             delays: vec![10.0],
-            leech_action: LeechAction::default(),
-            leech_fails: 8,
             min_int: 1,
             mult: 0.0,
             other: Default::default(),
@@ -363,8 +349,6 @@ impl From<DeckConfSchema11> for DeckConfig {
                 review_order: c.review_order,
                 new_mix: c.new_mix,
                 interday_learning_mix: c.interday_learning_mix,
-                leech_action: c.lapse.leech_action as i32,
-                leech_threshold: c.lapse.leech_fails,
                 disable_autoplay: !c.autoplay,
                 cap_answer_time_to_secs: c.max_taken.max(0) as u32,
                 show_timer: c.timer != 0,
@@ -469,11 +453,6 @@ impl From<DeckConfig> for DeckConfSchema11 {
             },
             lapse: LapseConfSchema11 {
                 delays: i.relearn_steps,
-                leech_action: match i.leech_action {
-                    1 => LeechAction::TagOnly,
-                    _ => LeechAction::Suspend,
-                },
-                leech_fails: i.leech_threshold,
                 min_int: i.minimum_lapse_interval,
                 mult: i.lapse_multiplier,
                 other: lapse_other,
@@ -537,6 +516,7 @@ static RESERVED_DECKCONF_REV_KEYS: Set<&'static str> = phf_set! {
     "maxIvl", "hardFactor", "ease4", "ivlFct", "perDay"
 };
 
+// The leech keys are unused, but can be in what's stored or imported.
 static RESERVED_DECKCONF_LAPSE_KEYS: Set<&'static str> = phf_set! {
     "leechFails", "mult", "leechAction", "delays", "minInt"
 };

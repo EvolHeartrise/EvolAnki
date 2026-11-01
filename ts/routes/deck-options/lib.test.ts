@@ -6,11 +6,7 @@
  */
 
 import { protoBase64 } from "@bufbuild/protobuf";
-import {
-    DeckConfig_Config_LeechAction,
-    DeckConfigsForUpdate,
-    UpdateDeckConfigsMode,
-} from "@generated/anki/deck_config_pb";
+import { DeckConfigsForUpdate, UpdateDeckConfigsMode } from "@generated/anki/deck_config_pb";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
 
@@ -37,8 +33,6 @@ const exampleData = {
                     minimumLapseInterval: 1,
                     graduatingIntervalGood: 1,
                     graduatingIntervalEasy: 4,
-                    leechAction: DeckConfig_Config_LeechAction.TAG_ONLY,
-                    leechThreshold: 8,
                     capAnswerTimeToSecs: 60,
                     other: protoBase64.dec(
                         "eyJuZXciOnsic2VwYXJhdGUiOnRydWV9LCJyZXYiOnsiZnV6eiI6MC4wNSwibWluU3BhY2UiOjF9fQ==",
@@ -66,8 +60,6 @@ const exampleData = {
                     minimumLapseInterval: 1,
                     graduatingIntervalGood: 1,
                     graduatingIntervalEasy: 4,
-                    leechAction: DeckConfig_Config_LeechAction.TAG_ONLY,
-                    leechThreshold: 8,
                     capAnswerTimeToSecs: 60,
                 },
             },
@@ -92,8 +84,6 @@ const exampleData = {
             minimumLapseInterval: 1,
             graduatingIntervalGood: 1,
             graduatingIntervalEasy: 4,
-            leechAction: DeckConfig_Config_LeechAction.TAG_ONLY,
-            leechThreshold: 8,
             capAnswerTimeToSecs: 60,
         },
     },

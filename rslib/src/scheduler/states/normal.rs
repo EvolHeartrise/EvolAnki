@@ -59,19 +59,6 @@ impl NormalState {
             NormalState::Relearning(state) => state.next_states(ctx),
         }
     }
-
-    pub(crate) fn review_state(self) -> Option<ReviewState> {
-        match self {
-            NormalState::New(_) => None,
-            NormalState::Learning(_) => None,
-            NormalState::Review(state) => Some(state),
-            NormalState::Relearning(RelearnState { review, .. }) => Some(review),
-        }
-    }
-
-    pub(crate) fn leeched(self) -> bool {
-        self.review_state().map(|r| r.leeched).unwrap_or_default()
-    }
 }
 
 impl From<NewState> for NormalState {

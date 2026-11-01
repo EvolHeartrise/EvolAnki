@@ -114,10 +114,6 @@ message DeckConfig {
       REVIEW_MIX_AFTER_REVIEWS = 1;
       REVIEW_MIX_BEFORE_REVIEWS = 2;
     }
-    enum LeechAction {
-      LEECH_ACTION_SUSPEND = 0;
-      LEECH_ACTION_TAG_ONLY = 1;
-    }
     enum AnswerAction {
       ANSWER_ACTION_SHOW_REMINDER = 0;
       ANSWER_ACTION_ANSWER_AGAIN = 1;
@@ -165,8 +161,8 @@ message DeckConfig {
 
     ReviewMix interday_learning_mix = 31;
 
-    LeechAction leech_action = 21;
-    uint32 leech_threshold = 22;
+    // Saved presets can still hold what were leech_action and leech_threshold.
+    reserved 21, 22;
 
     bool disable_autoplay = 23;
     uint32 cap_answer_time_to_secs = 24;

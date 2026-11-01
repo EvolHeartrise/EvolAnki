@@ -25,7 +25,6 @@ pub struct ReviewState {
     pub elapsed_days: u32,
     pub ease_factor: f32,
     pub lapses: u32,
-    pub leeched: bool,
     pub memory_state: Option<FsrsMemoryState>,
 }
 
@@ -36,7 +35,6 @@ impl Default for ReviewState {
             elapsed_days: 0,
             ease_factor: INITIAL_EASE_FACTOR,
             lapses: 0,
-            leeched: false,
             memory_state: None,
         }
     }
@@ -94,14 +92,12 @@ impl ReviewState {
 
     fn answer_again(self, ctx: &StateContext) -> CardState {
         let lapses = self.lapses + 1;
-        let leeched = leech_threshold_met(lapses, ctx.leech_threshold);
         let (scheduled_days, memory_state) = self.failing_review_interval(ctx);
         let again_review = ReviewState {
             scheduled_days: scheduled_days.round().max(1.0) as u32,
             elapsed_days: 0,
             ease_factor: (self.ease_factor + EASE_FACTOR_AGAIN_DELTA).max(MINIMUM_EASE_FACTOR),
             lapses,
-            leeched,
             memory_state,
         };
         let again_relearn = RelearnState {
@@ -289,18 +285,6 @@ impl ReviewState {
     }
 }
 
-/// True when lapses is at threshold, or every half threshold after that.
-/// Non-even thresholds round up the half threshold.
-fn leech_threshold_met(lapses: u32, threshold: u32) -> bool {
-    if threshold > 0 {
-        let half_threshold = (threshold as f32 / 2.0).ceil().max(1.0) as u32;
-        // at threshold, and every half threshold after that, rounding up
-        lapses >= threshold && (lapses - threshold) % half_threshold == 0
-    } else {
-        false
-    }
-}
-
 /// Transform the provided hard/good/easy interval.
 /// - Apply configured interval multiplier if not FSRS.
 /// - Apply fuzz.
@@ -325,35 +309,6 @@ mod test {
     use super::*;
 
     #[test]
-    fn leech_threshold() {
-        assert!(!leech_threshold_met(0, 3));
-        assert!(!leech_threshold_met(1, 3));
-        assert!(!leech_threshold_met(2, 3));
-        assert!(leech_threshold_met(3, 3));
-        assert!(!leech_threshold_met(4, 3));
-        assert!(leech_threshold_met(5, 3));
-        assert!(!leech_threshold_met(6, 3));
-        assert!(leech_threshold_met(7, 3));
-
-        assert!(!leech_threshold_met(7, 8));
-        assert!(leech_threshold_met(8, 8));
-        assert!(!leech_threshold_met(9, 8));
-        assert!(!leech_threshold_met(10, 8));
-        assert!(!leech_threshold_met(11, 8));
-        assert!(leech_threshold_met(12, 8));
-        assert!(!leech_threshold_met(13, 8));
-
-        // 0 means off
-        assert!(!leech_threshold_met(0, 0));
-
-        // no div by zero; half of 1 is 1
-        assert!(!leech_threshold_met(0, 1));
-        assert!(leech_threshold_met(1, 1));
-        assert!(leech_threshold_met(2, 1));
-        assert!(leech_threshold_met(3, 1));
-    }
-
-    #[test]
     fn extreme_multiplier_fuzz() {
         let mut ctx = StateContext::defaults_for_testing();
         // our calculations should work correctly with a low ease or non-default
@@ -363,7 +318,6 @@ mod test {
             elapsed_days: 1,
             ease_factor: 1.3,
             lapses: 0,
-            leeched: false,
             memory_state: None,
         };
         ctx.fuzz_factor = Some(0.0);
@@ -392,7 +346,6 @@ mod test {
             elapsed_days: 2,
             ease_factor: 1.3,
             lapses: 0,
-            leeched: false,
             memory_state: None,
         };
         ctx.fuzz_factor = Some(0.0);

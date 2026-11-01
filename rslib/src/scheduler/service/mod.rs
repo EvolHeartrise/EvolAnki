@@ -25,7 +25,6 @@ use crate::backend::Backend;
 use crate::prelude::*;
 use crate::scheduler::fsrs::params::ComputeParamsRequest;
 use crate::scheduler::new::NewCardDueOrder;
-use crate::scheduler::states::CardState;
 use crate::scheduler::states::SchedulingStates;
 use crate::search::SortMode;
 use crate::stats::studied_today;
@@ -208,11 +207,6 @@ impl crate::services::SchedulerService for Collection {
     ) -> Result<generic::StringList> {
         let states: SchedulingStates = input.into();
         self.describe_next_states(&states).map(Into::into)
-    }
-
-    fn state_is_leech(&mut self, input: scheduler::SchedulingState) -> Result<generic::Bool> {
-        let state: CardState = input.into();
-        Ok(state.leeched().into())
     }
 
     fn answer_card(
@@ -1158,41 +1152,6 @@ mod tests {
         // one human-readable interval label for Again/Hard/Good/Easy
         assert_eq!(labels.vals.len(), 4);
         assert!(labels.vals.iter().all(|s| !s.is_empty()));
-    }
-
-    #[test]
-    fn state_is_leech_reflects_review_leeched_flag() {
-        use anki_proto::scheduler::scheduling_state;
-
-        let mut col = Collection::new();
-
-        // Only `leeched` is relevant to state_is_leech; the remaining fields are
-        // required to build a valid Review state but do not affect the result.
-        let review_state = |leeched: bool| scheduling_state::Review {
-            scheduled_days: 0,
-            elapsed_days: 0,
-            ease_factor: 0.0,
-            lapses: 0,
-            leeched,
-            memory_state: None,
-        };
-        let normal_review = |leeched: bool| anki_proto::scheduler::SchedulingState {
-            kind: Some(scheduling_state::Kind::Normal(scheduling_state::Normal {
-                kind: Some(scheduling_state::normal::Kind::Review(review_state(
-                    leeched,
-                ))),
-            })),
-            custom_data: None,
-        };
-
-        let leech = SchedulerService::state_is_leech(&mut col, normal_review(true)).unwrap();
-        assert!(leech.val, "a review state flagged as leeched is a leech");
-
-        let not_leech = SchedulerService::state_is_leech(&mut col, normal_review(false)).unwrap();
-        assert!(
-            !not_leech.val,
-            "a review state without the flag is not a leech"
-        );
     }
 
     #[test]

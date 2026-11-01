@@ -80,7 +80,6 @@ impl Collection {
 mod test {
     use crate::card::CardQueue;
     use crate::card::CardType;
-    use crate::deckconfig::LeechAction;
     use crate::prelude::*;
 
     fn add_note(col: &mut Collection, with_reverse: bool) -> Result<NoteId> {
@@ -101,11 +100,6 @@ mod test {
         // add a note
         let mut col = Collection::new();
         let nid = add_note(&mut col, true)?;
-
-        // turn leech suspension on
-        let mut conf = col.storage.get_deck_config(DeckConfigId(1))?.unwrap();
-        conf.inner.leech_action = LeechAction::Suspend as i32;
-        col.storage.update_deck_conf(&conf)?;
 
         // get the first card
         let queued = col.get_next_card()?.unwrap();
@@ -138,7 +132,7 @@ mod test {
         card.due = 0;
         col.storage.update_card(&card)?;
 
-        // fail it, which should cause it to be marked as a leech
+        // fail it. however many lapses it has, it stays in the queue and untagged
         col.clear_study_queues();
         col.answer_again();
         let post_review_interval = col.storage.get_card(cid)?.unwrap().interval;
@@ -148,6 +142,7 @@ mod test {
             let card = col.storage.get_card(cid)?.unwrap();
             assert_eq!(card.interval, post_review_interval);
             assert_eq!(card.lapses, 8);
+            assert_ne!(card.queue, CardQueue::Suspended);
 
             assert_eq!(
                 col.storage.get_all_revlog_entries(TimestampSecs(0))?.len(),
@@ -155,14 +150,14 @@ mod test {
             );
 
             let note = col.storage.get_note(nid)?.unwrap();
-            assert_eq!(note.tags, vec!["leech".to_string()]);
-            assert!(!col.storage.all_tags()?.is_empty());
+            assert!(note.tags.is_empty());
+            assert!(col.storage.all_tags()?.is_empty());
 
             let deck = col.get_deck(DeckId(1))?.unwrap();
             assert_eq!(deck.common.review_studied, 1);
 
-            // the sibling is still to come
-            assert_eq!(col.counts(), [1, 0, 0]);
+            // the sibling is still to come, and the failed card is relearning
+            assert_eq!(col.counts(), [1, 1, 0]);
             assert_eq!(col.get_next_card()?.unwrap().card.id, sibling_cid);
 
             Ok(())
@@ -181,7 +176,6 @@ mod test {
                 1
             );
 
-            // the note should no longer be tagged as a leech
             let note = col.storage.get_note(nid)?.unwrap();
             assert!(note.tags.is_empty());
             assert!(col.storage.all_tags()?.is_empty());

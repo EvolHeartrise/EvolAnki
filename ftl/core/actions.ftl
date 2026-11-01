@@ -12,7 +12,6 @@ actions-rename-tag = Rename Tag
 actions-remove-tag = Remove Tag
 actions-replay-audio = Replay Audio
 actions-reposition = Reposition
-actions-suspend-card = Suspend Card
 actions-set-due-date = Set Due Date
 actions-toggle-load-balancer = Toggle Load Balancer
 actions-grade-now = Grade Now

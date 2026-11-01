@@ -265,7 +265,11 @@ fn rpc_behaviour_matches_mediasrv() {
     );
 
     // backend errors are a 500 with the message as plain text
-    let reply = server.rpc_raw("getCard", &DeckId { did: 123 }.encode_to_vec());
+    let missing_card = anki_proto::card_rendering::RenderExistingCardRequest {
+        card_id: 123,
+        ..Default::default()
+    };
+    let reply = server.rpc_raw("renderExistingCard", &missing_card.encode_to_vec());
     assert_eq!(reply.status, 500);
     assert!(!reply.text().is_empty());
     let reply = server.rpc_raw("getDeckConfigsForUpdate", b"\xff\xff\xff");
@@ -1168,8 +1172,6 @@ fn reviewer_rpcs_work() {
     let states = queued.states.unwrap();
     let described: generic::StringList = server.rpc("describeNextStates", &states);
     assert_eq!(described.vals.len(), 4);
-    let leech: generic::Bool = server.rpc("stateIsLeech", states.good.as_ref().unwrap());
-    assert!(!leech.val);
 
     let _: OpChanges = server.rpc(
         "answerCard",

@@ -3,7 +3,6 @@
 
 import {
     DeckConfig_Config_AnswerAction,
-    DeckConfig_Config_LeechAction,
     DeckConfig_Config_NewCardGatherPriority,
     DeckConfig_Config_NewCardInsertOrder,
     DeckConfig_Config_NewCardSortOrder,
@@ -129,19 +128,6 @@ export function reviewMixChoices(): Choice<DeckConfig_Config_ReviewMix>[] {
         {
             label: tr.deckConfigReviewMixShowBeforeReviews(),
             value: DeckConfig_Config_ReviewMix.BEFORE_REVIEWS,
-        },
-    ];
-}
-
-export function leechChoices(): Choice<DeckConfig_Config_LeechAction>[] {
-    return [
-        {
-            label: tr.actionsSuspendCard(),
-            value: DeckConfig_Config_LeechAction.SUSPEND,
-        },
-        {
-            label: tr.schedulingTagOnly(),
-            value: DeckConfig_Config_LeechAction.TAG_ONLY,
         },
     ];
 }

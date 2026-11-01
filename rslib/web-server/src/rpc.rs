@@ -51,7 +51,6 @@ pub const ALLOWED: &[&str] = &[
     "getQueuedCards",
     "answerCard",
     "describeNextStates",
-    "stateIsLeech",
     "congratsInfo",
     "studiedToday",
     // SchedulerService: FSRS tools on the deck options page
@@ -76,7 +75,6 @@ pub const ALLOWED: &[&str] = &[
     // ConfigService
     "getConfigBool",
     // CardsService
-    "getCard",
 ];
 
 static INDEXES: LazyLock<HashMap<&'static str, (u32, u32)>> = LazyLock::new(|| {

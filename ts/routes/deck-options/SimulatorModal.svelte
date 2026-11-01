@@ -39,7 +39,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import SpinBoxFloatRow from "./SpinBoxFloatRow.svelte";
     import { reviewOrderChoices } from "./choices";
     import EnumSelectorRow from "$lib/components/EnumSelectorRow.svelte";
-    import { DeckConfig_Config_LeechAction } from "@generated/anki/deck_config_pb";
     import Warning from "./Warning.svelte";
     import type { ComputeRetentionProgress } from "@generated/anki/collection_pb";
     import Modal from "bootstrap/js/dist/modal";
@@ -66,8 +65,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     let points: (WorkloadPoint | Point)[] = [];
     const newCardsIgnoreReviewLimit = state.newCardsIgnoreReviewLimit;
     let smooth = true;
-    let suspendLeeches = $config.leechAction == DeckConfig_Config_LeechAction.SUSPEND;
-    let leechThreshold = $config.leechThreshold;
 
     let optimalRetention: null | number = null;
     let computingRetention = false;
@@ -106,9 +103,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     function updateRequest() {
         simulateFsrsRequest.daysToSimulate = daysToSimulate;
         simulateFsrsRequest.deckSize = deckSize;
-        simulateFsrsRequest.suspendAfterLapseCount = suspendLeeches
-            ? leechThreshold
-            : undefined;
         simulateFsrsRequest.easyDaysPercentages = $config.easyDaysPercentages;
     }
 
@@ -249,10 +243,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             }
             $newCardsIgnoreReviewLimit = simulateFsrsRequest.newCardsIgnoreReviewLimit;
             $config.reviewOrder = simulateFsrsRequest.reviewOrder;
-            $config.leechAction = suspendLeeches
-                ? DeckConfig_Config_LeechAction.SUSPEND
-                : DeckConfig_Config_LeechAction.TAG_ONLY;
-            $config.leechThreshold = leechThreshold;
             onPresetChange();
         }
     }
@@ -454,31 +444,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                             {tr.deckConfigSmoothGraph()}
                         </SettingTitle>
                     </SwitchRow>
-
-                    <SwitchRow
-                        bind:value={suspendLeeches}
-                        defaultValue={$config.leechAction ==
-                            DeckConfig_Config_LeechAction.SUSPEND}
-                    >
-                        <SettingTitle on:click={() => openHelpModal("leechAction")}>
-                            {tr.deckConfigSuspendLeeches()}
-                        </SettingTitle>
-                    </SwitchRow>
-
-                    {#if suspendLeeches}
-                        <SpinBoxRow
-                            bind:value={leechThreshold}
-                            defaultValue={$config.leechThreshold}
-                            min={1}
-                            max={9999}
-                        >
-                            <SettingTitle
-                                on:click={() => openHelpModal("leechThreshold")}
-                            >
-                                {tr.schedulingLeechThreshold()}
-                            </SettingTitle>
-                        </SpinBoxRow>
-                    {/if}
                 </details>
 
                 <div style="display:none;">

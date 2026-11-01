@@ -18,7 +18,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         encodeIriPaths,
         extractAvTags,
         extractClozeForTyping,
-        getCard,
         getCurrentDeck,
         getDeck,
         getDeckConfig,
@@ -27,7 +26,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         getQueuedCards,
         getUndoStatus,
         renderExistingCard,
-        stateIsLeech,
         undo,
     } from "@generated/backend";
     import * as tr from "@generated/ftl";
@@ -367,24 +365,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 },
                 { alertOnError: false },
             );
-            const leech = await stateIsLeech(newState, { alertOnError: false });
-            if (leech.val) {
-                await showLeechNotice(cardId);
-            }
         } catch (err) {
             // eg answered in another tab; carry on from what the backend has
             showNotice(err instanceof Error ? err.message : String(err));
         }
         await nextCard();
-    }
-
-    async function showLeechNotice(cardId: bigint): Promise<void> {
-        const card = await getCard({ cid: cardId }, { alertOnError: false });
-        let text = tr.studyingCardWasALeech();
-        if (card.queue < 0) {
-            text += ` ${tr.studyingItHasBeenSuspended()}`;
-        }
-        showNotice(text);
     }
 
     async function performUndo(): Promise<void> {

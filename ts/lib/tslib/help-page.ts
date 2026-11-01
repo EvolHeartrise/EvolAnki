@@ -22,10 +22,6 @@ export const HelpPage = {
         fsrs: "https://docs.ankiweb.net/manual/deck-options#fsrs",
         desiredRetention: "https://docs.ankiweb.net/manual/deck-options#desired-retention",
     },
-    Leeches: {
-        leeches: "https://docs.ankiweb.net/manual/leeches",
-        waiting: "https://docs.ankiweb.net/manual/leeches#waiting",
-    },
     Studying: {},
     PackageImporting: {
         root: "https://docs.ankiweb.net/manual/importing/packaged-decks",

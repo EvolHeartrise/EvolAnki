@@ -4,7 +4,6 @@
 use super::IntervalKind;
 use super::PreviewState;
 use super::ReschedulingFilterState;
-use super::ReviewState;
 use super::SchedulingStates;
 use super::StateContext;
 use crate::revlog::RevlogReviewKind;
@@ -34,13 +33,6 @@ impl FilteredState {
         match self {
             FilteredState::Preview(state) => state.next_states(ctx),
             FilteredState::Rescheduling(state) => state.next_states(ctx),
-        }
-    }
-
-    pub(crate) fn review_state(self) -> Option<ReviewState> {
-        match self {
-            FilteredState::Preview(_) => None,
-            FilteredState::Rescheduling(state) => state.original_state.review_state(),
         }
     }
 }

@@ -7,7 +7,6 @@ pub(crate) mod undo;
 mod update;
 
 pub use anki_proto::deck_config::deck_config::config::AnswerAction;
-pub use anki_proto::deck_config::deck_config::config::LeechAction;
 pub use anki_proto::deck_config::deck_config::config::NewCardGatherPriority;
 pub use anki_proto::deck_config::deck_config::config::NewCardInsertOrder;
 pub use anki_proto::deck_config::deck_config::config::NewCardSortOrder;
@@ -59,8 +58,6 @@ const DEFAULT_DECK_CONFIG_INNER: DeckConfigInner = DeckConfigInner {
     review_order: ReviewCardOrder::Day as i32,
     new_mix: ReviewMix::MixWithReviews as i32,
     interday_learning_mix: ReviewMix::MixWithReviews as i32,
-    leech_action: LeechAction::TagOnly as i32,
-    leech_threshold: 8,
     disable_autoplay: false,
     cap_answer_time_to_secs: 60,
     show_timer: false,
@@ -284,12 +281,6 @@ pub(crate) fn ensure_deck_config_values_valid(config: &mut DeckConfigInner) {
         default.graduating_interval_easy,
         1,
         36_500,
-    );
-    ensure_u32_valid(
-        &mut config.leech_threshold,
-        default.leech_threshold,
-        1,
-        9999,
     );
     ensure_u32_valid(
         &mut config.cap_answer_time_to_secs,

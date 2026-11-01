@@ -28,7 +28,6 @@ use crate::card::CardQueue;
 use crate::card::CardType;
 use crate::config::BoolKey;
 use crate::deckconfig::DeckConfig;
-use crate::deckconfig::LeechAction;
 use crate::decks::Deck;
 use crate::prelude::*;
 use crate::scheduler::fsrs::memory_state::fsrs_item_for_memory_state;
@@ -97,7 +96,6 @@ impl CardStateUpdater {
             easy_multiplier: self.config.inner.easy_multiplier,
             interval_multiplier: self.config.inner.interval_multiplier,
             maximum_review_interval: self.config.inner.maximum_review_interval,
-            leech_threshold: self.config.inner.leech_threshold,
             load_balancer_ctx: load_balancer_ctx
                 .map(|load_balancer_ctx| load_balancer_ctx.set_fuzz_seed(self.fuzz_seed)),
             relearn_steps: self.relearn_steps(),
@@ -183,18 +181,12 @@ impl CardStateUpdater {
         self.card.reps += 1;
         self.card.desired_retention = self.desired_retention;
 
-        let revlog = match next {
+        match next {
             NormalState::New(next) => self.apply_new_state(current, next),
             NormalState::Learning(next) => self.apply_learning_state(current, next),
             NormalState::Review(next) => self.apply_review_state(current, next),
             NormalState::Relearning(next) => self.apply_relearning_state(current, next),
-        };
-
-        if next.leeched() && self.config.inner.leech_action() == LeechAction::Suspend {
-            self.card.queue = CardQueue::Suspended;
         }
-
-        revlog
     }
 
     fn ensure_filtered(&self) -> Result<()> {
@@ -362,9 +354,6 @@ impl Collection {
         }
 
         self.update_card_inner(&mut card, original, usn)?;
-        if answer.new_state.leeched() {
-            self.add_leech_tag(card.note_id)?;
-        }
 
         if card.queue == CardQueue::Review {
             if let Some(load_balancer) = self
@@ -563,11 +552,6 @@ impl Collection {
         };
 
         Ok(self.storage.get_deck_config(config_id)?.unwrap_or_default())
-    }
-
-    fn add_leech_tag(&mut self, nid: NoteId) -> Result<()> {
-        self.add_tags_to_notes_inner(&[nid], "leech")?;
-        Ok(())
     }
 
     /// Update the elapsed time of the answer state to match the current state.

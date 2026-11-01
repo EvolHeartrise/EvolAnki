@@ -29,6 +29,7 @@ upstream, as of November 2026, EvolAnki:
 - removed the editor, importers, card browser, change notetype and image occlusion, and
   suspend controls in the reviewer
 - removed card flags
+- removed leeches
 - removed burying: cards of one note are shown on the same day
 - removed translations other than English, and upstream's manual
 - no longer runs JavaScript in cards

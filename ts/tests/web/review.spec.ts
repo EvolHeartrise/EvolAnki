@@ -340,44 +340,38 @@ test("the keyboard drives the reviewer, and undo restores card and count", async
     expect(revlog).toEqual([{ ease: 4 }]);
 });
 
-test("a leech is reported and suspended", async ({ page }) => {
+test("failing a card leaves it unsuspended and untagged, with no leech controls", async ({ page }) => {
     await start({
-        decks: [{ name: "Leech" }],
-        notes: [{ ...BASIC("leechy", "a", "Leech"), due: true }, BASIC("next", "a", "Leech")],
+        decks: [{ name: "Lapses" }],
+        notes: [{ ...BASIC("lapsing", "a", "Lapses"), due: true }, BASIC("next", "a", "Lapses")],
     });
     const problems = failOnPageProblems(page);
     await page.goto(`${server.url}/`);
-    await page.locator(`tr[data-deck="Leech"] .options a`).click();
-    const title = page.locator(".setting-title", { hasText: "Leech threshold" });
-    const input = title.locator("xpath=ancestor::*[.//input][1]").locator("input");
-    await input.fill("1");
-    await input.blur();
-    // the default is only to tag it
-    const action = page.locator(".setting-title", { hasText: "Leech action" });
-    await action.locator("xpath=ancestor::*[.//*[@role='combobox']][1]").getByRole("combobox").click();
-    await page.getByRole("option", { name: "Suspend Card" }).click();
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page).toHaveURL(/\/overview\/\d+$/);
+    await page.locator(`tr[data-deck="Lapses"] .options a`).click();
+    await expect(page.locator(".setting-title", { hasText: "Relearning steps" })).toBeVisible();
+    await expect(page.locator(".setting-title", { hasText: /leech/i })).toHaveCount(0);
+    await page.goBack();
 
+    await page.locator(`tr[data-deck="Lapses"] .name a`).click();
     await page.getByRole("button", { name: "Study Now" }).click();
-    const leechy = card(page);
-    await expect(leechy).toContainText(/leechy|next/);
-    if ((await leechy.textContent())!.includes("next")) {
+    await expect(card(page)).toContainText(/lapsing|next/);
+    if ((await card(page).textContent())!.includes("next")) {
         await page.keyboard.press("Space");
         await page.keyboard.press("3");
     }
-    await expect(card(page)).toContainText("leechy");
+    await expect(card(page)).toContainText("lapsing");
     await page.keyboard.press("Space");
     await expect(page.locator("button[data-rating='1']")).toBeVisible();
     await page.keyboard.press("1");
-    await expect(page.getByRole("status")).toContainText("leech");
-    await expect(page.getByRole("status")).toContainText("suspended");
+    await expect(card(page)).toContainText(/lapsing|next/);
+    await expect(page.getByRole("status")).toHaveCount(0);
     expect(problems).toEqual([]);
 
     const rows = await query<{ queue: number; lapses: number; tags: string }>(
-        "select c.queue, c.lapses, n.tags from cards c join notes n on c.nid = n.id where n.sfld = 'leechy'",
+        "select c.queue, c.lapses, n.tags from cards c join notes n on c.nid = n.id where n.sfld = 'lapsing'",
     );
-    expect(rows).toEqual([{ queue: -1, lapses: 1, tags: " leech " }]);
+    expect(rows).toEqual([{ queue: expect.any(Number), lapses: 1, tags: "" }]);
+    expect(rows[0].queue).toBeGreaterThanOrEqual(0);
 });
 
 test("media loads in the sandbox, and audio plays through the page", async ({ page }) => {

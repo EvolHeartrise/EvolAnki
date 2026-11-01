@@ -9,16 +9,13 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import type Modal from "bootstrap/js/dist/modal";
 
     import DynamicallySlottable from "$lib/components/DynamicallySlottable.svelte";
-    import EnumSelectorRow from "$lib/components/EnumSelectorRow.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import Item from "$lib/components/Item.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
     import type { HelpItem } from "$lib/components/types";
 
-    import { leechChoices } from "./choices";
     import type { DeckOptionsState } from "./lib";
-    import SpinBoxRow from "./SpinBoxRow.svelte";
     import StepsInputRow from "./StepsInputRow.svelte";
     import Warning from "./Warning.svelte";
 
@@ -42,16 +39,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             title: tr.deckConfigRelearningSteps(),
             help: tr.deckConfigRelearningStepsTooltip(),
             url: HelpPage.DeckOptions.relearningSteps,
-        },
-        leechThreshold: {
-            title: tr.schedulingLeechThreshold(),
-            help: tr.deckConfigLeechThresholdTooltip(),
-            url: HelpPage.Leeches.leeches,
-        },
-        leechAction: {
-            title: tr.schedulingLeechAction(),
-            help: tr.deckConfigLeechActionTooltip(),
-            url: HelpPage.Leeches.waiting,
         },
     };
     const helpSections: HelpItem[] = Object.values(settings);
@@ -93,37 +80,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
         <Item>
             <Warning warning={stepsTooLargeForFsrs} />
-        </Item>
-
-        <Item>
-            <SpinBoxRow
-                bind:value={$config.leechThreshold}
-                defaultValue={defaults.leechThreshold}
-                min={1}
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("leechThreshold"))}
-                >
-                    {settings.leechThreshold.title}
-                </SettingTitle>
-            </SpinBoxRow>
-        </Item>
-
-        <Item>
-            <EnumSelectorRow
-                bind:value={$config.leechAction}
-                defaultValue={defaults.leechAction}
-                choices={leechChoices()}
-                breakpoint="md"
-            >
-                <SettingTitle
-                    on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("leechAction"))}
-                >
-                    {settings.leechAction.title}
-                </SettingTitle>
-            </EnumSelectorRow>
         </Item>
     </DynamicallySlottable>
 </TitledContainer>

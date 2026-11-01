@@ -205,9 +205,8 @@ Safari 18.4. A file that can't play is skipped.
   card whose front was only that has a blank front.
 - English only.
 - `[latex]` isn't rendered. Marks, timeboxing, auto advance, `reviewExtra`, editing
-  and suspending aren't in the reviewer. Automatic leech suspension and its notice,
-  undo, and type-in answers are. A card suspended while it's on screen refuses the
-  answer, with a notice, and the next card shows.
+  and suspending aren't in the reviewer. Undo and type-in answers are. A card suspended
+  while it's on screen refuses the answer, with a notice, and the next card shows.
 - There is no burying, and nothing replaces it: cards of one note can all come up on the
   same day, and the load balancer doesn't space them apart. Queues -2 and -3 are gone, so
   `is:buried` is a search error. Opening a collection returns any card still in those
@@ -216,6 +215,8 @@ Safari 18.4. A file that can't play is skipped.
 - There are no flags. `flag:` isn't a search keyword any more, so `flag:1` looks for "1" in
   a field called flag. A new card's `flags` column is 0, and nothing reads it. `{{CardFlag}}`
   in a template is empty.
+- There are no leeches. However many lapses a card has, it isn't tagged or suspended, and
+  the simulator doesn't model that. A `leech` tag is just a tag.
 - No pages for: adding or editing cards, the browser, changing a notetype, importing,
   making filtered decks, custom study, or managing decks and tags. Agents do those with
   [`evolanki-admin`](admin-cli.md). They aren't reachable over HTTP.
