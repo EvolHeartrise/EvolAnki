@@ -14,15 +14,9 @@ import "anki/generic.proto";
 
 service ImportExportService {
   rpc ImportAnkiPackage(ImportAnkiPackageRequest) returns (ImportResponse);
-  rpc GetImportAnkiPackageDefaults(generic.Empty)
-      returns (ImportAnkiPackageOptions);
   rpc ExportAnkiPackage(ExportAnkiPackageRequest) returns (generic.UInt32);
   rpc GetCsvMetadata(CsvMetadataRequest) returns (CsvMetadata);
   rpc ImportCsv(ImportCsvRequest) returns (ImportResponse);
-  rpc ExportNoteCsv(ExportNoteCsvRequest) returns (generic.UInt32);
-  rpc ExportCardCsv(ExportCardCsvRequest) returns (generic.UInt32);
-  rpc ImportJsonFile(generic.String) returns (ImportResponse);
-  rpc ImportJsonString(generic.String) returns (ImportResponse);
 }
 
 // Implicitly includes any of the above methods that are not listed in the

@@ -16,18 +16,6 @@ impl crate::services::ImportExportService for Collection {
             .map(Into::into)
     }
 
-    fn get_import_anki_package_defaults(
-        &mut self,
-    ) -> Result<anki_proto::import_export::ImportAnkiPackageOptions> {
-        Ok(anki_proto::import_export::ImportAnkiPackageOptions {
-            merge_notetypes: self.get_config_bool(BoolKey::MergeNotetypes),
-            with_scheduling: self.get_config_bool(BoolKey::WithScheduling),
-            with_deck_configs: self.get_config_bool(BoolKey::WithDeckConfigs),
-            update_notes: self.get_update_notes() as i32,
-            update_notetypes: self.get_update_notetypes() as i32,
-        })
-    }
-
     fn export_anki_package(
         &mut self,
         input: anki_proto::import_export::ExportAnkiPackageRequest,
@@ -64,38 +52,6 @@ impl crate::services::ImportExportService for Collection {
             .map(Into::into)
     }
 
-    fn export_note_csv(
-        &mut self,
-        input: anki_proto::import_export::ExportNoteCsvRequest,
-    ) -> Result<generic::UInt32> {
-        self.export_note_csv(input).map(Into::into)
-    }
-
-    fn export_card_csv(
-        &mut self,
-        input: anki_proto::import_export::ExportCardCsvRequest,
-    ) -> Result<generic::UInt32> {
-        self.export_card_csv(
-            &input.out_path,
-            SearchNode::from(input.limit.unwrap_or_default()),
-            input.with_html,
-        )
-        .map(Into::into)
-    }
-
-    fn import_json_file(
-        &mut self,
-        input: generic::String,
-    ) -> Result<anki_proto::import_export::ImportResponse> {
-        self.import_json_file(&input.val).map(Into::into)
-    }
-
-    fn import_json_string(
-        &mut self,
-        input: generic::String,
-    ) -> Result<anki_proto::import_export::ImportResponse> {
-        self.import_json_string(&input.val).map(Into::into)
-    }
 }
 
 impl From<OpOutput<NoteLog>> for anki_proto::import_export::ImportResponse {
@@ -124,18 +80,18 @@ impl From<ExportLimit> for SearchNode {
 
 #[cfg(test)]
 mod tests {
-    use anki_proto::generic;
+    
     use anki_proto::import_export::export_limit::Limit;
     use anki_proto::import_export::import_response::Log as NoteLog;
     use anki_proto::import_export::CsvMetadataRequest;
     use anki_proto::import_export::ExportAnkiPackageRequest;
-    use anki_proto::import_export::ExportCardCsvRequest;
+    
     use anki_proto::import_export::ExportLimit;
-    use anki_proto::import_export::ExportNoteCsvRequest;
+    
     use anki_proto::import_export::ImportAnkiPackageRequest;
     use anki_proto::import_export::ImportCsvRequest;
     use tempfile::tempdir;
-    use tempfile::NamedTempFile;
+    
 
     use super::*;
     use crate::ops::Op;
@@ -143,7 +99,7 @@ mod tests {
     use crate::ops::OpOutput;
     use crate::ops::StateChanges;
     use crate::services::ImportExportService;
-    use crate::tests::NoteAdder;
+    
 
     // --- From<ExportLimit> for SearchNode ---
 
@@ -191,90 +147,6 @@ mod tests {
     }
 
     // --- Service function tests ---
-
-    #[test]
-    fn get_import_anki_package_defaults_returns_collection_defaults() {
-        let mut col = Collection::new();
-        let defaults = ImportExportService::get_import_anki_package_defaults(&mut col).unwrap();
-        // newly created collection uses the default config values
-        assert!(!defaults.merge_notetypes);
-        assert!(!defaults.with_scheduling);
-        assert!(!defaults.with_deck_configs);
-    }
-
-    #[test]
-    fn export_card_csv_service_returns_uint32_count() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-        let csv = NamedTempFile::new().unwrap();
-        let result = ImportExportService::export_card_csv(
-            &mut col,
-            ExportCardCsvRequest {
-                out_path: csv.path().to_str().unwrap().into(),
-                with_html: true,
-                limit: None,
-            },
-        )
-        .unwrap();
-        assert_eq!(result.val, 1, "service should return 1 card as UInt32");
-    }
-
-    #[test]
-    fn export_card_csv_service_propagates_error_for_invalid_path() {
-        let mut col = Collection::new();
-        let dir = tempdir().unwrap();
-        let bad_path = dir.path().join("no_such_subdir").join("cards.csv");
-        let result = ImportExportService::export_card_csv(
-            &mut col,
-            ExportCardCsvRequest {
-                out_path: bad_path.to_str().unwrap().into(),
-                with_html: true,
-                limit: None,
-            },
-        );
-        assert!(result.is_err(), "expected Err for invalid output path");
-    }
-
-    #[test]
-    fn export_note_csv_service_returns_uint32_count() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-        let csv = NamedTempFile::new().unwrap();
-        let result = ImportExportService::export_note_csv(
-            &mut col,
-            ExportNoteCsvRequest {
-                out_path: csv.path().to_str().unwrap().into(),
-                with_html: true,
-                with_tags: true,
-                with_deck: true,
-                with_notetype: true,
-                with_guid: true,
-                limit: None,
-            },
-        )
-        .unwrap();
-        assert_eq!(result.val, 1, "service should return 1 note as UInt32");
-    }
-
-    #[test]
-    fn export_note_csv_service_propagates_error_for_invalid_path() {
-        let mut col = Collection::new();
-        let dir = tempdir().unwrap();
-        let bad_path = dir.path().join("no_such_subdir").join("notes.csv");
-        let result = ImportExportService::export_note_csv(
-            &mut col,
-            ExportNoteCsvRequest {
-                out_path: bad_path.to_str().unwrap().into(),
-                with_html: true,
-                with_tags: false,
-                with_deck: false,
-                with_notetype: false,
-                with_guid: false,
-                limit: None,
-            },
-        );
-        assert!(result.is_err(), "expected Err for invalid output path");
-    }
 
     #[test]
     fn import_anki_package_succeeds_with_valid_apkg_fixture() {
@@ -390,61 +262,6 @@ mod tests {
             },
         );
         assert!(result.is_err(), "expected Err for missing CSV file");
-    }
-
-    #[test]
-    fn import_json_file_succeeds_with_minimal_valid_json() {
-        let mut col = Collection::new();
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("notes.json");
-        // ForeignData has #[serde(default)] — empty notes list is valid JSON
-        // dir and the file are deleted automatically when dir drops at end of test
-        std::fs::write(&path, r#"{"notes": []}"#).unwrap();
-        let result = ImportExportService::import_json_file(
-            &mut col,
-            generic::String {
-                val: path.to_str().unwrap().into(),
-            },
-        );
-        assert!(result.is_ok(), "expected Ok for valid JSON file");
-    }
-
-    #[test]
-    fn import_json_file_propagates_error_for_missing_file() {
-        let mut col = Collection::new();
-        let dir = tempdir().unwrap();
-        let missing = dir.path().join("missing.json");
-        let result = ImportExportService::import_json_file(
-            &mut col,
-            generic::String {
-                val: missing.to_str().unwrap().into(),
-            },
-        );
-        assert!(result.is_err(), "expected Err for missing JSON file");
-    }
-
-    #[test]
-    fn import_json_string_succeeds_with_minimal_valid_json() {
-        let mut col = Collection::new();
-        let result = ImportExportService::import_json_string(
-            &mut col,
-            generic::String {
-                val: r#"{"notes": []}"#.into(),
-            },
-        );
-        assert!(result.is_ok(), "expected Ok for valid JSON string");
-    }
-
-    #[test]
-    fn import_json_string_propagates_error_for_invalid_json() {
-        let mut col = Collection::new();
-        let result = ImportExportService::import_json_string(
-            &mut col,
-            generic::String {
-                val: "not valid json at all".into(),
-            },
-        );
-        assert!(result.is_err(), "expected Err for invalid JSON string");
     }
 
     #[test]

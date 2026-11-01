@@ -4,7 +4,6 @@
 use anki_proto::config::config_key::Bool as BoolKeyProto;
 use anki_proto::config::config_key::String as StringKeyProto;
 use anki_proto::generic;
-use serde_json::Value;
 
 use crate::config::BoolKey;
 use crate::config::StringKey;
@@ -55,48 +54,6 @@ impl From<StringKeyProto> for StringKey {
 }
 
 impl crate::services::ConfigService for Collection {
-    fn get_config_json(&mut self, input: generic::String) -> Result<generic::Json> {
-        // raw readers must agree with get_config_bool(), even if the key is absent
-        if input.val == <&str>::from(BoolKey::Fsrs) {
-            return Ok(serde_json::to_vec(&true)?.into());
-        }
-        let val: Option<Value> = self.get_config_optional(input.val.as_str());
-        val.or_not_found(input.val)
-            .and_then(|v| serde_json::to_vec(&v).map_err(Into::into))
-            .map(Into::into)
-    }
-
-    fn set_config_json(
-        &mut self,
-        input: anki_proto::config::SetConfigJsonRequest,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        let val: Value = serde_json::from_slice(&input.value_json)?;
-        self.set_config_json(input.key.as_str(), &val, input.undoable)
-            .map(Into::into)
-    }
-
-    fn set_config_json_no_undo(
-        &mut self,
-        input: anki_proto::config::SetConfigJsonRequest,
-    ) -> Result<()> {
-        let val: Value = serde_json::from_slice(&input.value_json)?;
-        self.transact_no_undo(|col| col.set_config(input.key.as_str(), &val).map(|_| ()))
-    }
-
-    fn remove_config(
-        &mut self,
-        input: generic::String,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        self.remove_config(input.val.as_str()).map(Into::into)
-    }
-
-    fn get_all_config(&mut self) -> Result<generic::Json> {
-        let conf = self.storage.get_all_config()?;
-        serde_json::to_vec(&conf)
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
     fn get_config_bool(
         &mut self,
         input: anki_proto::config::GetConfigBoolRequest,
@@ -106,39 +63,4 @@ impl crate::services::ConfigService for Collection {
         })
     }
 
-    fn set_config_bool(
-        &mut self,
-        input: anki_proto::config::SetConfigBoolRequest,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        self.set_config_bool(input.key().into(), input.value, input.undoable)
-            .map(Into::into)
-    }
-
-    fn get_config_string(
-        &mut self,
-        input: anki_proto::config::GetConfigStringRequest,
-    ) -> Result<generic::String> {
-        Ok(generic::String {
-            val: Collection::get_config_string(self, input.key().into()),
-        })
-    }
-
-    fn set_config_string(
-        &mut self,
-        input: anki_proto::config::SetConfigStringRequest,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        self.set_config_string(input.key().into(), &input.value, input.undoable)
-            .map(Into::into)
-    }
-
-    fn get_preferences(&mut self) -> Result<anki_proto::config::Preferences> {
-        Collection::get_preferences(self)
-    }
-
-    fn set_preferences(
-        &mut self,
-        input: anki_proto::config::Preferences,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        self.set_preferences(input).map(Into::into)
-    }
 }

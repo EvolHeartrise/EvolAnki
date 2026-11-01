@@ -15,20 +15,11 @@ import "anki/cards.proto";
 service NotesService {
   rpc NewNote(notetypes.NotetypeId) returns (Note);
   rpc AddNote(AddNoteRequest) returns (AddNoteResponse);
-  rpc AddNotes(AddNotesRequest) returns (AddNotesResponse);
-  rpc DefaultsForAdding(DefaultsForAddingRequest) returns (DeckAndNotetype);
-  rpc DefaultDeckForNotetype(notetypes.NotetypeId) returns (decks.DeckId);
   rpc UpdateNotes(UpdateNotesRequest) returns (collection.OpChanges);
   rpc GetNote(NoteId) returns (Note);
   rpc RemoveNotes(RemoveNotesRequest) returns (collection.OpChangesWithCount);
-  rpc ClozeNumbersInNote(Note) returns (ClozeNumbersInNoteResponse);
-  rpc AfterNoteUpdates(AfterNoteUpdatesRequest)
-      returns (collection.OpChangesWithCount);
-  rpc FieldNamesForNotes(FieldNamesForNotesRequest)
-      returns (FieldNamesForNotesResponse);
   rpc NoteFieldsCheck(Note) returns (NoteFieldsCheckResponse);
   rpc CardsOfNote(NoteId) returns (cards.CardIds);
-  rpc GetSingleNotetypeOfNotes(notes.NoteIds) returns (notetypes.NotetypeId);
 }
 
 // Implicitly includes any of the above methods that are not listed in the

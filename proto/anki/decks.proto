@@ -13,28 +13,16 @@ import "anki/collection.proto";
 service DecksService {
   rpc NewDeck(generic.Empty) returns (Deck);
   rpc AddDeck(Deck) returns (collection.OpChangesWithId);
-  rpc AddDeckLegacy(generic.Json) returns (collection.OpChangesWithId);
-  rpc AddOrUpdateDeckLegacy(AddOrUpdateDeckLegacyRequest) returns (DeckId);
   rpc DeckTree(DeckTreeRequest) returns (DeckTreeNode);
-  rpc DeckTreeLegacy(generic.Empty) returns (generic.Json);
-  rpc GetAllDecksLegacy(generic.Empty) returns (generic.Json);
   rpc GetDeckIdByName(generic.String) returns (DeckId);
   rpc GetDeck(DeckId) returns (Deck);
-  rpc UpdateDeck(Deck) returns (collection.OpChanges);
-  rpc UpdateDeckLegacy(generic.Json) returns (collection.OpChanges);
   rpc SetDeckCollapsed(SetDeckCollapsedRequest) returns (collection.OpChanges);
-  rpc GetDeckLegacy(DeckId) returns (generic.Json);
   rpc GetDeckNames(GetDeckNamesRequest) returns (DeckNames);
-  rpc GetDeckAndChildNames(DeckId) returns (DeckNames);
-  rpc NewDeckLegacy(generic.Bool) returns (generic.Json);
   rpc RemoveDecks(DeckIds) returns (collection.OpChangesWithCount);
-  rpc ReparentDecks(ReparentDecksRequest)
-      returns (collection.OpChangesWithCount);
   rpc RenameDeck(RenameDeckRequest) returns (collection.OpChanges);
   rpc GetOrCreateFilteredDeck(DeckId) returns (FilteredDeckForUpdate);
   rpc AddOrUpdateFilteredDeck(FilteredDeckForUpdate)
       returns (collection.OpChangesWithId);
-  rpc FilteredDeckOrderLabels(generic.Empty) returns (generic.StringList);
   rpc SetCurrentDeck(DeckId) returns (collection.OpChanges);
   rpc GetCurrentDeck(generic.Empty) returns (Deck);
 }

@@ -838,7 +838,7 @@ mod tests {
     }
 
     mod always_on {
-        use anki_proto::generic;
+        
         use serde_json::Value;
 
         use super::*;
@@ -859,10 +859,8 @@ mod tests {
         }
 
         fn raw_flag(col: &mut Collection) -> Vec<u8> {
-            let key = generic::String {
-                val: "fsrs".to_string(),
-            };
-            ConfigService::get_config_json(col, key).unwrap().json
+            let value: serde_json::Value = col.storage.get_config_value("fsrs").unwrap().unwrap();
+            serde_json::to_vec(&value).unwrap()
         }
 
         /// A review card with a real revlog, as left behind by SM-2.

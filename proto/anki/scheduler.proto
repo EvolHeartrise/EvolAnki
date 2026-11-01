@@ -19,8 +19,6 @@ service SchedulerService {
   rpc AnswerCard(CardAnswer) returns (collection.OpChanges);
   rpc SchedTimingToday(generic.Empty) returns (SchedTimingTodayResponse);
   rpc StudiedToday(generic.Empty) returns (generic.String);
-  rpc StudiedTodayMessage(StudiedTodayMessageRequest) returns (generic.String);
-  rpc UpdateStats(UpdateStatsRequest) returns (generic.Empty);
   rpc ExtendLimits(ExtendLimitsRequest) returns (generic.Empty);
   rpc CountsForDeckToday(decks.DeckId) returns (CountsForDeckTodayResponse);
   rpc UnsuspendCards(cards.CardIds) returns (collection.OpChanges);
@@ -29,19 +27,12 @@ service SchedulerService {
   rpc RebuildFilteredDeck(decks.DeckId) returns (collection.OpChangesWithCount);
   rpc ScheduleCardsAsNew(ScheduleCardsAsNewRequest)
       returns (collection.OpChanges);
-  rpc ScheduleCardsAsNewDefaults(ScheduleCardsAsNewDefaultsRequest)
-      returns (ScheduleCardsAsNewDefaultsResponse);
   rpc SetDueDate(SetDueDateRequest) returns (collection.OpChanges);
   rpc GradeNow(GradeNowRequest) returns (collection.OpChanges);
   rpc SortCards(SortCardsRequest) returns (collection.OpChangesWithCount);
-  rpc SortDeck(SortDeckRequest) returns (collection.OpChangesWithCount);
   rpc GetSchedulingStates(cards.CardId) returns (SchedulingStates);
   rpc DescribeNextStates(SchedulingStates) returns (generic.StringList);
-  rpc UpgradeScheduler(generic.Empty) returns (generic.Empty);
   rpc CustomStudy(CustomStudyRequest) returns (collection.OpChanges);
-  rpc CustomStudyDefaults(CustomStudyDefaultsRequest)
-      returns (CustomStudyDefaultsResponse);
-  rpc RepositionDefaults(generic.Empty) returns (RepositionDefaultsResponse);
   rpc ComputeFsrsParams(ComputeFsrsParamsRequest)
       returns (ComputeFsrsParamsResponse);
   rpc GetOptimalRetentionParameters(GetOptimalRetentionParametersRequest)
@@ -64,12 +55,8 @@ service SchedulerService {
 // Implicitly includes any of the above methods that are not listed in the
 // backend service.
 service BackendSchedulerService {
-  rpc ComputeFsrsParamsFromItems(ComputeFsrsParamsFromItemsRequest)
-      returns (ComputeFsrsParamsResponse);
   // Generates parameters used for FSRS's scheduler benchmarks.
-  rpc FsrsBenchmark(FsrsBenchmarkRequest) returns (FsrsBenchmarkResponse);
   // Used for exporting revlogs for algorithm research.
-  rpc ExportDataset(ExportDatasetRequest) returns (generic.Empty);
 }
 
 message SchedulingState {

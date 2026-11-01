@@ -14,12 +14,9 @@ service CollectionService {
   rpc GetUndoStatus(generic.Empty) returns (UndoStatus);
   rpc Undo(generic.Empty) returns (OpChangesAfterUndo);
   rpc Redo(generic.Empty) returns (OpChangesAfterUndo);
-  rpc AddCustomUndoEntry(generic.String) returns (generic.UInt32);
-  rpc MergeUndoEntries(generic.UInt32) returns (OpChanges);
   rpc LatestProgress(generic.Empty) returns (Progress);
   rpc SetWantsAbort(generic.Empty) returns (generic.Empty);
   rpc SetLoadBalancerEnabled(generic.Bool) returns (OpChanges);
-  rpc GetCustomColours(generic.Empty) returns (GetCustomColoursResponse);
 }
 
 // Implicitly includes any of the above methods that are not listed in the
@@ -31,10 +28,8 @@ service BackendCollectionService {
   // transaction. Unlike a collection export, does not require reopening the DB,
   // as there is no downgrade step.
   // Returns false if it's not time to make a backup yet.
-  rpc CreateBackup(CreateBackupRequest) returns (generic.Bool);
   // If a backup is running, wait for it to complete. Will return an error
   // if the backup encountered an error.
-  rpc AwaitBackupCompletion(generic.Empty) returns (generic.Empty);
   rpc LatestProgress(generic.Empty) returns (Progress);
   rpc SetWantsAbort(generic.Empty) returns (generic.Empty);
 }

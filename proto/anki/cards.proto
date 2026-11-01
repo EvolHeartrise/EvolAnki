@@ -11,7 +11,6 @@ import "anki/collection.proto";
 
 service CardsService {
   rpc GetCard(CardId) returns (Card);
-  rpc UpdateCards(UpdateCardsRequest) returns (collection.OpChanges);
   rpc RemoveCards(RemoveCardsRequest) returns (collection.OpChangesWithCount);
   rpc SetDeck(SetDeckRequest) returns (collection.OpChangesWithCount);
 }

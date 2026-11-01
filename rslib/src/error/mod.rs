@@ -23,7 +23,6 @@ pub use self::invalid_input::OrInvalid;
 pub use self::not_found::NotFoundError;
 pub use self::not_found::OrNotFound;
 use crate::import_export::ImportError;
-use crate::links::HelpPage;
 
 pub type Result<T, E = AnkiError> = std::result::Result<T, E>;
 
@@ -171,21 +170,6 @@ impl AnkiError {
                 .deck_config_unable_to_determine_desired_retention()
                 .into(),
             AnkiError::InvalidChecksum { info } => info.into(),
-        }
-    }
-
-    pub fn help_page(&self) -> Option<HelpPage> {
-        match self {
-            Self::CardTypeError {
-                source: CardTypeError { source, .. },
-            } => Some(match source {
-                CardTypeErrorDetails::TemplateParseError => HelpPage::CardTypeTemplateError,
-                CardTypeErrorDetails::NoSuchField { field: _ } => HelpPage::CardTypeTemplateError,
-                CardTypeErrorDetails::Duplicate { .. } => HelpPage::CardTypeDuplicate,
-                CardTypeErrorDetails::NoFrontField => HelpPage::CardTypeNoFrontField,
-                CardTypeErrorDetails::MissingCloze => HelpPage::CardTypeMissingCloze,
-            }),
-            _ => None,
         }
     }
 

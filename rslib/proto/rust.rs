@@ -31,7 +31,6 @@ pub fn write_rust_protos(descriptors_path: PathBuf) -> Result<DescriptorPool> {
             "Deck.Normal.DayLimit",
             "#[derive(Eq, serde::Deserialize, serde::Serialize)]",
         )
-        .type_attribute("HelpPageLinkRequest.HelpPage", "#[derive(strum::EnumIter)]")
         .type_attribute("CsvMetadata.Delimiter", "#[derive(strum::EnumIter)]")
         .type_attribute(
             "Preferences.BackupLimits",

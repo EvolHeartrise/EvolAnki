@@ -6,21 +6,13 @@ use anki_proto::generic;
 
 use crate::card::CardId;
 use crate::card_rendering::extract_av_tags;
-use crate::card_rendering::strip_av_tags;
 use crate::cloze::extract_cloze_for_typing;
 use crate::collection::Collection;
-use crate::error::OrInvalid;
 use crate::error::Result;
-use crate::latex::extract_latex;
-use crate::latex::extract_latex_expanding_clozes;
-use crate::latex::ExtractedLatex;
 use crate::markdown::render_markdown;
-use crate::notetype::CardTemplateSchema11;
 use crate::notetype::RenderCardOutput;
 use crate::template::RenderedNode;
-use crate::text::decode_iri_paths;
 use crate::text::encode_iri_paths;
-use crate::text::html_to_text_line;
 use crate::text::sanitize_html_no_images;
 use crate::text::strip_html;
 use crate::text::strip_html_preserving_media_filenames;
@@ -38,31 +30,6 @@ impl crate::services::CardRenderingService for Collection {
         Ok(anki_proto::card_rendering::ExtractAvTagsResponse {
             text: out.0,
             av_tags: out.1,
-        })
-    }
-
-    fn extract_latex(
-        &mut self,
-        input: anki_proto::card_rendering::ExtractLatexRequest,
-    ) -> Result<anki_proto::card_rendering::ExtractLatexResponse> {
-        let func = if input.expand_clozes {
-            extract_latex_expanding_clozes
-        } else {
-            extract_latex
-        };
-        let (text, extracted) = func(&input.text, input.svg);
-
-        Ok(anki_proto::card_rendering::ExtractLatexResponse {
-            text: text.into_owned(),
-            latex: extracted
-                .into_iter()
-                .map(
-                    |e: ExtractedLatex| anki_proto::card_rendering::ExtractedLatex {
-                        filename: e.fname,
-                        latex_body: e.latex,
-                    },
-                )
-                .collect(),
         })
     }
 
@@ -94,37 +61,6 @@ impl crate::services::CardRenderingService for Collection {
             .map(Into::into)
     }
 
-    fn render_uncommitted_card(
-        &mut self,
-        input: anki_proto::card_rendering::RenderUncommittedCardRequest,
-    ) -> Result<anki_proto::card_rendering::RenderCardResponse> {
-        let template = input.template.or_invalid("missing template")?.into();
-        let mut note = input.note.or_invalid("missing note")?.into();
-        let ord = input.card_ord as u16;
-        let fill_empty = input.fill_empty;
-
-        self.render_uncommitted_card(&mut note, &template, ord, fill_empty, input.partial_render)
-            .map(Into::into)
-    }
-
-    fn render_uncommitted_card_legacy(
-        &mut self,
-        input: anki_proto::card_rendering::RenderUncommittedCardLegacyRequest,
-    ) -> Result<anki_proto::card_rendering::RenderCardResponse> {
-        let schema11: CardTemplateSchema11 = serde_json::from_slice(&input.template)?;
-        let template = schema11.into();
-        let mut note = input.note.or_invalid("missing note")?.into();
-        let ord = input.card_ord as u16;
-        let fill_empty = input.fill_empty;
-
-        self.render_uncommitted_card(&mut note, &template, ord, fill_empty, input.partial_render)
-            .map(Into::into)
-    }
-
-    fn strip_av_tags(&mut self, input: generic::String) -> Result<generic::String> {
-        Ok(strip_av_tags(input.val).into())
-    }
-
     fn render_markdown(
         &mut self,
         input: anki_proto::card_rendering::RenderMarkdownRequest,
@@ -139,28 +75,6 @@ impl crate::services::CardRenderingService for Collection {
 
     fn encode_iri_paths(&mut self, input: generic::String) -> Result<generic::String> {
         Ok(encode_iri_paths(&input.val).to_string().into())
-    }
-
-    fn decode_iri_paths(&mut self, input: generic::String) -> Result<generic::String> {
-        Ok(decode_iri_paths(&input.val).to_string().into())
-    }
-
-    fn strip_html(
-        &mut self,
-        input: anki_proto::card_rendering::StripHtmlRequest,
-    ) -> Result<generic::String> {
-        strip_html_proto(input)
-    }
-
-    fn html_to_text_line(
-        &mut self,
-        input: anki_proto::card_rendering::HtmlToTextLineRequest,
-    ) -> Result<generic::String> {
-        Ok(
-            html_to_text_line(&input.text, input.preserve_media_filenames)
-                .to_string()
-                .into(),
-        )
     }
 
     fn compare_answer(
@@ -249,19 +163,19 @@ mod test {
     use anki_proto::card_rendering::CompareAnswerRequest;
     use anki_proto::card_rendering::ExtractAvTagsRequest;
     use anki_proto::card_rendering::ExtractClozeForTypingRequest;
-    use anki_proto::card_rendering::ExtractLatexRequest;
-    use anki_proto::card_rendering::HtmlToTextLineRequest;
+    
+    
     use anki_proto::card_rendering::RenderExistingCardRequest;
     use anki_proto::card_rendering::RenderMarkdownRequest;
-    use anki_proto::card_rendering::RenderUncommittedCardLegacyRequest;
+    
     use anki_proto::card_rendering::RenderUncommittedCardRequest;
-    use anki_proto::card_rendering::RenderedTemplateNode;
-    use anki_proto::card_rendering::RenderedTemplateReplacement;
-    use anki_proto::card_rendering::StripHtmlRequest;
-    use anki_proto::generic;
+    
+    
+    
+    
 
     use crate::error::AnkiError;
-    use crate::notetype::CardTemplateSchema11;
+    
     use crate::prelude::*;
     use crate::services::CardRenderingService;
     use crate::tests::NoteAdder;
@@ -306,22 +220,6 @@ mod test {
     // Question/answer rendering.
 
     #[test]
-    fn render_uncommitted_card_returns_question_and_answer() {
-        let mut col = Collection::new();
-        let req = basic_request(&col, &["front", "back"], None, false);
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        assert_eq!(text_of(&resp.question_nodes), Some("front"));
-        assert_eq!(
-            text_of(&resp.answer_nodes),
-            Some("front\n\n<hr id=answer>\n\nback")
-        );
-        assert!(!resp.is_empty);
-        assert!(!resp.css.is_empty());
-    }
-
-    #[test]
     fn render_existing_card_returns_saved_card_content() {
         let mut col = Collection::new();
         NoteAdder::basic(&mut col)
@@ -348,170 +246,9 @@ mod test {
 
     // Template filters.
 
-    #[test]
-    fn render_uncommitted_card_applies_known_filter() {
-        let mut col = Collection::new();
-        // The `text` filter strips HTML from the field before rendering it.
-        let req = basic_request(
-            &col,
-            &["<b>front</b>", "back"],
-            Some("{{text:Front}}"),
-            false,
-        );
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        assert_eq!(text_of(&resp.question_nodes), Some("front"));
-    }
-
-    #[test]
-    fn render_uncommitted_card_ignores_unknown_filter_when_not_partial() {
-        let mut col = Collection::new();
-        let req = basic_request(&col, &["front", "back"], Some("{{foo:Front}}"), false);
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        assert_eq!(text_of(&resp.question_nodes), Some("front"));
-    }
-
-    #[test]
-    fn render_uncommitted_card_emits_replacement_node_when_partial() {
-        let mut col = Collection::new();
-        let req = basic_request(&col, &["front", "back"], Some("{{foo:Front}}"), true);
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        assert_eq!(
-            resp.question_nodes,
-            vec![RenderedTemplateNode {
-                value: Some(Value::Replacement(RenderedTemplateReplacement {
-                    field_name: "Front".into(),
-                    current_text: "front".into(),
-                    filters: vec!["foo".into()],
-                })),
-            }]
-        );
-    }
-
-    #[test]
-    fn render_uncommitted_card_preserves_text_before_replacement_when_partial() {
-        let mut col = Collection::new();
-        let req = basic_request(&col, &["front", "back"], Some("pre {{foo:Front}}"), true);
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        assert_eq!(
-            resp.question_nodes,
-            vec![
-                RenderedTemplateNode {
-                    value: Some(Value::Text("pre ".into())),
-                },
-                RenderedTemplateNode {
-                    value: Some(Value::Replacement(RenderedTemplateReplacement {
-                        field_name: "Front".into(),
-                        current_text: "front".into(),
-                        filters: vec!["foo".into()],
-                    })),
-                },
-            ]
-        );
-    }
-
     // Edge cases (empty fields and cloze).
 
-    #[test]
-    fn render_uncommitted_card_reports_empty_when_fields_blank() {
-        let mut col = Collection::new();
-        let req = basic_request(&col, &["", ""], None, false);
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        assert!(resp.is_empty);
-    }
-
-    #[test]
-    fn render_uncommitted_card_renders_cloze() {
-        let mut col = Collection::new();
-        let nt = col.cloze_notetype();
-        let note = NoteAdder::new(&nt).fields(&["{{c1::foo}}", ""]).note();
-        let req = RenderUncommittedCardRequest {
-            note: Some(note.into()),
-            card_ord: 0,
-            template: Some(nt.templates[0].clone().into()),
-            fill_empty: false,
-            partial_render: false,
-        };
-
-        let resp = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap();
-
-        let question = text_of(&resp.question_nodes).expect("cloze question fully rendered");
-        let answer = text_of(&resp.answer_nodes).expect("cloze answer fully rendered");
-        // The question hides the deletion behind the `[...]` placeholder (the
-        // value is only carried in a data attribute), and the answer reveals it.
-        assert_eq!(
-            question,
-            r#"<span class="cloze" data-cloze="foo" data-ordinal="1">[...]</span>"#
-        );
-        assert_eq!(
-            answer,
-            "<span class=\"cloze\" data-ordinal=\"1\">foo</span><br>\n"
-        );
-    }
-
     // Error handling (structured errors, no panic).
-
-    #[test]
-    fn render_uncommitted_card_errors_when_template_missing() {
-        let mut col = Collection::new();
-        let mut req = basic_request(&col, &["front", "back"], None, false);
-        req.template = None;
-
-        let err = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap_err();
-
-        match err {
-            AnkiError::InvalidInput { source } => {
-                assert_eq!(source.message(), "missing template");
-            }
-            other => panic!("expected InvalidInput, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn render_uncommitted_card_errors_when_note_missing() {
-        let mut col = Collection::new();
-        let mut req = basic_request(&col, &["front", "back"], None, false);
-        req.note = None;
-
-        let err = CardRenderingService::render_uncommitted_card(&mut col, req).unwrap_err();
-
-        match err {
-            AnkiError::InvalidInput { source } => {
-                assert_eq!(source.message(), "missing note");
-            }
-            other => panic!("expected InvalidInput, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn render_uncommitted_card_legacy_errors_on_invalid_template_bytes() {
-        let mut col = Collection::new();
-        let nt = col.basic_notetype();
-        let note = NoteAdder::new(&nt).fields(&["front", "back"]).note();
-        let req = RenderUncommittedCardLegacyRequest {
-            note: Some(note.into()),
-            card_ord: 0,
-            template: b"not valid json".to_vec(),
-            fill_empty: false,
-            partial_render: false,
-        };
-
-        let err = CardRenderingService::render_uncommitted_card_legacy(&mut col, req).unwrap_err();
-
-        assert!(
-            matches!(err, AnkiError::JsonError { .. }),
-            "expected JsonError, got {err:?}"
-        );
-    }
 
     #[test]
     fn card_flag_field_renders_empty_and_new_cards_have_no_flags() {
@@ -582,42 +319,6 @@ mod test {
     }
 
     #[test]
-    fn extract_latex_returns_extracted_expressions() {
-        let mut col = Collection::new();
-
-        let resp = col
-            .extract_latex(ExtractLatexRequest {
-                text: "a [latex]x^2[/latex] b".into(),
-                svg: false,
-                expand_clozes: false,
-            })
-            .unwrap();
-
-        assert_eq!(resp.latex.len(), 1);
-        assert_eq!(resp.latex[0].latex_body, "x^2");
-        assert!(!resp.latex[0].filename.is_empty());
-        // The inline latex is replaced by an <img> reference to the filename.
-        assert!(resp.text.contains(&resp.latex[0].filename));
-    }
-
-    #[test]
-    fn extract_latex_expands_clozes_when_requested() {
-        let mut col = Collection::new();
-
-        let resp = col
-            .extract_latex(ExtractLatexRequest {
-                text: "[latex]{{c1::x}}[/latex]".into(),
-                svg: true,
-                expand_clozes: true,
-            })
-            .unwrap();
-
-        // Expanding the cloze yields one latex expression per rendered side
-        // (deletion hidden and revealed).
-        assert_eq!(resp.latex.len(), 2);
-    }
-
-    #[test]
     fn get_empty_cards_reports_note_with_empty_card() {
         let mut col = Collection::new();
         let nt = col.basic_rev_notetype();
@@ -666,42 +367,6 @@ mod test {
     }
 
     #[test]
-    fn render_uncommitted_card_legacy_renders_question_and_answer() {
-        let mut col = Collection::new();
-        let nt = col.basic_notetype();
-        let note = NoteAdder::new(&nt).fields(&["front", "back"]).note();
-        let schema11: CardTemplateSchema11 = nt.templates[0].clone().into();
-        let req = RenderUncommittedCardLegacyRequest {
-            note: Some(note.into()),
-            card_ord: 0,
-            template: serde_json::to_vec(&schema11).unwrap(),
-            fill_empty: false,
-            partial_render: false,
-        };
-
-        let resp = CardRenderingService::render_uncommitted_card_legacy(&mut col, req).unwrap();
-
-        assert_eq!(text_of(&resp.question_nodes), Some("front"));
-        assert_eq!(
-            text_of(&resp.answer_nodes),
-            Some("front\n\n<hr id=answer>\n\nback")
-        );
-    }
-
-    #[test]
-    fn strip_av_tags_removes_sound_tags() {
-        let mut col = Collection::new();
-
-        let resp = col
-            .strip_av_tags(generic::String {
-                val: "foo [sound:bar] baz".into(),
-            })
-            .unwrap();
-
-        assert_eq!(resp.val, "foo  baz");
-    }
-
-    #[test]
     fn render_markdown_converts_without_sanitizing() {
         let mut col = Collection::new();
 
@@ -729,66 +394,6 @@ mod test {
         assert!(resp.val.contains("safe"));
         assert!(!resp.val.contains("<script>"));
         assert!(!resp.val.contains("alert(1)"));
-    }
-
-    #[test]
-    fn iri_paths_round_trip_through_encode_and_decode() {
-        let mut col = Collection::new();
-        let original = r#"<img src="a b.png">"#;
-
-        let encoded = col
-            .encode_iri_paths(generic::String {
-                val: original.into(),
-            })
-            .unwrap();
-        assert_ne!(encoded.val, original, "encoding should escape the space");
-
-        let decoded = col.decode_iri_paths(encoded).unwrap();
-        assert_eq!(decoded.val, original);
-    }
-
-    #[test]
-    fn strip_html_normal_removes_all_tags() {
-        use anki_proto::card_rendering::strip_html_request::Mode;
-        let mut col = Collection::new();
-
-        let resp = col
-            .strip_html(StripHtmlRequest {
-                text: r#"<b>hi</b> <img src="foo.jpg">"#.into(),
-                mode: Mode::Normal as i32,
-            })
-            .unwrap();
-
-        assert_eq!(resp.val, "hi ");
-    }
-
-    #[test]
-    fn strip_html_preserve_mode_keeps_media_filename() {
-        use anki_proto::card_rendering::strip_html_request::Mode;
-        let mut col = Collection::new();
-
-        let resp = col
-            .strip_html(StripHtmlRequest {
-                text: r#"<b>hi</b> <img src="foo.jpg">"#.into(),
-                mode: Mode::PreserveMediaFilenames as i32,
-            })
-            .unwrap();
-
-        assert_eq!(resp.val, "hi  foo.jpg ");
-    }
-
-    #[test]
-    fn html_to_text_line_strips_markup() {
-        let mut col = Collection::new();
-
-        let resp = col
-            .html_to_text_line(HtmlToTextLineRequest {
-                text: "<b>hi</b>".into(),
-                preserve_media_filenames: false,
-            })
-            .unwrap();
-
-        assert_eq!(resp.val, "hi");
     }
 
     #[test]

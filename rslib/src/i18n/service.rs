@@ -18,17 +18,6 @@ use crate::scheduler::timespan::answer_button_time;
 use crate::scheduler::timespan::time_span;
 
 impl crate::services::I18nService for Collection {
-    fn translate_string(
-        &mut self,
-        input: TranslateStringRequest,
-    ) -> error::Result<generic::String> {
-        translate_string(&self.tr, input)
-    }
-
-    fn format_timespan(&mut self, input: FormatTimespanRequest) -> error::Result<generic::String> {
-        format_timespan(&self.tr, input)
-    }
-
     fn i18n_resources(&mut self, input: I18nResourcesRequest) -> error::Result<Json> {
         i18n_resources(&self.tr, input)
     }

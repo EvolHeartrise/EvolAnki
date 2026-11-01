@@ -7,17 +7,14 @@ mod states;
 use anki_proto::cards;
 use anki_proto::generic;
 use anki_proto::scheduler;
-use anki_proto::scheduler::ComputeFsrsParamsResponse;
 use anki_proto::scheduler::ComputeMemoryStateResponse;
 use anki_proto::scheduler::ComputeOptimalRetentionResponse;
-use anki_proto::scheduler::FsrsBenchmarkResponse;
 use anki_proto::scheduler::FuzzDeltaRequest;
 use anki_proto::scheduler::FuzzDeltaResponse;
 use anki_proto::scheduler::GetOptimalRetentionParametersResponse;
 use anki_proto::scheduler::SimulateFsrsReviewRequest;
 use anki_proto::scheduler::SimulateFsrsReviewResponse;
 use anki_proto::scheduler::SimulateFsrsWorkloadResponse;
-use fsrs::ComputeParametersInput;
 use fsrs::FSRSItem;
 use fsrs::FSRSReview;
 
@@ -27,7 +24,6 @@ use crate::scheduler::fsrs::params::ComputeParamsRequest;
 use crate::scheduler::new::NewCardDueOrder;
 use crate::scheduler::states::SchedulingStates;
 use crate::search::SortMode;
-use crate::stats::studied_today;
 
 impl crate::services::SchedulerService for Collection {
     fn sched_timing_today(&mut self) -> Result<scheduler::SchedTimingTodayResponse> {
@@ -37,22 +33,6 @@ impl crate::services::SchedulerService for Collection {
     /// Fetch data from DB and return rendered string.
     fn studied_today(&mut self) -> Result<generic::String> {
         self.studied_today().map(Into::into)
-    }
-
-    /// Message rendering only, for old graphs.
-    fn studied_today_message(
-        &mut self,
-        input: scheduler::StudiedTodayMessageRequest,
-    ) -> Result<generic::String> {
-        Ok(studied_today(input.cards, input.seconds as f32, &self.tr).into())
-    }
-
-    fn update_stats(&mut self, input: scheduler::UpdateStatsRequest) -> Result<()> {
-        self.transact_no_undo(|col| {
-            let today = col.current_due_day(0)?;
-            let usn = col.usn()?;
-            col.update_deck_stats(today, usn, input)
-        })
     }
 
     fn extend_limits(&mut self, input: scheduler::ExtendLimitsRequest) -> Result<()> {
@@ -128,16 +108,6 @@ impl crate::services::SchedulerService for Collection {
         .map(Into::into)
     }
 
-    fn schedule_cards_as_new_defaults(
-        &mut self,
-        input: scheduler::ScheduleCardsAsNewDefaultsRequest,
-    ) -> Result<scheduler::ScheduleCardsAsNewDefaultsResponse> {
-        Ok(Collection::reschedule_cards_as_new_defaults(
-            self,
-            input.context(),
-        ))
-    }
-
     fn set_due_date(
         &mut self,
         input: scheduler::SetDueDateRequest,
@@ -177,18 +147,6 @@ impl crate::services::SchedulerService for Collection {
             .map(Into::into)
     }
 
-    fn reposition_defaults(&mut self) -> Result<scheduler::RepositionDefaultsResponse> {
-        Ok(Collection::reposition_defaults(self))
-    }
-
-    fn sort_deck(
-        &mut self,
-        input: scheduler::SortDeckRequest,
-    ) -> Result<anki_proto::collection::OpChangesWithCount> {
-        self.sort_deck_legacy(input.deck_id.into(), input.randomize)
-            .map(Into::into)
-    }
-
     fn get_scheduling_states(
         &mut self,
         input: anki_proto::cards::CardId,
@@ -212,10 +170,6 @@ impl crate::services::SchedulerService for Collection {
         self.answer_card(&mut input.into()).map(Into::into)
     }
 
-    fn upgrade_scheduler(&mut self) -> Result<()> {
-        self.transact_no_undo(|col| col.upgrade_to_v2_scheduler())
-    }
-
     fn get_queued_cards(
         &mut self,
         input: scheduler::GetQueuedCardsRequest,
@@ -229,13 +183,6 @@ impl crate::services::SchedulerService for Collection {
         input: scheduler::CustomStudyRequest,
     ) -> Result<anki_proto::collection::OpChanges> {
         self.custom_study(input).map(Into::into)
-    }
-
-    fn custom_study_defaults(
-        &mut self,
-        input: scheduler::CustomStudyDefaultsRequest,
-    ) -> Result<scheduler::CustomStudyDefaultsResponse> {
-        self.custom_study_defaults(input.deck_id.into())
     }
 
     fn compute_fsrs_params(
@@ -361,54 +308,6 @@ impl crate::services::SchedulerService for Collection {
 }
 
 impl crate::services::BackendSchedulerService for Backend {
-    fn compute_fsrs_params_from_items(
-        &self,
-        req: scheduler::ComputeFsrsParamsFromItemsRequest,
-    ) -> Result<scheduler::ComputeFsrsParamsResponse> {
-        let fsrs_items = req.items.len() as u32;
-        let params = fsrs::compute_parameters(ComputeParametersInput {
-            train_set: req.items.into_iter().map(fsrs_item_proto_to_fsrs).collect(),
-            card_ids: None,
-            progress: None,
-            enable_short_term: true,
-            num_relearning_steps: None,
-            training_config: None,
-        })?;
-        Ok(ComputeFsrsParamsResponse {
-            params,
-            fsrs_items,
-            health_check_passed: None,
-        })
-    }
-
-    fn fsrs_benchmark(
-        &self,
-        req: scheduler::FsrsBenchmarkRequest,
-    ) -> Result<scheduler::FsrsBenchmarkResponse> {
-        let train_set = req
-            .train_set
-            .into_iter()
-            .map(fsrs_item_proto_to_fsrs)
-            .collect();
-        let params = fsrs::benchmark(ComputeParametersInput {
-            train_set,
-            card_ids: None,
-            progress: None,
-            enable_short_term: true,
-            num_relearning_steps: None,
-            training_config: None,
-        });
-        Ok(FsrsBenchmarkResponse { params })
-    }
-
-    fn export_dataset(&self, req: scheduler::ExportDatasetRequest) -> Result<()> {
-        self.with_col(|col| {
-            col.export_dataset(
-                req.min_entries.try_into().unwrap(),
-                req.target_path.as_ref(),
-            )
-        })
-    }
 }
 
 fn fsrs_item_proto_to_fsrs(item: anki_proto::scheduler::FsrsItem) -> FSRSItem {
@@ -742,99 +641,6 @@ mod tests {
     }
 
     #[test]
-    fn schedule_cards_as_new_reviewer_context_stores_independently_of_browser() {
-        use anki_proto::scheduler::schedule_cards_as_new_request::Context;
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-
-        let card_id = answer_top_card(&mut col, Rating::Easy);
-
-        // Write non-default values via the Reviewer context.
-        let _ = SchedulerService::schedule_cards_as_new(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewRequest {
-                card_ids: vec![card_id],
-                log: false,
-                restore_position: false,
-                reset_counts: true,
-                context: Some(Context::Reviewer as i32),
-            },
-        )
-        .unwrap();
-
-        let reviewer = SchedulerService::schedule_cards_as_new_defaults(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewDefaultsRequest {
-                context: Context::Reviewer as i32,
-            },
-        )
-        .unwrap();
-
-        let browser = SchedulerService::schedule_cards_as_new_defaults(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewDefaultsRequest {
-                context: Context::Browser as i32,
-            },
-        )
-        .unwrap();
-
-        // Reviewer picked up the values we stored.
-        assert!(!reviewer.restore_position);
-        assert!(reviewer.reset_counts);
-
-        // Browser config is independent and still at its defaults.
-        assert!(browser.restore_position);
-        assert!(!browser.reset_counts);
-    }
-
-    #[test]
-    fn schedule_cards_as_new_defaults_are_stored_and_read_back_per_context() {
-        use anki_proto::scheduler::schedule_cards_as_new_request::Context;
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-
-        // Graduate the card so we have something to reschedule.
-        let card_id = answer_top_card(&mut col, Rating::Easy);
-
-        // Persist non-default values for the Browser context only.
-        let _ = SchedulerService::schedule_cards_as_new(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewRequest {
-                card_ids: vec![card_id],
-                log: false,
-                restore_position: false,
-                reset_counts: true,
-                context: Some(Context::Browser as i32),
-            },
-        )
-        .unwrap();
-
-        let browser = SchedulerService::schedule_cards_as_new_defaults(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewDefaultsRequest {
-                context: Context::Browser as i32,
-            },
-        )
-        .unwrap();
-
-        let reviewer = SchedulerService::schedule_cards_as_new_defaults(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewDefaultsRequest {
-                context: Context::Reviewer as i32,
-            },
-        )
-        .unwrap();
-
-        // Browser picked up the values we just stored.
-        assert!(!browser.restore_position);
-        assert!(browser.reset_counts);
-
-        // Reviewer config is independent and still at its defaults.
-        assert!(reviewer.restore_position);
-        assert!(!reviewer.reset_counts);
-    }
-
-    #[test]
     fn set_due_date_moves_card_to_review_with_given_offset() {
         let mut col = Collection::new();
         let cid = add_basic_card(&mut col);
@@ -1080,59 +886,6 @@ mod tests {
     }
 
     #[test]
-    fn sort_deck_repositions_new_cards_in_deck() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-        NoteAdder::basic(&mut col).fields(&["b", ""]).add(&mut col);
-
-        let out = SchedulerService::sort_deck(
-            &mut col,
-            anki_proto::scheduler::SortDeckRequest {
-                deck_id: 1,
-                randomize: false,
-            },
-        )
-        .unwrap();
-
-        assert_eq!(out.count, 2, "both new cards in the deck are repositioned");
-    }
-
-    #[test]
-    fn reposition_defaults_returns_stored_values() {
-        let mut col = Collection::new();
-
-        // Verify out-of-box defaults.
-        let defaults = SchedulerService::reposition_defaults(&mut col).unwrap();
-        assert!(!defaults.random);
-        assert!(!defaults.shift);
-
-        // sort_cards persists randomize and shift_existing to config; a subsequent
-        // reposition_defaults call must reflect those stored values.
-        let cid = add_basic_card(&mut col);
-        let _ = SchedulerService::sort_cards(
-            &mut col,
-            anki_proto::scheduler::SortCardsRequest {
-                card_ids: vec![cid.0],
-                starting_from: 0,
-                step_size: 1,
-                randomize: true,
-                shift_existing: true,
-            },
-        )
-        .unwrap();
-
-        let stored = SchedulerService::reposition_defaults(&mut col).unwrap();
-        assert!(
-            stored.random,
-            "random should be persisted after sort_cards with randomize=true"
-        );
-        assert!(
-            stored.shift,
-            "shift should be persisted after sort_cards with shift_existing=true"
-        );
-    }
-
-    #[test]
     fn describe_next_states_returns_one_label_per_button() {
         let mut col = Collection::new();
         let cid = add_basic_card(&mut col);
@@ -1175,27 +928,6 @@ mod tests {
     }
 
     #[test]
-    fn studied_today_message_renders_counts_from_request() {
-        let mut col = Collection::new();
-
-        let msg = SchedulerService::studied_today_message(
-            &mut col,
-            anki_proto::scheduler::StudiedTodayMessageRequest {
-                cards: 3,
-                seconds: 13.0,
-            },
-        )
-        .unwrap()
-        .val;
-
-        // template_only i18n renders a deterministic, English summary string.
-        assert_eq!(
-            msg.replace('\n', " "),
-            "Studied 3 cards in 13 seconds today (4.33s/card)"
-        );
-    }
-
-    #[test]
     fn counts_for_deck_today_tracks_new_cards_studied() {
         let mut col = Collection::new();
         NoteAdder::basic(&mut col).add(&mut col);
@@ -1214,74 +946,6 @@ mod tests {
             SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
                 .unwrap();
         assert_eq!(after.new, 1, "studying a new card increments the new count");
-    }
-
-    #[test]
-    fn update_stats_adds_deltas_to_deck_counts() {
-        let mut col = Collection::new();
-
-        SchedulerService::update_stats(
-            &mut col,
-            anki_proto::scheduler::UpdateStatsRequest {
-                deck_id: 1,
-                new_delta: 2,
-                review_delta: 3,
-                millisecond_delta: 0,
-            },
-        )
-        .unwrap();
-
-        let counts =
-            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
-                .unwrap();
-        assert_eq!(counts.new, 2, "new_delta is added to the studied count");
-        assert_eq!(
-            counts.review, 3,
-            "review_delta is added to the studied count"
-        );
-    }
-
-    #[test]
-    fn extend_limits_subtracts_from_studied_counts() {
-        let mut col = Collection::new();
-
-        // Pretend 5 new / 5 review cards were already studied today.
-        SchedulerService::update_stats(
-            &mut col,
-            anki_proto::scheduler::UpdateStatsRequest {
-                deck_id: 1,
-                new_delta: 5,
-                review_delta: 5,
-                millisecond_delta: 0,
-            },
-        )
-        .unwrap();
-
-        // Extending the limits lowers the studied counts, freeing up more cards.
-        SchedulerService::extend_limits(
-            &mut col,
-            anki_proto::scheduler::ExtendLimitsRequest {
-                deck_id: 1,
-                new_delta: 2,
-                review_delta: 1,
-            },
-        )
-        .unwrap();
-
-        let counts =
-            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
-                .unwrap();
-        assert_eq!(counts.new, 3, "5 studied minus a limit extension of 2");
-        assert_eq!(counts.review, 4, "5 studied minus a limit extension of 1");
-    }
-
-    #[test]
-    fn upgrade_scheduler_switches_collection_to_v2() {
-        let mut col = Collection::new();
-
-        SchedulerService::upgrade_scheduler(&mut col).unwrap();
-
-        assert!(col.v2_enabled(), "scheduler should report v2 after upgrade");
     }
 
     /// Adds a learning card that the default filtered-deck search will gather.
@@ -1343,44 +1007,4 @@ mod tests {
         assert_eq!(card.deck_id, DeckId(1), "card is returned to its home deck");
     }
 
-    #[test]
-    fn custom_study_extends_new_limit() {
-        let mut col = Collection::new();
-
-        let _ = SchedulerService::custom_study(
-            &mut col,
-            anki_proto::scheduler::CustomStudyRequest {
-                deck_id: 1,
-                value: Some(anki_proto::scheduler::custom_study_request::Value::NewLimitDelta(5)),
-            },
-        )
-        .unwrap();
-
-        let defaults = SchedulerService::custom_study_defaults(
-            &mut col,
-            anki_proto::scheduler::CustomStudyDefaultsRequest { deck_id: 1 },
-        )
-        .unwrap();
-        assert_eq!(
-            defaults.extend_new, 5,
-            "new limit was extended by the delta"
-        );
-    }
-
-    #[test]
-    fn custom_study_defaults_reports_available_new_cards() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-
-        let defaults = SchedulerService::custom_study_defaults(
-            &mut col,
-            anki_proto::scheduler::CustomStudyDefaultsRequest { deck_id: 1 },
-        )
-        .unwrap();
-
-        assert_eq!(
-            defaults.available_new, 1,
-            "the new card is available to study"
-        );
-    }
 }

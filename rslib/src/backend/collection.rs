@@ -3,7 +3,6 @@
 
 use std::sync::MutexGuard;
 
-use anki_proto::generic;
 use tracing::error;
 
 use super::Backend;
@@ -49,38 +48,6 @@ impl BackendCollectionService for Backend {
             error!(" failed: {:?}", e);
         }
 
-        Ok(())
-    }
-
-    fn create_backup(
-        &self,
-        input: anki_proto::collection::CreateBackupRequest,
-    ) -> Result<generic::Bool> {
-        // lock collection
-        let mut col_lock = self.lock_open_collection()?;
-        let col = col_lock.as_mut().unwrap();
-        // await any previous backup first
-        let mut task_lock = self.backup_task.lock().unwrap();
-        if let Some(task) = task_lock.take() {
-            task.join().unwrap()?;
-        }
-        // start the new backup
-        let created = if let Some(task) = col.maybe_backup(input.backup_folder, input.force)? {
-            if input.wait_for_completion {
-                drop(col_lock);
-                task.join().unwrap()?;
-            } else {
-                *task_lock = Some(task);
-            }
-            true
-        } else {
-            false
-        };
-        Ok(created.into())
-    }
-
-    fn await_backup_completion(&self) -> Result<()> {
-        self.await_backup_completion()?;
         Ok(())
     }
 

@@ -29,22 +29,6 @@ impl crate::services::CardsService for Collection {
             .map(Into::into)
     }
 
-    fn update_cards(
-        &mut self,
-        input: anki_proto::cards::UpdateCardsRequest,
-    ) -> error::Result<anki_proto::collection::OpChanges> {
-        let cards = input
-            .cards
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<error::Result<Vec<Card>, AnkiError>>()?;
-        for card in &cards {
-            card.validate_custom_data()?;
-        }
-        self.update_cards_maybe_undoable(cards, !input.skip_undo_entry)
-            .map(Into::into)
-    }
-
     fn remove_cards(
         &mut self,
         input: anki_proto::cards::RemoveCardsRequest,

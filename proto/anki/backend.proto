@@ -7,7 +7,6 @@ option java_multiple_files = true;
 
 package anki.backend;
 
-import "anki/links.proto";
 
 message BackendInit {
   // Preferred translation languages, in priority order. Each entry is a Unicode
@@ -58,8 +57,6 @@ message BackendError {
   string message = 1;
   // the error subtype
   Kind kind = 2;
-  // optional page in the manual
-  optional links.HelpPageLinkRequest.HelpPage help_page = 3;
   // additional information about the context in which the error occurred
   string context = 4;
   // a backtrace of the underlying error; requires RUST_BACKTRACE to be set

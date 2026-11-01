@@ -9,7 +9,6 @@ use crate::prelude::*;
 impl AnkiError {
     pub fn into_protobuf(self, tr: &I18n) -> anki_proto::backend::BackendError {
         let message = self.message(tr);
-        let help_page = self.help_page().map(|page| page as i32);
         let context = self.context();
         let backtrace = self.backtrace();
         let kind = match self {
@@ -51,7 +50,6 @@ impl AnkiError {
         anki_proto::backend::BackendError {
             kind: kind as i32,
             message,
-            help_page,
             context,
             backtrace,
         }

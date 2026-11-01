@@ -11,16 +11,8 @@ import "anki/generic.proto";
 import "anki/collection.proto";
 
 service SearchService {
-  rpc BuildSearchString(SearchNode) returns (generic.String);
   rpc SearchCards(SearchRequest) returns (SearchResponse);
   rpc SearchNotes(SearchRequest) returns (SearchResponse);
-  rpc JoinSearchNodes(JoinSearchNodesRequest) returns (generic.String);
-  rpc ReplaceSearchNode(ReplaceSearchNodeRequest) returns (generic.String);
-  rpc FindAndReplace(FindAndReplaceRequest)
-      returns (collection.OpChangesWithCount);
-  rpc AllBrowserColumns(generic.Empty) returns (BrowserColumns);
-  rpc BrowserRowForId(generic.Int64) returns (BrowserRow);
-  rpc SetActiveBrowserColumns(generic.StringList) returns (generic.Empty);
 }
 
 // Implicitly includes any of the above methods that are not listed in the

@@ -4,10 +4,8 @@ use anki_proto::decks::deck::kind_container::Kind as DeckKind;
 use anki_proto::generic;
 
 use crate::collection::Collection;
-use crate::decks::filtered::search_order_labels;
 use crate::decks::Deck;
 use crate::decks::DeckId;
-use crate::decks::DeckSchema11;
 use crate::decks::NativeDeckName;
 use crate::error;
 use crate::error::AnkiError;
@@ -30,34 +28,6 @@ impl crate::services::DecksService for Collection {
         Ok(self.add_deck(&mut deck)?.map(|_| deck.id.0).into())
     }
 
-    fn add_deck_legacy(
-        &mut self,
-        input: generic::Json,
-    ) -> error::Result<anki_proto::collection::OpChangesWithId> {
-        let schema11: DeckSchema11 = serde_json::from_slice(&input.json)?;
-        let mut deck: Deck = schema11.into();
-
-        let output = self.add_deck(&mut deck)?;
-        Ok(output.map(|_| deck.id.0).into())
-    }
-
-    fn add_or_update_deck_legacy(
-        &mut self,
-        input: anki_proto::decks::AddOrUpdateDeckLegacyRequest,
-    ) -> error::Result<anki_proto::decks::DeckId> {
-        let schema11: DeckSchema11 = serde_json::from_slice(&input.deck)?;
-        let mut deck: Deck = schema11.into();
-        if input.preserve_usn_and_mtime {
-            self.transact_no_undo(|col| {
-                let usn = col.usn()?;
-                col.add_or_update_single_deck_with_existing_id(&mut deck, usn)
-            })?;
-        } else {
-            self.add_or_update_deck(&mut deck)?;
-        }
-        Ok(anki_proto::decks::DeckId { did: deck.id.0 })
-    }
-
     fn deck_tree(
         &mut self,
         input: anki_proto::decks::DeckTreeRequest,
@@ -68,20 +38,6 @@ impl crate::services::DecksService for Collection {
             Some(TimestampSecs(input.now))
         };
         self.deck_tree(now)
-    }
-
-    fn deck_tree_legacy(&mut self) -> error::Result<generic::Json> {
-        let tree = self.legacy_deck_tree()?;
-        serde_json::to_vec(&tree)
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
-    fn get_all_decks_legacy(&mut self) -> error::Result<generic::Json> {
-        let decks = self.storage.get_all_decks_as_schema11()?;
-        serde_json::to_vec(&decks)
-            .map_err(Into::into)
-            .map(Into::into)
     }
 
     fn get_deck_id_by_name(
@@ -100,35 +56,6 @@ impl crate::services::DecksService for Collection {
         Ok(self.storage.get_deck(did)?.or_not_found(did)?.into())
     }
 
-    fn update_deck(
-        &mut self,
-        input: anki_proto::decks::Deck,
-    ) -> error::Result<anki_proto::collection::OpChanges> {
-        let mut deck = Deck::try_from(input)?;
-        self.update_deck(&mut deck).map(Into::into)
-    }
-
-    fn update_deck_legacy(
-        &mut self,
-        input: generic::Json,
-    ) -> error::Result<anki_proto::collection::OpChanges> {
-        let deck: DeckSchema11 = serde_json::from_slice(&input.json)?;
-        let mut deck = deck.into();
-        self.update_deck(&mut deck).map(Into::into)
-    }
-
-    fn get_deck_legacy(
-        &mut self,
-        input: anki_proto::decks::DeckId,
-    ) -> error::Result<generic::Json> {
-        let did = input.into();
-
-        let deck: DeckSchema11 = self.storage.get_deck(did)?.or_not_found(did)?.into();
-        serde_json::to_vec(&deck)
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
     fn get_deck_names(
         &mut self,
         input: anki_proto::decks::GetDeckNamesRequest,
@@ -142,44 +69,12 @@ impl crate::services::DecksService for Collection {
         Ok(deck_names_to_proto(names))
     }
 
-    fn get_deck_and_child_names(
-        &mut self,
-        input: anki_proto::decks::DeckId,
-    ) -> error::Result<anki_proto::decks::DeckNames> {
-        Collection::get_deck_and_child_names(self, input.did.into()).map(deck_names_to_proto)
-    }
-
-    fn new_deck_legacy(&mut self, input: generic::Bool) -> error::Result<generic::Json> {
-        let deck = if input.val {
-            Deck::new_filtered()
-        } else {
-            Deck::new_normal()
-        };
-        let schema11: DeckSchema11 = deck.into();
-        serde_json::to_vec(&schema11)
-            .map_err(Into::into)
-            .map(Into::into)
-    }
-
     fn remove_decks(
         &mut self,
         input: anki_proto::decks::DeckIds,
     ) -> error::Result<anki_proto::collection::OpChangesWithCount> {
         self.remove_decks_and_child_decks(&input.dids.into_iter().map(DeckId).collect::<Vec<_>>())
             .map(Into::into)
-    }
-
-    fn reparent_decks(
-        &mut self,
-        input: anki_proto::decks::ReparentDecksRequest,
-    ) -> error::Result<anki_proto::collection::OpChangesWithCount> {
-        let deck_ids: Vec<_> = input.deck_ids.into_iter().map(Into::into).collect();
-        let new_parent = if input.new_parent == 0 {
-            None
-        } else {
-            Some(input.new_parent.into())
-        };
-        self.reparent_decks(&deck_ids, new_parent).map(Into::into)
     }
 
     fn rename_deck(
@@ -205,10 +100,6 @@ impl crate::services::DecksService for Collection {
         self.add_or_update_filtered_deck(input.into())
             .map(|out| out.map(i64::from))
             .map(Into::into)
-    }
-
-    fn filtered_deck_order_labels(&mut self) -> error::Result<generic::StringList> {
-        Ok(search_order_labels(&self.tr).into())
     }
 
     fn set_deck_collapsed(
@@ -319,7 +210,7 @@ fn deck_names_to_proto(names: Vec<(DeckId, String)>) -> anki_proto::decks::DeckN
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    
 
     use strum::IntoEnumIterator;
 
@@ -504,33 +395,6 @@ mod tests {
     // ----------------------------------------------------------------------
 
     #[test]
-    fn update_deck_persists_common_and_kind_specific_changes() {
-        let mut col = Collection::new();
-        let deck = DeckAdder::new("BeforeUpdate").add(&mut col);
-        let mut proto = DecksService::get_deck(&mut col, deck.id.into()).unwrap();
-        proto.name = "AfterUpdate".to_string();
-        let common = proto.common.as_mut().unwrap();
-        common.study_collapsed = false;
-        common.new_studied = 7;
-        let expected_kind =
-            anki_proto::decks::deck::Kind::Normal(anki_proto::decks::deck::Normal {
-                config_id: deck.id.0,
-                description: "Updated description".to_string(),
-                ..Default::default()
-            });
-        proto.kind = Some(expected_kind.clone());
-
-        let _ = DecksService::update_deck(&mut col, proto).unwrap();
-
-        let updated = DecksService::get_deck(&mut col, deck.id.into()).unwrap();
-        assert_eq!(updated.name, "AfterUpdate");
-        let common = updated.common.unwrap();
-        assert!(!common.study_collapsed);
-        assert_eq!(common.new_studied, 7);
-        assert_eq!(updated.kind, Some(expected_kind));
-    }
-
-    #[test]
     fn rename_deck_renames_the_deck_and_its_descendants() {
         let mut col = Collection::new();
         let parent = DeckAdder::new("Before").add(&mut col);
@@ -589,46 +453,6 @@ mod tests {
     // ----------------------------------------------------------------------
     // Reparent
     // ----------------------------------------------------------------------
-
-    #[test]
-    fn reparent_decks_moves_deck_under_new_parent() {
-        let mut col = Collection::new();
-        let parent = DeckAdder::new("Parent").add(&mut col);
-        let child = DeckAdder::new("Child").add(&mut col);
-
-        let _ = DecksService::reparent_decks(
-            &mut col,
-            anki_proto::decks::ReparentDecksRequest {
-                deck_ids: vec![child.id.0],
-                new_parent: parent.id.0,
-            },
-        )
-        .unwrap();
-        assert_eq!(
-            deck_id_by_name(&mut col, "Parent::Child").unwrap(),
-            child.id.0
-        );
-        let error = deck_id_by_name(&mut col, "Child").unwrap_err();
-        assert!(matches!(error, AnkiError::NotFound { .. }));
-    }
-
-    #[test]
-    fn reparent_decks_with_zero_parent_moves_deck_to_top_level() {
-        let mut col = Collection::new();
-        let child = DeckAdder::new("Parent::Child").add(&mut col);
-
-        let _ = DecksService::reparent_decks(
-            &mut col,
-            anki_proto::decks::ReparentDecksRequest {
-                deck_ids: vec![child.id.0],
-                new_parent: 0,
-            },
-        )
-        .unwrap();
-        assert_eq!(deck_id_by_name(&mut col, "Child").unwrap(), child.id.0);
-        let error = deck_id_by_name(&mut col, "Parent::Child").unwrap_err();
-        assert!(matches!(error, AnkiError::NotFound { .. }));
-    }
 
     // ----------------------------------------------------------------------
     // Names & tree
@@ -708,25 +532,6 @@ mod tests {
     }
 
     #[test]
-    fn get_deck_and_child_names_includes_children() {
-        let mut col = Collection::new();
-        let parent = DeckAdder::new("P").add(&mut col);
-        let child = DeckAdder::new("P::C").add(&mut col);
-        DeckAdder::new("Unrelated").add(&mut col);
-
-        let names = DecksService::get_deck_and_child_names(&mut col, parent.id.into()).unwrap();
-        let entries: Vec<_> = names
-            .entries
-            .into_iter()
-            .map(|entry| (entry.id, entry.name))
-            .collect();
-
-        assert_eq!(entries.len(), 2, "unrelated decks should be excluded");
-        assert!(entries.contains(&(parent.id.0, "P".to_string())));
-        assert!(entries.contains(&(child.id.0, "P::C".to_string())));
-    }
-
-    #[test]
     fn deck_tree_with_now_zero_omits_counts() {
         let mut col = Collection::new();
         // a new card that would be counted if counts were requested
@@ -765,25 +570,6 @@ mod tests {
         assert_eq!(
             default.new_count, 1,
             "the single new card should be counted when now is set"
-        );
-    }
-
-    #[test]
-    fn deck_tree_legacy_contains_default_deck() {
-        let mut col = Collection::new();
-        let json = DecksService::deck_tree_legacy(&mut col).unwrap();
-        // LegacyDueCounts serializes as a tuple: [name, deck_id, review, learn,
-        // new, children]; children (index 5) is an array of the same shape.
-        let value: serde_json::Value = serde_json::from_slice(&json.json).unwrap();
-        let names: Vec<&str> = value[5]
-            .as_array()
-            .expect("legacy tree should have a children array at index 5")
-            .iter()
-            .filter_map(|child| child[0].as_str())
-            .collect();
-        assert!(
-            names.contains(&"Default"),
-            "legacy tree should list the Default deck, got {names:?}"
         );
     }
 
@@ -826,184 +612,9 @@ mod tests {
     // Legacy JSON paths
     // ----------------------------------------------------------------------
 
-    #[test]
-    fn new_deck_legacy_reflects_filtered_flag() {
-        let mut col = Collection::new();
-        let normal = DecksService::new_deck_legacy(&mut col, generic::Bool { val: false }).unwrap();
-        let normal: serde_json::Value = serde_json::from_slice(&normal.json).unwrap();
-        assert_eq!(normal["dyn"], 0);
-
-        let filtered =
-            DecksService::new_deck_legacy(&mut col, generic::Bool { val: true }).unwrap();
-        let filtered: serde_json::Value = serde_json::from_slice(&filtered.json).unwrap();
-        assert_eq!(filtered["dyn"], 1);
-    }
-
-    #[test]
-    fn add_deck_legacy_round_trips_through_get_deck_legacy() {
-        let mut col = Collection::new();
-        let json = DecksService::new_deck_legacy(&mut col, generic::Bool { val: false }).unwrap();
-        let mut value: serde_json::Value = serde_json::from_slice(&json.json).unwrap();
-        value["name"] = serde_json::json!("LegacyDeck");
-
-        let added = DecksService::add_deck_legacy(
-            &mut col,
-            generic::Json {
-                json: serde_json::to_vec(&value).unwrap(),
-            },
-        )
-        .unwrap();
-        assert!(added.id > 0);
-
-        let fetched = DecksService::get_deck_legacy(&mut col, DeckId(added.id).into()).unwrap();
-        let fetched: serde_json::Value = serde_json::from_slice(&fetched.json).unwrap();
-        assert_eq!(fetched["name"], "LegacyDeck");
-    }
-
-    #[test]
-    fn legacy_deck_mutations_reject_invalid_json() {
-        let mut col = Collection::new();
-        let invalid_json = b"not valid json".to_vec();
-        let errors = [
-            DecksService::add_deck_legacy(
-                &mut col,
-                generic::Json {
-                    json: invalid_json.clone(),
-                },
-            )
-            .unwrap_err(),
-            DecksService::update_deck_legacy(
-                &mut col,
-                generic::Json {
-                    json: invalid_json.clone(),
-                },
-            )
-            .unwrap_err(),
-            DecksService::add_or_update_deck_legacy(
-                &mut col,
-                anki_proto::decks::AddOrUpdateDeckLegacyRequest {
-                    deck: invalid_json,
-                    preserve_usn_and_mtime: false,
-                },
-            )
-            .unwrap_err(),
-        ];
-
-        for error in errors {
-            assert!(
-                matches!(error, AnkiError::JsonError { .. }),
-                "invalid legacy JSON should produce a JSON error, got {error:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn get_all_decks_legacy_includes_default() {
-        let mut col = Collection::new();
-        let json = DecksService::get_all_decks_legacy(&mut col).unwrap();
-        let value: serde_json::Value = serde_json::from_slice(&json.json).unwrap();
-        assert_eq!(value["1"]["name"], "Default");
-    }
-
-    #[test]
-    fn update_deck_legacy_persists_changes() {
-        let mut col = Collection::new();
-        let deck = DeckAdder::new("LegacyUpdate").add(&mut col);
-        let fetched = DecksService::get_deck_legacy(&mut col, deck.id.into()).unwrap();
-        let mut value: serde_json::Value = serde_json::from_slice(&fetched.json).unwrap();
-        value["name"] = serde_json::json!("LegacyRenamed");
-
-        let _ = DecksService::update_deck_legacy(
-            &mut col,
-            generic::Json {
-                json: serde_json::to_vec(&value).unwrap(),
-            },
-        )
-        .unwrap();
-
-        let after = DecksService::get_deck(&mut col, deck.id.into()).unwrap();
-        assert_eq!(after.name, "LegacyRenamed");
-    }
-
-    #[test]
-    fn add_or_update_deck_legacy_adds_when_id_is_zero() {
-        let mut col = Collection::new();
-        let json = DecksService::new_deck_legacy(&mut col, generic::Bool { val: false }).unwrap();
-        let mut value: serde_json::Value = serde_json::from_slice(&json.json).unwrap();
-        value["name"] = serde_json::json!("AddOrUpdateLegacy");
-
-        // branch: !preserve_usn_and_mtime -> add_or_update_deck
-        let added = DecksService::add_or_update_deck_legacy(
-            &mut col,
-            anki_proto::decks::AddOrUpdateDeckLegacyRequest {
-                deck: serde_json::to_vec(&value).unwrap(),
-                preserve_usn_and_mtime: false,
-            },
-        )
-        .unwrap();
-        assert!(added.did > 0);
-        assert_eq!(
-            DecksService::get_deck(&mut col, DeckId(added.did).into())
-                .unwrap()
-                .name,
-            "AddOrUpdateLegacy"
-        );
-    }
-
-    #[test]
-    fn add_or_update_deck_legacy_preserves_usn_and_mtime_when_requested() {
-        let mut col = Collection::new();
-        let deck = DeckAdder::new("PreserveMetadata").add(&mut col);
-        let fetched = DecksService::get_deck_legacy(&mut col, deck.id.into()).unwrap();
-        let mut value: serde_json::Value = serde_json::from_slice(&fetched.json).unwrap();
-        value["name"] = serde_json::json!("PreservedName");
-        value["mod"] = serde_json::json!(123);
-        value["usn"] = serde_json::json!(456);
-
-        let updated = DecksService::add_or_update_deck_legacy(
-            &mut col,
-            anki_proto::decks::AddOrUpdateDeckLegacyRequest {
-                deck: serde_json::to_vec(&value).unwrap(),
-                preserve_usn_and_mtime: true,
-            },
-        )
-        .unwrap();
-        assert_eq!(updated.did, deck.id.0);
-
-        let fetched = DecksService::get_deck_legacy(&mut col, deck.id.into()).unwrap();
-        let value: serde_json::Value = serde_json::from_slice(&fetched.json).unwrap();
-        assert_eq!(value["name"], "PreservedName");
-        assert_eq!(value["mod"], 123);
-        assert_eq!(value["usn"], 456);
-    }
-
     // ----------------------------------------------------------------------
     // Filtered decks
     // ----------------------------------------------------------------------
-
-    #[test]
-    fn filtered_deck_order_labels_has_a_unique_label_per_order() {
-        let mut col = Collection::new();
-
-        let labels = DecksService::filtered_deck_order_labels(&mut col).unwrap();
-
-        assert_eq!(
-            labels.vals.len(),
-            FilteredSearchOrder::iter().count(),
-            "there should be one label per search order"
-        );
-        assert!(
-            labels.vals.iter().all(|label| !label.is_empty()),
-            "no label should be empty"
-        );
-        let unique: HashSet<&String> = labels.vals.iter().collect();
-        assert_eq!(
-            unique.len(),
-            labels.vals.len(),
-            "labels should be unique, got {:?}",
-            labels.vals
-        );
-    }
 
     #[test]
     fn get_or_create_filtered_deck_returns_an_unsaved_deck_for_zero_id() {
