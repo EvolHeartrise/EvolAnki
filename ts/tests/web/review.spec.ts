@@ -369,6 +369,7 @@ test("each deck's options are its own, down to subdecks and new ones", async ({ 
     const problems = failOnPageProblems(page);
     const open = async (name: string) => {
         await page.goto(`${server.url}/`);
+        await expect(page.locator(`tr[data-deck="Second"]`)).toBeVisible();
         const expand = page.getByRole("button", { name: "Expand Second" });
         if (name === "Sub" && await expand.isVisible()) {
             await expand.click();

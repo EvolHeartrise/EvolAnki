@@ -509,6 +509,22 @@ mod test {
     }
 
     #[test]
+    fn undoing_a_save_brings_back_the_settings() -> Result<()> {
+        let mut col = Collection::new();
+        let deck = DeckAdder::new("deck").add(&mut col);
+        let before = col.get_deck_config(deck.config_id().unwrap(), false)?;
+        let mut input = request_for(&mut col, deck.id);
+        input.config.inner.new_per_day = 3;
+        col.update_deck_configs(input)?;
+        col.undo()?;
+        assert_eq!(
+            col.get_deck_config(deck.config_id().unwrap(), false)?,
+            before
+        );
+        Ok(())
+    }
+
+    #[test]
     fn a_filtered_deck_cant_be_saved_to() {
         let mut col = Collection::new();
         let deck = DeckAdder::new("filtered").filtered(true).add(&mut col);
