@@ -167,21 +167,17 @@ fn buried_cards_become_normal_when_converted_or_opened() {
     let fx = Fixture::new();
     fs::create_dir_all(fx.media()).unwrap();
     let db = rusqlite::Connection::open(fx.collection()).unwrap();
-    let id_of = |ctype: i64| -> i64 {
-        db.query_row(
-            "select id from cards where type = ? and queue >= 0 limit 1",
-            [ctype],
-            |row| row.get(0),
+    let (sched, user): (i64, i64) = db
+        .query_row(
+            "select min(id), max(id) from cards where type = 0",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )
-        .unwrap()
-    };
-    let (new, review) = (id_of(0), id_of(2));
-    let bury = |id: i64, queue: i64| {
-        db.execute("update cards set queue = ? where id = ?", [queue, id])
-            .unwrap();
-    };
-    bury(new, -2);
-    bury(review, -3);
+        .unwrap();
+    db.execute("update cards set queue = -2 where id = ?", [sched])
+        .unwrap();
+    db.execute("update cards set queue = -3 where id = ?", [user])
+        .unwrap();
     drop(db);
 
     let out = tempfile::tempdir().unwrap();
@@ -209,10 +205,10 @@ fn buried_cards_become_normal_when_converted_or_opened() {
         })
         .unwrap()
     };
-    assert_eq!(queue_in(&target, new), 0);
-    assert_eq!(queue_in(&target, review), 2);
+    assert_eq!(queue_in(&target, sched), 0);
+    assert_eq!(queue_in(&target, user), 0);
     assert_eq!(
-        queue_in(&fx.collection(), new),
+        queue_in(&fx.collection(), sched),
         -2,
         "the source is untouched"
     );
@@ -239,8 +235,8 @@ fn buried_cards_become_normal_when_converted_or_opened() {
         .contains("Cards in queue -2 or -3 in the source, now normal: 2"));
 
     // and an ordinary open does it too
-    assert_eq!(fx.queue_of(new), 0);
-    assert_eq!(fx.queue_of(review), 2);
+    assert_eq!(fx.queue_of(sched), 0);
+    assert_eq!(fx.queue_of(user), 0);
     assert_eq!(fx.ok("stats.summary", json!({}))["suspended"], 0);
 }
 
