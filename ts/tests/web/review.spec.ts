@@ -369,6 +369,10 @@ test("each deck's options are its own, down to subdecks and new ones", async ({ 
     const problems = failOnPageProblems(page);
     const open = async (name: string) => {
         await page.goto(`${server.url}/`);
+        const expand = page.getByRole("button", { name: "Expand Second" });
+        if (name === "Sub" && await expand.isVisible()) {
+            await expand.click();
+        }
         await page.locator(`tr[data-deck="${name}"] .options a`).click();
         const title = page.locator(".setting-title", { hasText: "New cards/day" });
         const input = page.locator(".row", { has: title }).locator("input").first();
@@ -384,7 +388,7 @@ test("each deck's options are its own, down to subdecks and new ones", async ({ 
 
     await expect(await open("Second")).toHaveValue("33");
     await expect(await open("First")).toHaveValue("20");
-    await expect(await open("Second::Sub")).toHaveValue("20");
+    await expect(await open("Sub")).toHaveValue("20");
     expect(problems).toEqual([]);
 
     const rows = await query<{ count: number }>("select count() as count from deck_config");

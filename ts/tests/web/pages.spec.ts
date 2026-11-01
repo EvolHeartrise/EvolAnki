@@ -210,6 +210,7 @@ test("saving from the simulator changes what the page shows", async ({ page }) =
     const saved = page.waitForResponse((r) => r.url().endsWith("/_anki/updateDeckConfigs"));
     await page.getByRole("button", { name: "Save", exact: true }).click();
     expect((await saved).status()).toBe(200);
+    await expect(page).toHaveURL(/\/overview\/1/);
     await page.goto(`${server.url}/deck-options/1`);
     await expect(newCardsInput(page)).toHaveValue("7");
     expect(problems).toEqual([]);
