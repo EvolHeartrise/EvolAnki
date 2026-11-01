@@ -61,6 +61,15 @@ impl Collection {
         self.storage.get_all_notes()
     }
 
+    /// Leaves cards as if they were reviewed with SM-2.
+    pub(crate) fn clear_memory_states(&mut self) {
+        for mut card in self.storage.get_all_cards() {
+            card.clear_fsrs_data();
+            self.storage.update_card(&card).unwrap();
+        }
+        self.clear_study_queues();
+    }
+
     pub(crate) fn get_first_card(&self) -> Card {
         self.storage.get_all_cards().pop().unwrap()
     }

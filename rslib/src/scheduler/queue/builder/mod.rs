@@ -306,6 +306,7 @@ mod test {
     use super::*;
     use crate::card::CardQueue;
     use crate::card::CardType;
+    use crate::card::FsrsMemoryState;
 
     impl Collection {
         fn set_deck_gather_order(&mut self, deck: &mut Deck, order: NewCardGatherPriority) {
@@ -441,7 +442,7 @@ mod test {
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
         let mut cards = vec![];
 
-        // relative overdueness
+        // relative overdueness: days since review / stability, largest first
         let expected_queue = vec![
             (-150, 1),
             (-100, 1),
@@ -456,11 +457,8 @@ mod test {
             (-150, 100),
             (-100, 100),
             (-50, 100),
-            (0, 1),
-            (0, 5),
-            (0, 20),
-            (0, 100),
         ];
+        let now = TimestampSecs::now();
         for t in expected_queue.iter() {
             let mut note = nt.new_note();
             note.set_field(0, "foo")?;
@@ -471,6 +469,12 @@ mod test {
             card.due = t.0;
             card.ctype = CardType::Review;
             card.queue = CardQueue::Review;
+            card.memory_state = Some(FsrsMemoryState {
+                stability: t.1 as f32,
+                difficulty: 5.0,
+            });
+            card.desired_retention = Some(0.9);
+            card.last_review_time = Some(now.adding_secs(t.0 as i64 * 86_400));
             cards.push(card);
         }
         col.update_cards_maybe_undoable(cards, false)?;

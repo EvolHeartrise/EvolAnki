@@ -597,11 +597,9 @@ mod test {
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
 
-        // Graduate card to review without FSRS so it has an interval but no memory
-        // state
+        // Graduate card to review without a memory state, as SM-2 would leave it
         col.answer_easy();
-
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
+        col.clear_memory_states();
 
         let card_id = col.get_first_card().id;
         let card = col.storage.get_card(card_id)?.unwrap();
@@ -641,8 +639,8 @@ mod test {
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
-        col.answer_easy(); // review card, still without a memory state
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
+        col.answer_easy();
+        col.clear_memory_states(); // review card, without a memory state
 
         let card_id = col.get_first_card().id;
         // "Move" to the deck it is already in (DeckId(1)) -> count == 0
@@ -672,7 +670,7 @@ mod test {
         col.add_note(&mut b, DeckId(1))?;
         col.answer_easy();
 
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
+        col.clear_memory_states();
         let cards = col.storage.get_all_cards();
         let (a_id, b_id) = (cards[0].id, cards[1].id);
 
@@ -764,28 +762,6 @@ mod test {
 
         let dr = col.storage.get_card(card_id)?.unwrap().desired_retention;
         assert_eq!(dr, Some(0.95));
-        Ok(())
-    }
-
-    // With FSRS disabled, moving a card must not compute any memory state.
-    #[test]
-    fn set_deck_without_fsrs_does_not_compute() -> Result<()> {
-        let mut col = Collection::new();
-        let nt = col.get_notetype_by_name("Basic")?.unwrap();
-        let mut note = nt.new_note();
-        col.add_note(&mut note, DeckId(1))?;
-        col.answer_easy(); // review card, FSRS stays disabled
-
-        let card_id = col.get_first_card().id;
-        let target = DeckAdder::new("target").add(&mut col);
-        col.set_deck(&[card_id], target.id)?;
-
-        assert!(col
-            .storage
-            .get_card(card_id)?
-            .unwrap()
-            .memory_state
-            .is_none());
         Ok(())
     }
 

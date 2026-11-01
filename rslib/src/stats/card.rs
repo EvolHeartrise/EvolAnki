@@ -286,7 +286,7 @@ mod test {
         // Don't modify the card. See https://github.com/ankitects/anki/issues/5635
         assert!(card.memory_state.is_none());
 
-        // Toggle FSRS off
+        // A save asking for FSRS to be turned off has no effect
         let deck_configs = col.get_deck_configs_for_update(DeckId(1))?;
         col.update_deck_configs(UpdateDeckConfigsRequest {
             target_deck_id: DeckId(1),
@@ -301,14 +301,13 @@ mod test {
             limits: Limits::default(),
             new_cards_ignore_review_limit: false,
             apply_all_parent_limits: false,
-            fsrs: false, // <-------- Disable FSRS
+            fsrs: false,
             fsrs_reschedule: false,
             fsrs_health_check: true,
         })?;
 
-        // Dont report memory_state while SM2 is enabled
         let report = col.card_stats(cid)?;
-        assert!(report.memory_state.is_none());
+        assert!(report.memory_state.is_some());
 
         Ok(())
     }

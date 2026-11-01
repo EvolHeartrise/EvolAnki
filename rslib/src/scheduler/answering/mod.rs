@@ -700,6 +700,7 @@ fn get_fuzz_factor(seed: Option<u64>) -> Option<f32> {
 pub(crate) mod test {
     use super::*;
     use crate::card::CardType;
+    use crate::card::FsrsMemoryState;
     use crate::deckconfig::ReviewMix;
     use crate::search::SortMode;
 
@@ -774,6 +775,45 @@ pub(crate) mod test {
         Ok(())
     }
 
+    /// Memory states lose precision when stored on the card, so are compared
+    /// separately from the rest of the state.
+    fn assert_same_state(mut expected: CardState, mut actual: CardState) {
+        fn take_memory_states(state: &mut CardState) -> Vec<Option<FsrsMemoryState>> {
+            match state {
+                CardState::Normal(NormalState::Learning(learning)) => {
+                    vec![learning.memory_state.take()]
+                }
+                CardState::Normal(NormalState::Review(review)) => {
+                    vec![review.memory_state.take()]
+                }
+                CardState::Normal(NormalState::Relearning(relearning)) => vec![
+                    relearning.learning.memory_state.take(),
+                    relearning.review.memory_state.take(),
+                ],
+                _ => panic!("unexpected state: {state:?}"),
+            }
+        }
+        let expected_memory = take_memory_states(&mut expected);
+        let actual_memory = take_memory_states(&mut actual);
+        assert_eq!(expected_memory.len(), actual_memory.len());
+        for (expected, actual) in expected_memory.into_iter().zip(actual_memory) {
+            let (expected, actual) = (expected.unwrap(), actual.unwrap());
+            assert!((expected.stability - actual.stability).abs() < 0.01);
+            assert!((expected.difficulty - actual.difficulty).abs() < 0.01);
+        }
+        assert_eq!(expected, actual);
+    }
+
+    fn scheduled_days(state: CardState) -> u32 {
+        match state {
+            CardState::Normal(NormalState::Review(review)) => review.scheduled_days,
+            CardState::Normal(NormalState::Relearning(relearning)) => {
+                relearning.review.scheduled_days
+            }
+            _ => panic!("unexpected state: {state:?}"),
+        }
+    }
+
     // make sure the 'current' state for a card matches the
     // state we applied to it
     #[test]
@@ -790,7 +830,7 @@ pub(crate) mod test {
         let post_answer = col.answer_again();
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
         assert_eq!(card.remaining_steps, 2);
@@ -801,7 +841,7 @@ pub(crate) mod test {
         let post_answer = col.answer_good();
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
         assert_eq!(card.remaining_steps, 1);
@@ -812,14 +852,14 @@ pub(crate) mod test {
         let mut post_answer = col.answer_good();
         // compensate for shifting the due date
         if let CardState::Normal(NormalState::Review(state)) = &mut post_answer.new_state {
-            state.elapsed_days = 1;
+            state.elapsed_days = state.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
-        assert_eq!(card.interval, 1);
+        assert_eq!(card.interval, scheduled_days(post_answer.new_state));
         assert_eq!(card.remaining_steps, 0);
 
         // answering a review card again; easy boost
@@ -827,14 +867,14 @@ pub(crate) mod test {
         col.clear_study_queues();
         let mut post_answer = col.answer_easy();
         if let CardState::Normal(NormalState::Review(state)) = &mut post_answer.new_state {
-            state.elapsed_days = 4;
+            state.elapsed_days = state.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
-        assert_eq!(card.interval, 4);
+        assert_eq!(card.interval, scheduled_days(post_answer.new_state));
         assert_eq!(card.ease_factor, 2650);
 
         // lapsing it
@@ -842,15 +882,15 @@ pub(crate) mod test {
         col.clear_study_queues();
         let mut post_answer = col.answer_again();
         if let CardState::Normal(NormalState::Relearning(state)) = &mut post_answer.new_state {
-            state.review.elapsed_days = 1;
+            state.review.elapsed_days = state.review.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
         assert_eq!(card.ctype, CardType::Relearn);
-        assert_eq!(card.interval, 1);
+        assert_eq!(card.interval, scheduled_days(post_answer.new_state));
         assert_eq!(card.ease_factor, 2450);
         assert_eq!(card.lapses, 1);
 
@@ -859,11 +899,11 @@ pub(crate) mod test {
         col.clear_study_queues();
         let mut post_answer = col.answer_again();
         if let CardState::Normal(NormalState::Relearning(state)) = &mut post_answer.new_state {
-            state.review.elapsed_days = 1;
+            state.review.elapsed_days = state.review.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
         assert_eq!(card.lapses, 1);
@@ -873,14 +913,14 @@ pub(crate) mod test {
         col.clear_study_queues();
         let mut post_answer = col.answer_good();
         if let CardState::Normal(NormalState::Review(state)) = &mut post_answer.new_state {
-            state.elapsed_days = 1;
+            state.elapsed_days = state.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
         col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
-        assert_eq!(post_answer.new_state, current);
+        assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
-        assert_eq!(card.interval, 1);
+        assert_eq!(card.interval, scheduled_days(post_answer.new_state));
 
         Ok(())
     }

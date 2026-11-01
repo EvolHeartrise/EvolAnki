@@ -1115,11 +1115,13 @@ mod tests {
             "set_due_date turns the card into a review card"
         );
         assert_eq!(card.queue, CardQueue::Review);
-        // a new card scheduled "3" days out gets an interval of 3 days
+        // a new card has no review to measure an interval from
         assert_eq!(
-            card.interval, 3,
-            "interval should match the requested offset"
+            card.interval, 0,
+            "FSRS keeps the interval of new cards at 0"
         );
+        let today = col.timing_today().unwrap().days_elapsed as i32;
+        assert_eq!(card.due, today + 3, "due should match the requested offset");
     }
 
     #[test]
@@ -1144,7 +1146,8 @@ mod tests {
 
         let card = col.storage.get_card(cid).unwrap().unwrap();
         assert_eq!(card.ctype, CardType::Review);
-        assert_eq!(card.interval, 5, "the requested offset is applied");
+        let today = col.timing_today().unwrap().days_elapsed as i32;
+        assert_eq!(card.due, today + 5, "the requested offset is applied");
 
         // The days string must be written back to config so the dialog
         // can pre-populate it on the next open.

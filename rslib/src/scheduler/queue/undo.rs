@@ -134,6 +134,7 @@ mod test {
         // bypassing undo
         let mut card = col.storage.get_card(cid)?.unwrap();
         assert_eq!(card.ctype, CardType::Review);
+        let pre_review_interval = card.interval;
         card.lapses = 7;
         card.due = 0;
         col.storage.update_card(&card)?;
@@ -141,10 +142,12 @@ mod test {
         // fail it, which should cause it to be marked as a leech
         col.clear_study_queues();
         col.answer_again();
+        let post_review_interval = col.storage.get_card(cid)?.unwrap().interval;
+        assert_ne!(pre_review_interval, post_review_interval);
 
         let assert_post_review_state = |col: &mut Collection| -> Result<()> {
             let card = col.storage.get_card(cid)?.unwrap();
-            assert_eq!(card.interval, 1);
+            assert_eq!(card.interval, post_review_interval);
             assert_eq!(card.lapses, 8);
 
             assert_eq!(
@@ -168,7 +171,7 @@ mod test {
             // the card should have its old state, but a new mtime (which we can't
             // easily test without waiting)
             let card = col.storage.get_card(cid)?.unwrap();
-            assert_eq!(card.interval, 4);
+            assert_eq!(card.interval, pre_review_interval);
             assert_eq!(card.lapses, 7);
 
             // the revlog entry should have been removed

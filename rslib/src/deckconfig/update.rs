@@ -159,6 +159,8 @@ impl Collection {
 
     fn update_deck_configs_inner(&mut self, mut req: UpdateDeckConfigsRequest) -> Result<()> {
         require!(!req.configs.is_empty(), "config not provided");
+        // FSRS can't be turned off: a stale payload must not clear memory states.
+        req.fsrs = true;
         let configs_before_update = self.storage.get_deck_config_map()?;
         let mut configs_after_update = configs_before_update.clone();
         let today = self
@@ -562,6 +564,57 @@ mod test {
         // should have forced a full sync
         assert!(full_sync_required(&mut col));
 
+        Ok(())
+    }
+
+    #[test]
+    fn saving_with_fsrs_false_keeps_memory_states_and_recomputes_with_fsrs() -> Result<()> {
+        let mut col = Collection::new();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+        let mut note = nt.new_note();
+        col.add_note(&mut note, DeckId(1))?;
+        col.answer_easy();
+        col.set_config_bool_inner(BoolKey::Fsrs, true)?;
+        let before = col.get_first_card();
+        assert!(before.memory_state.is_some());
+
+        let output = col.get_deck_configs_for_update(DeckId(1))?;
+        let mut input = UpdateDeckConfigsRequest {
+            target_deck_id: DeckId(1),
+            configs: output
+                .all_config
+                .into_iter()
+                .map(|c| c.config.unwrap().into())
+                .collect(),
+            removed_config_ids: vec![],
+            mode: UpdateDeckConfigsMode::Normal,
+            card_state_customizer: "".to_string(),
+            limits: Limits::default(),
+            new_cards_ignore_review_limit: false,
+            apply_all_parent_limits: false,
+            fsrs: false,
+            fsrs_reschedule: false,
+            fsrs_health_check: true,
+        };
+
+        // an otherwise unchanged save must not treat this as a toggle
+        col.update_deck_configs(input.clone())?;
+        let card = col.get_first_card();
+        assert_eq!(card.memory_state, before.memory_state);
+        assert_eq!(card.desired_retention, before.desired_retention);
+        assert_eq!(card.decay, before.decay);
+        let stored: Option<bool> = col.get_config_optional(BoolKey::Fsrs);
+        assert_eq!(stored, Some(true));
+
+        // a change that triggers a recompute must keep FSRS data too
+        input.configs[0].inner.desired_retention = 0.8;
+        col.update_deck_configs(input)?;
+        let card = col.get_first_card();
+        assert!(card.memory_state.is_some());
+        assert_eq!(card.desired_retention, Some(0.8));
+        assert_eq!(card.due, before.due);
+        assert_eq!(card.interval, before.interval);
+        assert!(col.get_config_bool(BoolKey::Fsrs));
         Ok(())
     }
 

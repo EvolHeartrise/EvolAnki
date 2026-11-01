@@ -57,6 +57,10 @@ impl From<StringKeyProto> for StringKey {
 
 impl crate::services::ConfigService for Collection {
     fn get_config_json(&mut self, input: generic::String) -> Result<generic::Json> {
+        // raw readers must agree with get_config_bool(), even if the key is absent
+        if input.val == <&str>::from(BoolKey::Fsrs) {
+            return Ok(serde_json::to_vec(&true)?.into());
+        }
         let val: Option<Value> = self.get_config_optional(input.val.as_str());
         val.or_not_found(input.val)
             .and_then(|v| serde_json::to_vec(&v).map_err(Into::into))
