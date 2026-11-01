@@ -213,7 +213,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 <CardStateCustomizer
                     title={settings.customScheduling.title}
                     on:click={() =>
-                        openHelpModal(Object.keys(settings).indexOf("customScheduling"))}
+                        openHelpModal(
+                            Object.keys(settings).indexOf("customScheduling"),
+                        )}
                     bind:value={$cardStateCustomizer}
                 />
             </Item>

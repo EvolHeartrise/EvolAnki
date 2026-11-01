@@ -274,13 +274,9 @@ fn generate_licences() -> Result<String> {
     Command::run("cargo install cargo-license@0.7.0")?;
     let output = Command::run_with_output([
         "cargo-license",
-        "--features",
-        "rustls",
-        "--features",
-        "native-tls",
         "--json",
         "--manifest-path",
-        "rslib/Cargo.toml",
+        "rslib/web-server/Cargo.toml",
     ])?;
 
     let licenses: Vec<BTreeMap<String, serde_json::Value>> = serde_json::from_str(&output.stdout)?;

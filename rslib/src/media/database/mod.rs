@@ -265,9 +265,9 @@ mod test {
     use tempfile::TempDir;
 
     use crate::error::Result;
+    use crate::media::database::MediaEntry;
     use crate::media::files::sha1_of_data;
     use crate::media::MediaManager;
-    use crate::media::database::MediaEntry;
 
     #[test]
     fn database() -> Result<()> {

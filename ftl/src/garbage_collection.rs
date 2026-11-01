@@ -206,20 +206,19 @@ fn extract_references_from_file(refs: &mut HashSet<String>, entry: &DirEntry) {
 
     let file_name = entry.file_name().to_str().expect("non-unicode filename");
 
-    let (regex, case_conversion): (&Regex, fn(&str) -> String) =
-        if file_name.ends_with(".rs") || file_name.ends_with(".py") {
-            (&SNAKECASE_TR, snake_to_kebab_case)
-        } else if file_name.ends_with(".ts")
-            || file_name.ends_with(".svelte")
-            || file_name.ends_with(".swift")
-            || file_name.ends_with(".kt")
-        {
-            (&CAMELCASE_TR, camel_to_kebab_case)
-        } else if file_name.ends_with(".ui") {
-            (&DESIGNER_STYLE_TR, snake_to_kebab_case)
-        } else {
-            return;
-        };
+    let (regex, case_conversion): (&Regex, fn(&str) -> String) = if file_name.ends_with(".rs") {
+        (&SNAKECASE_TR, snake_to_kebab_case)
+    } else if file_name.ends_with(".ts")
+        || file_name.ends_with(".svelte")
+        || file_name.ends_with(".swift")
+        || file_name.ends_with(".kt")
+    {
+        (&CAMELCASE_TR, camel_to_kebab_case)
+    } else if file_name.ends_with(".ui") {
+        (&DESIGNER_STYLE_TR, snake_to_kebab_case)
+    } else {
+        return;
+    };
 
     let source = fs::read_to_string(entry.path()).expect("file not readable");
     for caps in regex.captures_iter(&source) {

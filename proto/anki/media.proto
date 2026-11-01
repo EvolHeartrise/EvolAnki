@@ -25,8 +25,7 @@ service MediaService {
 
 // Implicitly includes any of the above methods that are not listed in the
 // backend service.
-service BackendMediaService {
-}
+service BackendMediaService {}
 
 message CheckMediaResponse {
   repeated string unused = 1;
@@ -48,4 +47,3 @@ message AddMediaFileRequest {
 message AddMediaFromPathRequest {
   string path = 1;
 }
-

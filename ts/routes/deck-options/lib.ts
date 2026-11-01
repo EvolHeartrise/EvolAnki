@@ -77,7 +77,6 @@ export class DeckOptionsState {
     private configListSetter!: (val: ConfigListEntry[]) => void;
     private modifiedConfigs: Set<DeckOptionsId> = new Set();
     private removedConfigs: DeckOptionsId[] = [];
-    private schemaModified: boolean;
     private _presetAssignmentsChanged = false;
     // tracks presets that have already been
     // selected/loaded once, via their ids.
@@ -120,7 +119,6 @@ export class DeckOptionsState {
             this.configListSetter = set;
             return;
         });
-        this.schemaModified = data.schemaModified;
         this.addonComponents = writable([]);
 
         // create a temporary subscription to force our setters to be set immediately,
@@ -222,10 +220,6 @@ export class DeckOptionsState {
         this.updateConfigList();
     }
 
-    removalWilLForceFullSync(): boolean {
-        return !this.schemaModified && this.configs[this.selectedIdx].config.id !== 0n;
-    }
-
     defaultConfigSelected(): boolean {
         return this.configs[this.selectedIdx].config.id === 1n;
     }
@@ -238,7 +232,6 @@ export class DeckOptionsState {
         }
         if (currentId !== 0n) {
             this.removedConfigs.push(currentId);
-            this.schemaModified = true;
         }
         this.configs.splice(this.selectedIdx, 1);
         const newIdx = Math.max(0, this.selectedIdx - 1);

@@ -285,8 +285,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 return;
             }
             navigations = 0;
-            labels = (await describeNextStates(current.states!, { alertOnError: false }))
-                .vals;
+            labels = (
+                await describeNextStates(current.states!, { alertOnError: false })
+            ).vals;
             try {
                 rendered = await renderCard(current);
             } catch (err) {
@@ -429,7 +430,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     // Audio
-    ///////////////////////////////////////////////////////////
+    // ---------------------------------------------------------
 
     function stopAudio(): void {
         audioQueue = [];
@@ -481,7 +482,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     // Input
-    ///////////////////////////////////////////////////////////
+    // ---------------------------------------------------------
 
     /** Keys from the frame only ever reach here if the user really pressed them. */
     function handleKey(key: string): boolean {
@@ -583,7 +584,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             // it has had its chances; show the card without what's doing this
             rendered = {
                 ...rendered,
-                question: "<p>This card kept trying to leave the page, so it isn't shown.</p>",
+                question:
+                    "<p>This card kept trying to leave the page, so it isn't shown.</p>",
                 answer: "<p>This card kept trying to leave the page, so it isn't shown.</p>",
                 typeAnswer: null,
             };
@@ -634,13 +636,19 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 {tr.undoUndo()}
             </button>
             <button on:click={replay}>{tr.actionsReplayAudio()}</button>
-            <button on:click={() => hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, false)}>
+            <button
+                on:click={() => hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, false)}
+            >
                 {tr.studyingBuryCard()}
             </button>
-            <button on:click={() => hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, true)}>
+            <button
+                on:click={() => hide(BuryOrSuspendCardsRequest_Mode.BURY_USER, true)}
+            >
                 {tr.studyingBuryNote()}
             </button>
-            <button on:click={() => hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, false)}>
+            <button
+                on:click={() => hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, false)}
+            >
                 {tr.actionsSuspendCard()}
             </button>
             <button on:click={() => hide(BuryOrSuspendCardsRequest_Mode.SUSPEND, true)}>
@@ -650,7 +658,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
         <div class="counts">
             {#if queued}
-                <span class="new-count" class:current={currentQueue === QueuedCards_Queue.NEW}>
+                <span
+                    class="new-count"
+                    class:current={currentQueue === QueuedCards_Queue.NEW}
+                >
                     {queued.newCount}
                 </span>
                 +

@@ -30,11 +30,7 @@ impl RustOutput<'_> {
         }
     }
 
-    pub fn path(
-        &self,
-        rust_base: &Utf8Path,
-        build_profile: BuildProfile,
-    ) -> String {
+    pub fn path(&self, rust_base: &Utf8Path, build_profile: BuildProfile) -> String {
         let filename = match *self {
             RustOutput::Binary(package) => {
                 if cfg!(windows) {

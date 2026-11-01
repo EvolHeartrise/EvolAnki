@@ -47,7 +47,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         </a>
     </td>
     <td class="count new-count" class:zero-count={!node.newCount}>{node.newCount}</td>
-    <td class="count learn-count" class:zero-count={!node.learnCount}>{node.learnCount}</td>
+    <td class="count learn-count" class:zero-count={!node.learnCount}>
+        {node.learnCount}
+    </td>
     <td class="count review-count" class:zero-count={!node.reviewCount}>
         {node.reviewCount}
     </td>

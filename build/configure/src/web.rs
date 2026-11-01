@@ -347,10 +347,8 @@ fn build_web_root(build: &mut Build) -> Result<()> {
             load_paths: vec![".", "node_modules"],
         },
     )?;
-    let ts_css = build.inputs_with_suffix(
-        inputs![":ts:editable", ":ts:reviewer:reviewer.css"],
-        ".css",
-    );
+    let ts_css =
+        build.inputs_with_suffix(inputs![":ts:editable", ":ts:reviewer:reviewer.css"], ".css");
     build.add_action(
         "web:css",
         CopyFiles {

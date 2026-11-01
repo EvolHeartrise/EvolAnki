@@ -28,8 +28,9 @@ include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 ///
 /// Methods that read or write arbitrary server-side paths or fetch URLs
 /// (import*, getCsvMetadata, addMediaFromPath, getImageForOcclusion,
-/// getAbsoluteMediaPath) are deliberately absent: a browser page has no business naming files on the server. The editor and
-/// importers will need upload-based replacements.
+/// getAbsoluteMediaPath) are deliberately absent: a browser page has no
+/// business naming files on the server. The editor and importers will need
+/// upload-based replacements.
 pub const ALLOWED: &[&str] = &[
     // CollectionService
     "latestProgress",

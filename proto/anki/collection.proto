@@ -157,4 +157,3 @@ message CreateBackupRequest {
 message GetCustomColoursResponse {
   repeated string colours = 1;
 }
-

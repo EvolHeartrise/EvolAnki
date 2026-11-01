@@ -25,8 +25,8 @@ use unic_ucd_category::GeneralCategory;
 use unicode_normalization::is_nfc;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::prelude::*;
 use crate::media::MAX_MEDIA_FILENAME_LENGTH;
+use crate::prelude::*;
 
 static WINDOWS_DEVICE_NAME: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(

@@ -50,7 +50,7 @@ User-written HTML in a sandboxed frame without any scripts, sized to its content
             {base}
             mode="static"
             {onMessage}
-            onNavigated={onNavigated}
+            {onNavigated}
         />
     </div>
 {/await}

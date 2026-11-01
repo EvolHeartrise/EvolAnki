@@ -4,18 +4,11 @@
 import { build } from "esbuild";
 import { sassPlugin } from "esbuild-sass-plugin";
 import sveltePlugin from "esbuild-svelte";
-import { readFileSync, writeFileSync } from "fs";
-import { basename } from "path";
 import { argv, env } from "process";
 import sveltePreprocess from "svelte-preprocess";
 import { typescript } from "svelte-preprocess-esbuild";
 
-const [_tsx, _script, entrypoint, bundle_js, bundle_css, page_html] = argv;
-
-if (page_html != null) {
-    const template = readFileSync("ts/page.html", { encoding: "utf8" });
-    writeFileSync(page_html, template.replace(/{PAGE}/g, basename(page_html, ".html")));
-}
+const [_tsx, _script, entrypoint, bundle_js, bundle_css] = argv;
 
 // support Qt 5.14
 const target = ["es2020", "chrome77"];

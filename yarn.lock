@@ -1851,7 +1851,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/jquery@npm:*, @types/jquery@npm:^3.5.0":
+"@types/jquery@npm:^3.5.0":
   version: 3.5.32
   resolution: "@types/jquery@npm:3.5.32"
   dependencies:
@@ -5714,7 +5714,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jquery@npm:>=1.8.0 <4.0.0, jquery@npm:^3.5.1":
+"jquery@npm:^3.5.1":
   version: 3.7.1
   resolution: "jquery@npm:3.7.1"
   checksum: 10c0/808cfbfb758438560224bf26e17fcd5afc7419170230c810dd11f5c1792e2263e2970cca8d659eb84fcd9acc301edb6d310096e450277d54be4f57071b0c82d9
