@@ -1,42 +1,16 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import "intl-pluralrules";
-
 import { i18nResources } from "@generated/backend";
 import type { ModuleName } from "@generated/ftl";
 import { FluentBundle, FluentResource } from "@generated/ftl";
-import { firstLanguage, setBundles } from "@generated/ftl";
-
-export function usesArabicScript(): boolean {
-    const firstLang = firstLanguage();
-    return ["ar", "fa", "ug"].some(lang => firstLang.startsWith(lang));
-}
-
-export function supportsVerticalText(): boolean {
-    const firstLang = firstLanguage();
-    return (
-        firstLang.startsWith("ja")
-        || firstLang.startsWith("zh")
-        || firstLang.startsWith("ko")
-    );
-}
-
-export function direction(): "ltr" | "rtl" {
-    const firstLang = firstLanguage();
-    if (["he", "ar", "fa", "ug", "yi"].some(lang => firstLang.startsWith(lang))) {
-        return "rtl";
-    } else {
-        return "ltr";
-    }
-}
+import { setBundles } from "@generated/ftl";
 
 export function weekdayLabel(n: number): string {
-    const firstLang = firstLanguage();
     const now = new Date();
     const daysFromToday = -now.getDay() + n;
     const desiredDay = new Date(now.getTime() + daysFromToday * 86_400_000);
-    return desiredDay.toLocaleDateString(firstLang, {
+    return desiredDay.toLocaleDateString(langs, {
         weekday: "narrow",
     });
 }
@@ -94,8 +68,6 @@ export async function setupI18n(args: { modules: ModuleName[] }): Promise<void> 
 
     setBundles(newBundles);
     langs = json.langs;
-
-    document.dir = direction();
 }
 
 let globalI18n: Promise<void> | undefined;

@@ -1188,15 +1188,11 @@ name = "ftl"
 version = "0.0.0"
 dependencies = [
  "anki_io",
- "anki_process",
  "anyhow",
- "camino",
  "clap",
  "fluent-syntax",
- "itertools 0.14.0",
  "regex",
  "serde_json",
- "snafu 0.8.8",
  "walkdir",
 ]
 

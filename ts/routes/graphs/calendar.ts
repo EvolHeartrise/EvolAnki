@@ -4,7 +4,6 @@
 import type { GraphsResponse } from "@generated/anki/stats_pb";
 import { GraphPreferences_Weekday as Weekday } from "@generated/anki/stats_pb";
 import * as tr from "@generated/ftl";
-import { firstLanguage } from "@generated/ftl";
 import { localizedDate, weekdayLabel } from "@tslib/i18n";
 import type { CountableTimeInterval } from "d3";
 import { timeHour } from "d3";
@@ -155,8 +154,6 @@ export function renderCalendar(
     const height = bounds.height / 10;
     const emptyColour = nightMode ? "#333" : "#ddd";
 
-    const firstLang = firstLanguage();
-
     svg.select("g.weekdays")
         .selectAll("text")
         .data(sourceData.weekdayLabels)
@@ -169,7 +166,7 @@ export function renderCalendar(
         .attr("fill", nightMode ? "#ddd" : "black")
         .attr("dominant-baseline", "hanging")
         .attr("text-anchor", "end")
-        .attr("font-size", firstLang.includes("zh") ? "xx-small" : "small")
+        .attr("font-size", "small")
         .attr("font-family", "monospace")
         .attr("direction", "ltr")
         .style("user-select", "none")

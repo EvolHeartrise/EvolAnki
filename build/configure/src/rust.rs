@@ -1,8 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::env;
-
 use anyhow::Result;
 use ninja_gen::action::BuildAction;
 use ninja_gen::build::FilesHandle;
@@ -11,7 +9,6 @@ use ninja_gen::cargo::CargoClippy;
 use ninja_gen::cargo::CargoFormat;
 use ninja_gen::cargo::CargoTest;
 use ninja_gen::cargo::RustOutput;
-use ninja_gen::git::SyncSubmodule;
 use ninja_gen::glob;
 use ninja_gen::hash::simple_hash;
 use ninja_gen::input::BuildInput;
@@ -24,31 +21,13 @@ pub fn build_rust(build: &mut Build) -> Result<()> {
 }
 
 fn prepare_translations(build: &mut Build) -> Result<()> {
-    let offline_build = env::var("OFFLINE_BUILD").is_ok();
-
-    // ensure repos are checked out
-    build.add_action(
-        "ftl:repo:core",
-        SyncSubmodule {
-            path: "ftl/core-repo",
-            offline_build,
-        },
-    )?;
-    build.add_action(
-        "ftl:repo:qt",
-        SyncSubmodule {
-            path: "ftl/qt-repo",
-            offline_build,
-        },
-    )?;
     // build anki_i18n and spit out strings.json
     build.add_action(
         "rslib:i18n",
         CargoBuild {
             inputs: inputs![
                 glob!["rslib/i18n/**"],
-                glob!["ftl/{core,core-repo,qt,qt-repo}/**"],
-                ":ftl:repo",
+                glob!["ftl/core/**"],
             ],
             outputs: &[RustOutput::Data("ts", "ts/lib/generated/ftl.ts")],
             extra_args: "-p anki_i18n",
@@ -66,43 +45,7 @@ fn prepare_translations(build: &mut Build) -> Result<()> {
         },
     )?;
 
-    // These don't use :group notation, as it doesn't make sense to invoke multiple
-    // commands as a group.
-    build.add_action(
-        "ftl-sync",
-        FtlCommand {
-            args: "sync",
-            deps: inputs![":ftl:repo", glob!["ftl/**"]],
-        },
-    )?;
-
-    build.add_action(
-        "ftl-deprecate",
-        FtlCommand {
-            args: "deprecate --ftl-roots ftl/core ftl/qt --source-roots rslib ts --json-roots ftl/usage",
-            deps: inputs!["ftl/core", "ftl/qt", "rslib", "ts"],
-        },
-    )?;
-
     Ok(())
-}
-
-struct FtlCommand {
-    args: &'static str,
-    deps: BuildInput,
-}
-
-impl BuildAction for FtlCommand {
-    fn command(&self) -> &str {
-        "$ftl_bin $args"
-    }
-
-    fn files(&mut self, build: &mut impl FilesHandle) {
-        build.add_inputs("", &self.deps);
-        build.add_inputs("ftl_bin", inputs![":ftl:bin"]);
-        build.add_variable("args", self.args);
-        build.add_output_stamp(format!("ftl/stamp.{}", simple_hash(self.args)));
-    }
 }
 
 fn build_proto_descriptors_and_interfaces(build: &mut Build) -> Result<()> {

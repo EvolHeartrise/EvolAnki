@@ -10,10 +10,6 @@ export function setBundles(newBundles: FluentBundle[]): void {
     bundles = newBundles;
 }
 
-export function firstLanguage(): string {
-    return bundles[0].locales[0];
-}
-
 export function translate(key: string, args: Record<string, FluentVariable> = {}) {
     return getMessage(key, args) ?? `missing key: ${key}`;
 }

@@ -33,19 +33,6 @@ pub struct GarbageCollectArgs {
     ftl_roots: Vec<String>,
 }
 
-#[derive(Args)]
-pub struct DeprecateEntriesArgs {
-    #[clap(long, num_args(1..), required(true))]
-    ftl_roots: Vec<String>,
-    #[clap(long, num_args(1..), required(true))]
-    source_roots: Vec<String>,
-    #[clap(long, num_args(1..), required(true))]
-    json_roots: Vec<String>,
-}
-
-const DEPCRATION_WARNING: &str =
-    "NO NEED TO TRANSLATE. This text is no longer used by Anki, and will be removed in the future.";
-
 /// Extract references from all Rust, Python, TS, Svelte, Swift, Kotlin and
 /// Designer files in the `roots`, convert them to kebab case and write them as
 /// a json to the target file.
@@ -64,17 +51,6 @@ pub fn write_ftl_json(args: WriteJsonArgs) -> Result<()> {
 pub fn garbage_collect_ftl_entries(args: GarbageCollectArgs) -> Result<()> {
     let used_ftls = get_all_used_messages_and_terms(&args.json_root, &args.ftl_roots);
     strip_unused_ftl_messages_and_terms(&args.ftl_roots, &used_ftls);
-    Ok(())
-}
-
-/// Moves every entry in `ftl_roots` that is not mentioned in another message, a
-/// source file or any json in `json_roots` to the bottom of its file below a
-/// deprecation warning.
-pub fn deprecate_ftl_entries(args: DeprecateEntriesArgs) -> Result<()> {
-    let mut used_ftls = gather_ftl_references(&args.source_roots);
-    import_messages_from_json(&args.json_roots, &mut used_ftls);
-    extract_nested_messages_and_terms(&args.ftl_roots, &mut used_ftls);
-    deprecate_unused_ftl_messages_and_terms(&args.ftl_roots, &used_ftls);
     Ok(())
 }
 
@@ -160,32 +136,6 @@ fn strip_unused_ftl_messages_and_terms(roots: &[impl AsRef<str>], used_ftls: &Ha
         ast.body.retain(entry_use_check(used_ftls));
         (ast.body.len() < num_entries).then_some(ast)
     });
-}
-
-fn deprecate_unused_ftl_messages_and_terms(roots: &[impl AsRef<str>], used_ftls: &HashSet<String>) {
-    rewrite_ftl_files(roots, |ast| {
-        let (mut used, mut unused): (Vec<_>, Vec<_>) =
-            ast.body.into_iter().partition(entry_use_check(used_ftls));
-        if unused.is_empty() {
-            None
-        } else {
-            append_deprecation_warning(&mut used);
-            used.append(&mut unused);
-            Some(Resource { body: used })
-        }
-    });
-}
-
-fn append_deprecation_warning(entries: &mut Vec<ast::Entry<&str>>) {
-    entries.retain(|entry| match entry {
-        ast::Entry::GroupComment(ast::Comment { content }) => {
-            !matches!(content.first(), Some(&DEPCRATION_WARNING))
-        }
-        _ => true,
-    });
-    entries.push(ast::Entry::GroupComment(ast::Comment {
-        content: vec![DEPCRATION_WARNING],
-    }));
 }
 
 fn entry_use_check(used_ftls: &HashSet<String>) -> impl Fn(&ast::Entry<&str>) -> bool + '_ {

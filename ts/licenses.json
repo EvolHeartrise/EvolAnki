@@ -310,14 +310,6 @@
         "path": "node_modules/internmap",
         "licenseFile": "node_modules/internmap/LICENSE"
     },
-    "intl-pluralrules@2.0.1": {
-        "licenses": "ISC",
-        "repository": "https://github.com/eemeli/intl-pluralrules",
-        "publisher": "Eemeli Aro",
-        "email": "eemeli@gmail.com",
-        "path": "node_modules/intl-pluralrules",
-        "licenseFile": "node_modules/intl-pluralrules/LICENSE"
-    },
     "jquery@3.7.1": {
         "licenses": "MIT",
         "repository": "https://github.com/jquery/jquery",

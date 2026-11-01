@@ -1,6 +1,5 @@
 ## Shown at the top of the media check screen
 
-media-check-window-title = Check Media
 # the number of files, and the total space used by files
 # that have been moved to the trash folder. eg,
 # "Trash folder: 3 files, 3.47MB"
@@ -47,34 +46,9 @@ media-check-checked = Checked { $count }...
 
 ## Deleting unused media
 
-media-check-delete-unused-confirm = Delete unused media?
-media-check-files-remaining =
-    { $count ->
-        [one] { $count } file
-       *[other] { $count } files
-    } remaining.
-media-check-delete-unused-complete =
-    { $count ->
-        [one] { $count } file
-       *[other] { $count } files
-    } moved to the trash.
-media-check-trash-emptied = The trash folder is now empty.
-media-check-trash-restored = Restored deleted files to the media folder.
 
 ## Rendering LaTeX
 
-media-check-all-latex-rendered = All LaTeX rendered.
 
 ## Buttons
 
-media-check-delete-unused = Delete Unused
-media-check-render-latex = Render LaTeX
-# button to permanently delete media files from the trash folder
-media-check-empty-trash = Empty Trash
-# button to move deleted files from the trash back into the media folder
-media-check-restore-trash = Restore Deleted
-media-check-check-media-action = Check Media
-# a tag for notes with missing media files (must not contain whitespace)
-media-check-missing-media-tag = missing-media
-# add a tag to notes with missing media
-media-check-add-tag = Tag Missing

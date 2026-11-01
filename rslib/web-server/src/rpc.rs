@@ -96,10 +96,9 @@ impl RpcError {
     }
 }
 
-/// Create a backend with the given UI language.
-pub fn new_backend(lang: &str) -> anyhow::Result<Backend> {
+pub fn new_backend() -> anyhow::Result<Backend> {
     let init = BackendInit {
-        preferred_langs: vec![lang.to_string()],
+        preferred_langs: vec!["en".to_string()],
         locale_folder_path: String::new(),
         server: false,
     };

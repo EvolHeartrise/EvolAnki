@@ -92,7 +92,7 @@ fn write_imports(buf: &mut String) {
     buf.push_str(
         "
 import { translate } from './ftl-helpers';
-export { firstLanguage, setBundles } from './ftl-helpers';
+export { setBundles } from './ftl-helpers';
 export { FluentBundle, FluentResource } from '@fluent/bundle';
 ",
     );

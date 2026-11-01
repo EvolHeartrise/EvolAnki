@@ -81,9 +81,6 @@ struct Args {
     /// For tests; see SeedFile in seed.rs.
     #[arg(long, requires = "create", conflicts_with = "seed_demo")]
     seed_file: Option<PathBuf>,
-    /// Language for backend messages and page text.
-    #[arg(long, default_value = "en")]
-    lang: String,
 }
 
 pub struct AppState {
@@ -121,7 +118,7 @@ async fn run(args: Args) -> Result<()> {
         .with_context(|| format!("couldn't listen on {}:{}", args.host, args.port))?;
     let port = listener.local_addr()?.port();
 
-    let backend = rpc::new_backend(&args.lang)?;
+    let backend = rpc::new_backend()?;
     let media_dir = open_collection(&backend, &args.collection)?;
     if args.seed_demo && !existed {
         seed::seed_demo_content(&backend)?;

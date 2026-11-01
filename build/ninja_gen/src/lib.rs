@@ -7,7 +7,6 @@ pub mod build;
 pub mod cargo;
 pub mod configure;
 pub mod copy;
-pub mod git;
 pub mod hash;
 pub mod input;
 pub mod node;

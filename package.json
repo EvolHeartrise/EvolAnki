@@ -66,7 +66,6 @@
         "bootstrap": "^5.3.8",
         "bootstrap-icons": "^1.13.1",
         "d3": "^7.0.0",
-        "intl-pluralrules": "^2.0.0",
         "jquery": "^3.5.1",
         "lodash-es": "^4.18.1",
         "marked": "^5.1.0",

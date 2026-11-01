@@ -1,9 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-//! By default, the Qt translations will be included in rslib. EXTRA_FTL_ROOT
-//! can be set to an external folder so the mobile clients can use their own
-//! translations instead.
+//! The English strings in ftl/core are the only ones there are.
 
 use std::collections::HashMap;
 use std::fs;
@@ -18,26 +16,12 @@ pub type TranslationsByLang = HashMap<String, TranslationsByFile>;
 pub fn get_ftl_data() -> TranslationsByLang {
     let mut map = TranslationsByLang::default();
 
-    // English core templates are taken from this repo
-    let ftl_base = source_tree_root();
-    add_folder(&mut map, &ftl_base.join("core"), "core", "templates");
-    // And core translations from submodule
-    add_translation_root(&mut map, &ftl_base.join("core-repo/core"), "core", true);
-
-    if let Some(path) = extra_ftl_root() {
-        // Mobile client has requested its own extra translations
-        add_translation_root(
-            &mut map,
-            &path,
-            &path.file_name().unwrap().to_string_lossy(),
-            false,
-        );
-    } else {
-        // Qt core templates from this repo
-        add_folder(&mut map, &ftl_base.join("qt"), "qt", "templates");
-        // And translations from submodule
-        add_translation_root(&mut map, &ftl_base.join("qt-repo/desktop"), "qt", true)
-    }
+    add_folder(
+        &mut map,
+        &source_tree_root().join("core"),
+        "core",
+        "templates",
+    );
     map
 }
 
@@ -66,29 +50,6 @@ fn add_folder(map: &mut TranslationsByLang, folder: &Path, repo: &str, lang: &st
     }
 }
 
-/// For each language folder in `root`, add the ftl files stored inside.
-/// If ignore_templates is true, the templates/ folder will be ignored, on the
-/// assumption the templates were extracted from the source tree.
-fn add_translation_root(
-    map: &mut TranslationsByLang,
-    root: &Path,
-    repo: &str,
-    ignore_templates: bool,
-) {
-    for entry in fs::read_dir(root).unwrap() {
-        let entry = entry.unwrap();
-        let lang = entry.file_name().to_string_lossy().to_string();
-        if ignore_templates && lang == "templates" {
-            continue;
-        }
-        add_folder(map, &entry.path(), repo, &lang);
-    }
-}
-
 fn source_tree_root() -> PathBuf {
     PathBuf::from("../../ftl")
-}
-
-fn extra_ftl_root() -> Option<PathBuf> {
-    std::env::var("EXTRA_FTL_ROOT").ok().map(PathBuf::from)
 }

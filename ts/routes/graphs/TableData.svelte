@@ -3,7 +3,6 @@ Copyright: Ankitects Pty Ltd and contributors
 License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
-    import { direction } from "@tslib/i18n";
 
     import type { TableDatum } from "./graph-helpers";
 
@@ -11,7 +10,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 </script>
 
 <div>
-    <table dir={direction()}>
+    <table>
         <tbody>
             {#each tableData as { label, value }}
                 <tr>

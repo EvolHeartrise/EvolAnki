@@ -80,7 +80,7 @@ statistics-reviews =
 # This fragment of the tooltip in the FSRS simulation
 # diagram (Deck options -> FSRS) shows the total number of
 # cards that can be recalled or retrieved on a specific date.
-statistics-memorized = {$memorized} cards memorized
+statistics-memorized = { $memorized } cards memorized
 statistics-today-title = Today
 statistics-today-again-count = Again count:
 statistics-today-type-counts = Learn: { $learnCount }, Review: { $reviewCount }, Relearn: { $relearnCount }, Filtered: { $filteredCount }
@@ -115,7 +115,6 @@ statistics-counts-separate-suspended-buried-cards = Separate suspended/buried ca
 statistics-true-retention-title = Retention
 statistics-true-retention-subtitle = Pass rate of cards with an interval ≥ 1 day.
 statistics-true-retention-tooltip = If you are using FSRS, your retention is expected to be close to your desired retention. Please keep in mind that data for a single day is noisy, so it's better to look at monthly data.
-statistics-true-retention-range = Range
 statistics-true-retention-pass = Pass
 statistics-true-retention-fail = Fail
 # This will usually be the same as statistics-counts-total-cards
@@ -140,7 +139,6 @@ statistics-true-retention-not-applicable = N/A
 ##
 
 statistics-range-all-time = all
-statistics-range-1-year-history = last 12 months
 statistics-range-all-history = all history
 statistics-range-deck = deck
 statistics-range-collection = collection
@@ -284,15 +282,7 @@ statistics-cards-per-day =
 statistics-median-difficulty = Median difficulty
 statistics-average-retrievability = Average retrievability
 statistics-estimated-total-knowledge = Estimated total knowledge
-statistics-save-pdf = Save PDF
-statistics-saved = Saved.
-statistics-stats = stats
-statistics-title = Statistics
 
 ## These strings are no longer used - you do not need to translate them if they
 ## are not already translated.
 
-statistics-average-stability = Average stability
-statistics-average-interval = Average interval
-statistics-average-ease = Average ease
-statistics-average-difficulty = Average difficulty
