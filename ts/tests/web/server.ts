@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 // Playwright runs from the repo root, where its config lives.
 const REPO = process.cwd();
-const BINARY = join(REPO, "out/rust/debug/evolanki-server");
+const BINARY = process.env.EVOLANKI_SERVER ?? join(REPO, "out/rust/debug/evolanki-server");
 const WEB_ROOT = join(REPO, "out/web");
 
 export class Server {
