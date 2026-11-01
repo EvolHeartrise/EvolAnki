@@ -137,6 +137,7 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
+    #[cfg(test)]
     pub(crate) fn clear_pending_note_usns(&self) -> Result<()> {
         self.db
             .prepare("update notes set usn = 0 where usn = -1")?

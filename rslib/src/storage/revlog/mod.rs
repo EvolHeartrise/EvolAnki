@@ -53,6 +53,7 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
+    #[cfg(test)]
     pub(crate) fn clear_pending_revlog_usns(&self) -> Result<()> {
         self.db
             .prepare("update revlog set usn = 0 where usn = -1")?
@@ -86,6 +87,7 @@ impl SqliteStorage {
         Ok((added > 0).then(|| RevlogId(self.db.last_insert_rowid())))
     }
 
+    #[cfg(test)]
     pub(crate) fn get_revlog_entry(&self, id: RevlogId) -> Result<Option<RevlogEntry>> {
         self.db
             .prepare_cached(concat!(include_str!("get.sql"), " where id=?"))?

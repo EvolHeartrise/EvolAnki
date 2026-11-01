@@ -4,8 +4,6 @@
 #![deny(unused_must_use)]
 
 pub mod adding;
-pub(crate) mod ankidroid;
-pub mod ankihub;
 pub mod backend;
 pub mod browser_table;
 pub mod card;
@@ -16,7 +14,6 @@ pub mod config;
 pub mod dbcheck;
 pub mod deckconfig;
 pub mod decks;
-pub mod editor;
 pub mod error;
 pub mod findreplace;
 pub mod i18n;
@@ -40,7 +37,6 @@ pub mod serde;
 pub mod services;
 mod stats;
 pub mod storage;
-pub mod sync;
 pub mod tags;
 pub mod template;
 pub mod template_filters;
@@ -50,11 +46,4 @@ pub mod timestamp;
 mod typeanswer;
 pub mod types;
 pub mod undo;
-mod updates;
 pub mod version;
-
-use std::env;
-use std::sync::LazyLock;
-
-pub(crate) static PYTHON_UNIT_TESTS: LazyLock<bool> =
-    LazyLock::new(|| env::var("ANKI_TEST_MODE").is_ok());

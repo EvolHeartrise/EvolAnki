@@ -683,7 +683,7 @@ pub(crate) fn get_fuzz_seed(card: &Card, for_reschedule: bool) -> Option<u64> {
 
 /// If in test environment, disable fuzzing.
 fn get_fuzz_seed_for_id_and_reps(card_id: CardId, card_reps: u32) -> Option<u64> {
-    if *crate::PYTHON_UNIT_TESTS || cfg!(test) {
+    if cfg!(test) {
         None
     } else {
         Some((card_id.0 as u64).wrapping_add(card_reps as u64))

@@ -5,7 +5,6 @@ import { ConfigKey_Bool } from "@generated/anki/config_pb";
 import type { ReadClipboardResponse } from "@generated/anki/frontend_pb";
 import {
     addMediaFile,
-    addMediaFromUrl,
     convertPastedImage,
     extractMediaFiles,
     getAbsoluteMediaPath,
@@ -140,26 +139,6 @@ async function getAudioFile(data: DataTransfer): Promise<{ name: string; data: U
     return null;
 }
 
-async function retrieveUrl(url: string): Promise<string | null> {
-    const response = await addMediaFromUrl({ url });
-    if (response.error) {
-        alert(response.error);
-        return null;
-    }
-    return response.filename!;
-}
-
-async function urlToFile(url: string, allowedSuffixes = mediaSuffixes): Promise<string | null> {
-    const lowerUrl = url.toLowerCase();
-    for (const suffix of allowedSuffixes) {
-        if (lowerUrl.endsWith(`.${suffix}`)) {
-            return await retrieveUrl(url);
-        }
-    }
-    // Not a supported type
-    return null;
-}
-
 function extToLowerCase(filename: string): string {
     const filenameParts = filename.split(".");
     return filenameParts[filenameParts.length - 1].toLowerCase();
@@ -185,13 +164,9 @@ export function isImage(filename: string): boolean {
     return imageSuffixes.includes(extToLowerCase(filename));
 }
 
-async function urlToLink(url: string, allowedSuffixes: string[] = mediaSuffixes): Promise<string> {
-    const filename = await urlToFile(url, allowedSuffixes);
-    if (!filename) {
-        const escapedTitle = escapeHtml(decodeURI(url));
-        return `<a href="${url}">${escapedTitle}</a>`;
-    }
-    return filenameToLink(filename);
+function urlToLink(url: string): string {
+    const escapedTitle = escapeHtml(decodeURI(url));
+    return `<a href="${url}">${escapedTitle}</a>`;
 }
 
 function imageDataToUint8Array(data: ImageData): Uint8Array {
@@ -263,7 +238,6 @@ function isURL(s: string): boolean {
 async function processUrls(
     data: DataTransfer | ReadClipboardResponse,
     _extended: Promise<boolean>,
-    allowedSuffixes: string[] = mediaSuffixes,
 ): Promise<string | null> {
     const urls = await getUrls(data);
     if (urls.length === 0) {
@@ -273,7 +247,7 @@ async function processUrls(
     for (let url of urls) {
         // Chrome likes to give us the URL twice with a \n
         url = url.split("\n")[0].trim();
-        text += await urlToLink(url, allowedSuffixes);
+        text += urlToLink(url);
     }
     return text;
 }
@@ -322,7 +296,7 @@ async function processText(data: DataTransfer, extended: Promise<boolean>): Prom
                 processed.push(await inlinedImageToLink(token));
             } else if ((await extended) && isURL(token)) {
                 // If the user is pasting an image or sound link, convert it to local, otherwise paste as a hyperlink
-                processed.push(await urlToLink(token));
+                processed.push(urlToLink(token));
             } else {
                 token = escapeHtml(token).replaceAll("\t", " ".repeat(4));
 
@@ -468,7 +442,7 @@ export async function extractImagePathFromHtml(html: string): Promise<string | n
     return decodeURI(images[0]);
 }
 export async function extractImagePathFromData(data: DataTransfer | ReadClipboardResponse): Promise<string | null> {
-    const html = await processUrls(data, Promise.resolve(false), imageSuffixes);
+    const html = await processUrls(data, Promise.resolve(false));
     if (html) {
         return await extractImagePathFromHtml(html);
     }

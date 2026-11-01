@@ -664,13 +664,6 @@
         "path": "node_modules/is-potential-custom-element-name",
         "licenseFile": "node_modules/is-potential-custom-element-name/LICENSE-MIT.txt"
     },
-    "jquery-ui-dist@1.13.3": {
-        "licenses": "MIT",
-        "repository": "https://github.com/jquery/jquery-ui",
-        "publisher": "OpenJS Foundation and other contributors",
-        "path": "node_modules/jquery-ui-dist",
-        "licenseFile": "node_modules/jquery-ui-dist/LICENSE.txt"
-    },
     "jquery@3.7.1": {
         "licenses": "MIT",
         "repository": "https://github.com/jquery/jquery",

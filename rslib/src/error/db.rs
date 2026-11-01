@@ -100,7 +100,7 @@ impl DbError {
         match self.kind {
             DbErrorKind::Corrupt => self.info.clone(),
             // fixme: i18n
-            DbErrorKind::Locked => "Anki already open, or media currently syncing.".into(),
+            DbErrorKind::Locked => "Collection already open.".into(),
             _ => format!("{self:?}"),
         }
     }

@@ -278,9 +278,8 @@ mod tests {
 
     #[test]
     fn import_anki_package_succeeds_with_valid_apkg_fixture() {
-        // uses the pre-existing fixture from pylib/tests/support/
-        let apkg_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../pylib/tests/support/update1.apkg");
+        let apkg_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/update1.apkg");
         let (mut col, _dir) = crate::tests::open_fs_test_collection("import_apkg_success");
         let result = ImportExportService::import_anki_package(
             &mut col,

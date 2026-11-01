@@ -8,7 +8,6 @@ option java_multiple_files = true;
 package anki.collection;
 
 import "anki/generic.proto";
-import "anki/sync.proto";
 
 service CollectionService {
   rpc CheckDatabase(generic.Empty) returns (CheckDatabaseResponse);
@@ -107,17 +106,6 @@ message OpChangesAfterUndo {
 }
 
 message Progress {
-  message FullSync {
-    uint32 transferred = 1;
-    uint32 total = 2;
-  }
-
-  message NormalSync {
-    string stage = 1;
-    string added = 2;
-    string removed = 3;
-  }
-
   message DatabaseCheck {
     string stage = 1;
     uint32 stage_total = 2;
@@ -126,17 +114,13 @@ message Progress {
 
   oneof value {
     generic.Empty none = 1;
-    sync.MediaSyncProgress media_sync = 2;
     string media_check = 3;
-    FullSync full_sync = 4;
-    NormalSync normal_sync = 5;
     DatabaseCheck database_check = 6;
     string importing = 7;
     string exporting = 8;
     ComputeParamsProgress compute_params = 9;
     ComputeRetentionProgress compute_retention = 10;
     ComputeMemoryProgress compute_memory = 11;
-    DownloadUpdateProgress download_update = 12;
   }
 }
 
@@ -174,7 +158,3 @@ message GetCustomColoursResponse {
   repeated string colours = 1;
 }
 
-message DownloadUpdateProgress {
-  uint32 downloaded_bytes = 1;
-  uint32 total_bytes = 2;
-}

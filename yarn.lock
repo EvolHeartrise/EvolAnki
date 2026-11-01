@@ -1860,15 +1860,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/jqueryui@npm:^1.12.24":
-  version: 1.12.24
-  resolution: "@types/jqueryui@npm:1.12.24"
-  dependencies:
-    "@types/jquery": "npm:*"
-  checksum: 10c0/95afc94bfa4cf31de6b34b7770de849ccb2b5c2c9d8e092e6b9d3a1e0b4ee913659ede75eeebcbf8cb00a59d73da0da648da2be15fea2b94dd8ddeb237027bcf
-  languageName: node
-  linkType: hard
-
 "@types/json-schema@npm:^7.0.9":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -2318,7 +2309,6 @@ __metadata:
     "@types/diff": "npm:^5.0.0"
     "@types/fabric": "npm:^5.3.7"
     "@types/jquery": "npm:^3.5.0"
-    "@types/jqueryui": "npm:^1.12.24"
     "@types/lodash-es": "npm:^4.17.4"
     "@types/marked": "npm:^5.0.0"
     "@types/node": "npm:^22"
@@ -2344,7 +2334,6 @@ __metadata:
     hammerjs: "npm:^2.0.8"
     intl-pluralrules: "npm:^2.0.0"
     jquery: "npm:^3.5.1"
-    jquery-ui-dist: "npm:^1.12.1"
     license-checker-rseidelsohn: "npm:=4.4.2"
     lodash-es: "npm:^4.18.1"
     lru-cache: "npm:^10.2.0"
@@ -5722,15 +5711,6 @@ __metadata:
     "@pkgjs/parseargs":
       optional: true
   checksum: 10c0/6acc10d139eaefdbe04d2f679e6191b3abf073f111edf10b1de5302c97ec93fffeb2fdd8681ed17f16268aa9dd4f8c588ed9d1d3bffbbfa6e8bf897cbb3149b9
-  languageName: node
-  linkType: hard
-
-"jquery-ui-dist@npm:^1.12.1":
-  version: 1.13.3
-  resolution: "jquery-ui-dist@npm:1.13.3"
-  dependencies:
-    jquery: "npm:>=1.8.0 <4.0.0"
-  checksum: 10c0/d282511e137c6aaf9aac8a33bd06eec5b2e9882c3ceac8b8b59608f808880720238471311cdd34ceaf1557ba2cd7ce31cb4461e56099b54eb07551a53b4ac913
   languageName: node
   linkType: hard
 

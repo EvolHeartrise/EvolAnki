@@ -21,13 +21,12 @@ use anki_io::FileOp;
 use regex::Regex;
 use sha1::Digest;
 use sha1::Sha1;
-use tracing::debug;
 use unic_ucd_category::GeneralCategory;
 use unicode_normalization::is_nfc;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::prelude::*;
-use crate::sync::media::MAX_MEDIA_FILENAME_LENGTH;
+use crate::media::MAX_MEDIA_FILENAME_LENGTH;
 
 static WINDOWS_DEVICE_NAME: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
@@ -400,48 +399,6 @@ pub struct AddedFile {
     pub renamed_from: Option<String>,
 }
 
-/// Add a file received from AnkiWeb into the media folder.
-///
-/// Because AnkiWeb did not previously enforce file name limits and invalid
-/// characters, we'll need to rename the file if it is not valid.
-pub(crate) fn add_file_from_ankiweb(
-    media_folder: &Path,
-    fname: &str,
-    data: &[u8],
-) -> Result<AddedFile> {
-    let sha1 = sha1_of_data(data);
-    let normalized = normalize_filename(fname);
-
-    // if the filename is already valid, we can write the file directly
-    let (renamed_from, path) = if let Cow::Borrowed(_) = normalized {
-        let path = media_folder.join(normalized.as_ref());
-        debug!(fname = normalized.as_ref(), "write");
-        write_file(&path, data)?;
-        (None, path)
-    } else {
-        // ankiweb sent us a non-normalized filename, so we'll rename it
-        let new_name = add_data_to_folder_uniquely(media_folder, fname, data, sha1)?;
-        debug!(
-            fname,
-            rename_to = new_name.as_ref(),
-            "non-normalized filename received"
-        );
-        (
-            Some(fname.to_string()),
-            media_folder.join(new_name.as_ref()),
-        )
-    };
-
-    let mtime = mtime_as_i64(path)?;
-
-    Ok(AddedFile {
-        fname: normalized.to_string(),
-        sha1,
-        mtime,
-        renamed_from,
-    })
-}
-
 pub(crate) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<Vec<u8>>> {
     let mut file = match open_file(media_folder.join(fname)) {
         Err(e) if e.is_not_found() => return Ok(None),
@@ -464,7 +421,7 @@ mod test {
     use crate::media::files::remove_files;
     use crate::media::files::sha1_of_data;
     use crate::media::files::truncate_filename;
-    use crate::sync::media::MAX_MEDIA_FILENAME_LENGTH;
+    use crate::media::MAX_MEDIA_FILENAME_LENGTH;
 
     #[test]
     fn normalize() {

@@ -167,8 +167,9 @@ mod test {
         assert_eq!(col.storage.get_note(note.id)?, Some(original_note));
         assert_eq!(col.storage.get_all_cards(), original_cards);
         assert_eq!(
-            col.storage.pending_graves(Usn(-1))?.cards,
-            vec![CardId(123)]
+            col.storage
+                .db_scalar::<i64>("select oid from graves where type = 0 and usn = -1")?,
+            123
         );
         Ok(())
     }

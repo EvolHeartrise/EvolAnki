@@ -8,10 +8,8 @@ use rusqlite::params;
 use rusqlite::Connection;
 use rusqlite::OptionalExtension;
 use rusqlite::Row;
-use tracing::debug;
 
 use crate::error;
-use crate::media::files::AddedFile;
 use crate::media::Sha1Hash;
 use crate::prelude::Usn;
 use crate::prelude::*;
@@ -124,17 +122,6 @@ values (?, ?, ?, ?)",
         Ok(())
     }
 
-    pub(crate) fn remove_entry(&self, fname: &str) -> error::Result<()> {
-        self.db
-            .prepare_cached(
-                "
-delete from media where fname=?",
-            )?
-            .execute(params![fname])?;
-
-        Ok(())
-    }
-
     pub(crate) fn get_meta(&self) -> error::Result<MediaDatabaseMetadata> {
         let mut stmt = self.db.prepare("select dirMod, lastUsn from meta")?;
 
@@ -154,6 +141,7 @@ delete from media where fname=?",
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn count(&self) -> error::Result<u32> {
         self.db
             .query_row(
@@ -164,6 +152,7 @@ delete from media where fname=?",
             .map_err(Into::into)
     }
 
+    #[cfg(test)]
     pub(crate) fn get_pending_uploads(&self, max_entries: u32) -> error::Result<Vec<MediaEntry>> {
         let mut stmt = self
             .db
@@ -195,75 +184,6 @@ delete from media where fname=?",
             .query_and_then([], row_to_name_and_checksum)?
             .collect::<error::Result<_>>()
             .map(Checksums)
-    }
-
-    pub(crate) fn force_resync(&self) -> error::Result<()> {
-        self.db
-            .execute_batch("delete from media; update meta set lastUsn = 0, dirMod = 0")
-            .map_err(Into::into)
-    }
-
-    pub(crate) fn record_clean(&self, clean: &[String]) -> error::Result<()> {
-        for fname in clean {
-            if let Some(mut entry) = self.get_entry(fname)? {
-                if entry.sync_required {
-                    entry.sync_required = false;
-                    debug!(fname = &entry.fname, "mark clean");
-                    self.set_entry(&entry)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub fn record_additions(&self, additions: Vec<AddedFile>) -> error::Result<()> {
-        for file in additions {
-            if let Some(renamed) = file.renamed_from {
-                // the file AnkiWeb sent us wasn't normalized, so we need to record
-                // the old file name as a deletion
-                debug!("marking non-normalized file as deleted: {}", renamed);
-                let mut entry = MediaEntry {
-                    fname: renamed,
-                    sha1: None,
-                    mtime: 0,
-                    sync_required: true,
-                };
-                self.set_entry(&entry)?;
-                // and upload the new filename to ankiweb
-                debug!("marking renamed file as needing upload: {}", file.fname);
-                entry = MediaEntry {
-                    fname: file.fname.to_string(),
-                    sha1: Some(file.sha1),
-                    mtime: file.mtime,
-                    sync_required: true,
-                };
-                self.set_entry(&entry)?;
-            } else {
-                // a normal addition
-                let entry = MediaEntry {
-                    fname: file.fname.to_string(),
-                    sha1: Some(file.sha1),
-                    mtime: file.mtime,
-                    sync_required: false,
-                };
-                debug!(
-                    fname = &entry.fname,
-                    sha1 = hex::encode(&entry.sha1.as_ref().unwrap()[0..4]),
-                    "mark added"
-                );
-                self.set_entry(&entry)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn record_removals(&self, removals: &[String]) -> error::Result<()> {
-        for fname in removals {
-            debug!(fname, "mark removed");
-            self.remove_entry(fname)?;
-        }
-        Ok(())
     }
 }
 
@@ -347,7 +267,7 @@ mod test {
     use crate::error::Result;
     use crate::media::files::sha1_of_data;
     use crate::media::MediaManager;
-    use crate::sync::media::database::client::MediaEntry;
+    use crate::media::database::MediaEntry;
 
     #[test]
     fn database() -> Result<()> {

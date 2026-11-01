@@ -49,7 +49,6 @@ struct LintContext {
     want_fix: bool,
     unstaged_changes: LazyCell<()>,
     found_problems: bool,
-    nonstandard_headers: HashSet<&'static Utf8Path>,
 }
 
 impl LintContext {
@@ -58,7 +57,6 @@ impl LintContext {
             want_fix,
             unstaged_changes: LazyCell::new(check_for_unstaged_changes),
             found_problems: false,
-            nonstandard_headers: NONSTANDARD_HEADER.iter().map(Utf8Path::new).collect(),
         }
     }
 
@@ -89,9 +87,6 @@ impl LintContext {
         }
         let head = head_of_file(path)?;
         if head.is_empty() {
-            return Ok(());
-        }
-        if self.nonstandard_headers.contains(&path) {
             return Ok(());
         }
         let missing = !head.contains("Ankitects Pty Ltd and contributors");

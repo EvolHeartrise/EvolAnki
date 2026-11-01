@@ -41,7 +41,6 @@ impl BackendCollectionService for Backend {
             None
         };
 
-        self.abort_media_sync_and_wait();
         let mut guard = self.lock_open_collection()?;
         let col_inner = guard.take().unwrap();
 
@@ -140,7 +139,7 @@ mod test {
         col.storage.update_card(&card)?;
         col.close(None)?;
 
-        // as done with temporary collections during import and sync
+        // as done with temporary collections during import
         let col = CollectionBuilder::new(&path).build()?;
         assert!(col.get_first_card().memory_state.is_none());
         col.close(None)?;

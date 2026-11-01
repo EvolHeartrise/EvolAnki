@@ -1,7 +1,8 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-// The parts of qt/aqt/reviewer.py and pylib's card rendering that aren't UI.
+// The parts of upstream Anki's qt/aqt/reviewer.py and pylib card rendering that
+// aren't UI; those paths in the comments below are upstream's.
 
 import type { RenderedTemplateNode } from "@generated/anki/card_rendering_pb";
 

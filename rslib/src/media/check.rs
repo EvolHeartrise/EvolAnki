@@ -24,15 +24,20 @@ use crate::media::files::normalize_nfc_filename;
 use crate::media::files::sha1_of_data;
 use crate::media::files::trash_folder;
 use crate::media::MediaManager;
+use crate::media::MAX_INDIVIDUAL_MEDIA_FILE_SIZE;
 use crate::prelude::*;
 use crate::progress::ThrottlingProgressHandler;
-use crate::sync::media::progress::MediaCheckProgress;
-use crate::sync::media::MAX_INDIVIDUAL_MEDIA_FILE_SIZE;
 use crate::text::extract_media_refs;
 use crate::text::normalize_to_nfc;
 use crate::text::CowMapping;
 use crate::text::MediaRef;
 use crate::text::REMOTE_FILENAME;
+
+#[derive(Debug, Default, Clone, Copy)]
+#[repr(transparent)]
+pub struct MediaCheckProgress {
+    pub checked: usize,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct MediaCheckOutput {
@@ -625,7 +630,7 @@ pub(crate) mod test {
 
     use super::*;
     use crate::collection::CollectionBuilder;
-    use crate::sync::media::MAX_MEDIA_FILENAME_LENGTH;
+    use crate::media::MAX_MEDIA_FILENAME_LENGTH;
     use crate::tests::NoteAdder;
 
     fn common_setup() -> Result<(TempDir, MediaManager, Collection)> {

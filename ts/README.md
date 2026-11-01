@@ -1,5 +1,4 @@
-Anki's TypeScript and Sass dependencies. Some TS/JS code is also
-stored separately in ../qt/aqt/data/web/.
+EvolAnki's web pages, with their TypeScript and Sass dependencies.
 
 To update all dependencies:
 

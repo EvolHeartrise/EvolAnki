@@ -22,10 +22,6 @@ pub(crate) fn write_ts_interface(services: &[BackendService]) -> Result<()> {
     let mut referenced_packages = HashSet::new();
 
     for service in services {
-        if service.name == "BackendAnkidroidService" {
-            continue;
-        }
-
         for method in service.all_methods() {
             let method = MethodDetails::from_method(method);
             record_referenced_type(&mut referenced_packages, &method.input_type);

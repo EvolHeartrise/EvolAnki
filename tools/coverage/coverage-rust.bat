@@ -33,7 +33,6 @@ if "%CI%"=="true" (
 )
 
 set "PATH=%LLVMCOVPATH%;%PATH%"
-set "ANKI_TEST_MODE=1"
 "%CARGO_CMD%" llvm-cov nextest --workspace --locked ^
     --cargo-profile %PROFILE% ^
     --json --summary-only ^

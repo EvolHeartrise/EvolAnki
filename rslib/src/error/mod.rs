@@ -4,7 +4,6 @@
 mod db;
 mod filtered;
 mod invalid_input;
-pub(crate) mod network;
 mod not_found;
 mod search;
 #[cfg(windows)]
@@ -17,10 +16,6 @@ pub use db::DbError;
 pub use db::DbErrorKind;
 pub use filtered::CustomStudyError;
 pub use filtered::FilteredDeckError;
-pub use network::NetworkError;
-pub use network::NetworkErrorKind;
-pub use network::SyncError;
-pub use network::SyncErrorKind;
 pub use search::ParseError;
 pub use search::SearchErrorKind;
 use snafu::Snafu;
@@ -54,14 +49,6 @@ pub enum AnkiError {
     #[snafu(context(false))]
     DbError {
         source: DbError,
-    },
-    #[snafu(context(false))]
-    NetworkError {
-        source: NetworkError,
-    },
-    #[snafu(context(false))]
-    SyncError {
-        source: SyncError,
     },
     JsonError {
         info: String,
@@ -122,7 +109,9 @@ pub enum AnkiError {
     },
     FsrsUnableToDetermineDesiredRetention,
     SchedulerUpgradeRequired,
-    InvalidCertificateFormat,
+    ZipError {
+        info: String,
+    },
     InvalidChecksum {
         info: String,
     },
@@ -132,8 +121,6 @@ pub enum AnkiError {
 impl AnkiError {
     pub fn message(&self, tr: &I18n) -> String {
         match self {
-            AnkiError::SyncError { source } => source.message(tr),
-            AnkiError::NetworkError { source } => source.message(tr),
             AnkiError::TemplateError { info: source } => {
                 // already localized
                 source.into()
@@ -174,8 +161,8 @@ impl AnkiError {
             | AnkiError::Existing
             | AnkiError::InvalidServiceIndex
             | AnkiError::InvalidMethodIndex
-            | AnkiError::UndoEmpty
-            | AnkiError::InvalidCertificateFormat => format!("{self:?}"),
+            | AnkiError::UndoEmpty => format!("{self:?}"),
+            AnkiError::ZipError { info } => info.clone(),
             AnkiError::FileIoError { source } => source.message(),
             AnkiError::InvalidInput { source } => source.message(),
             AnkiError::NotFound { source } => source.message(tr),
@@ -285,6 +272,14 @@ impl From<tempfile::PathPersistError> for AnkiError {
 impl From<tempfile::PersistError> for AnkiError {
     fn from(e: tempfile::PersistError) -> Self {
         FileIoError::from(e).into()
+    }
+}
+
+impl From<zip::result::ZipError> for AnkiError {
+    fn from(err: zip::result::ZipError) -> Self {
+        AnkiError::ZipError {
+            info: err.to_string(),
+        }
     }
 }
 

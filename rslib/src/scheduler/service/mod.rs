@@ -1756,3 +1756,12 @@ mod tests {
         );
     }
 }
+
+impl From<crate::scheduler::timing::SchedTimingToday> for scheduler::SchedTimingTodayResponse {
+    fn from(t: crate::scheduler::timing::SchedTimingToday) -> Self {
+        scheduler::SchedTimingTodayResponse {
+            days_elapsed: t.days_elapsed,
+            next_day_at: t.next_day_at.0,
+        }
+    }
+}

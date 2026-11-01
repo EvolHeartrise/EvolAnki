@@ -131,7 +131,6 @@ impl BuildAction for CargoTest {
         if !running_on_ci() {
             build.add_inputs("", inputs![":cargo-nextest"]);
         }
-        build.add_env_var("ANKI_TEST_MODE", "1");
         build.add_output_stamp("tests/cargo_test");
     }
 

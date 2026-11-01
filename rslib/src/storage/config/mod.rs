@@ -94,13 +94,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    pub(crate) fn clear_config_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update config set usn = 0 where usn != 0")?
-            .execute([])?;
-        Ok(())
-    }
-
     // Upgrading/downgrading
 
     pub(super) fn upgrade_config_to_schema14(&self) -> Result<()> {

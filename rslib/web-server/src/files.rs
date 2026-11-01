@@ -2,7 +2,7 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 //! Static files: the built pages and assets, and collection media. Mirrors the
-//! file handling and security headers of qt/aqt/mediasrv.py.
+//! file handling and security headers of upstream Anki's qt/aqt/mediasrv.py.
 
 use std::io::ErrorKind;
 use std::path::Component;

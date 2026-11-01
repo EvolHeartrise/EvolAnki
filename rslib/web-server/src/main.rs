@@ -172,7 +172,7 @@ fn open_collection(backend: &Backend, path: &Path) -> Result<PathBuf> {
             .context("collection path has no filename")?,
     );
 
-    // same layout as media_paths_from_col_path() in pylib, so that collections are
+    // same layout as media_paths_from_col_path() in upstream Anki, so that collections are
     // interchangeable with a desktop profile
     let media_dir = path.with_extension("media");
     let media_db = path.with_extension("media.db2");

@@ -131,9 +131,6 @@ pub struct CollectionState {
     pub(crate) scheduler_info: Option<SchedulerInfo>,
     pub(crate) card_queues: Option<CardQueues>,
     pub(crate) active_browser_columns: Option<Arc<Vec<browser_table::Column>>>,
-    /// True if legacy Python code has executed SQL that has modified the
-    /// database, requiring modification time to be bumped.
-    pub(crate) modified_by_dbproxy: bool,
     /// The modification time at the last backup, so we don't create multiple
     /// identical backups.
     pub(crate) last_backup_modified: Option<TimestampMillis>,
@@ -183,12 +180,13 @@ impl Collection {
     }
 
     pub(crate) fn usn(&self) -> Result<Usn> {
-        // if we cache this in the future, must make sure to invalidate cache when usn
-        // bumped in sync.finish()
         self.storage.usn(self.server)
     }
 
-    /// Prepare for upload. Caller should not create transaction.
+    /// Mark everything as sent to a server, as far as the usn columns go. Lets
+    /// tests check that an object changes or keeps its usn when it's next
+    /// modified. Caller should not create transaction.
+    #[cfg(test)]
     pub(crate) fn before_upload(&mut self) -> Result<()> {
         self.transact_no_undo(|col| {
             col.storage.clear_all_graves()?;
@@ -205,11 +203,6 @@ impl Collection {
                 .set_last_sync(col.storage.get_collection_timestamps()?.schema_change)
         })?;
         self.storage.optimize()
-    }
-
-    pub(crate) fn clear_caches(&mut self) {
-        self.state.deck_cache.clear();
-        self.state.notetype_cache.clear();
     }
 
     pub fn tr(&self) -> &I18n {

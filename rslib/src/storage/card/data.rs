@@ -123,11 +123,6 @@ impl FromSql for CardData {
     }
 }
 
-/// Serialize the JSON `data` for a card.
-pub(crate) fn card_data_string(card: &Card) -> String {
-    CardData::from_card(card).convert_to_json().unwrap()
-}
-
 fn meta_is_empty(s: &str) -> bool {
     matches!(s, "" | "{}")
 }

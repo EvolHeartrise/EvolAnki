@@ -4,7 +4,6 @@
 use anki_proto::backend::backend_error::Kind;
 
 use crate::error::AnkiError;
-use crate::error::SyncErrorKind;
 use crate::prelude::*;
 
 impl AnkiError {
@@ -17,8 +16,6 @@ impl AnkiError {
             AnkiError::InvalidInput { .. } => Kind::InvalidInput,
             AnkiError::TemplateError { .. } => Kind::TemplateParse,
             AnkiError::DbError { .. } => Kind::DbError,
-            AnkiError::NetworkError { .. } => Kind::NetworkError,
-            AnkiError::SyncError { source } => source.kind.into(),
             AnkiError::Interrupted => Kind::Interrupted,
             AnkiError::CollectionNotOpen => Kind::InvalidInput,
             AnkiError::CollectionAlreadyOpen => Kind::InvalidInput,
@@ -49,7 +46,7 @@ impl AnkiError {
             AnkiError::WindowsError { .. } => Kind::OsError,
             AnkiError::SchedulerUpgradeRequired => Kind::SchedulerUpgradeRequired,
             AnkiError::FsrsInsufficientReviews { .. } => Kind::InvalidInput,
-            AnkiError::InvalidCertificateFormat => Kind::InvalidCertificateFormat,
+            AnkiError::ZipError { .. } => Kind::IoError,
             AnkiError::InvalidChecksum { .. } => Kind::InvalidChecksum,
         };
 
@@ -59,16 +56,6 @@ impl AnkiError {
             help_page,
             context,
             backtrace,
-        }
-    }
-}
-
-impl From<SyncErrorKind> for Kind {
-    fn from(err: SyncErrorKind) -> Self {
-        match err {
-            SyncErrorKind::AuthFailed => Kind::SyncAuthError,
-            SyncErrorKind::ServerMessage => Kind::SyncServerMessage,
-            _ => Kind::SyncOtherError,
         }
     }
 }

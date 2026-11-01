@@ -332,6 +332,7 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
+    #[cfg(test)]
     pub(crate) fn clear_deck_usns(&self) -> Result<()> {
         self.db
             .prepare("update decks set usn = 0 where usn != 0")?

@@ -179,7 +179,7 @@ impl Collection {
         out.card_properties_invalid += other_cards_fixed;
         out.card_last_review_time_empty = last_review_time_fixed;
 
-        // Trigger one-way sync if last_review_time was updated to avoid conflicts
+        // last_review_time was updated, which backups taken before now lack
         if last_review_time_fixed > 0 {
             self.set_schema_modified()?;
         }

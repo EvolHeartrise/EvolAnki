@@ -8,14 +8,14 @@ use std::time;
 use anki_io::read_dir_files;
 use tracing::debug;
 
+use crate::media::database::MediaDatabase;
+use crate::media::database::MediaEntry;
 use crate::media::files::filename_if_normalized;
 use crate::media::files::mtime_as_i64;
 use crate::media::files::sha1_of_file;
 use crate::media::files::NONSYNCABLE_FILENAME;
+use crate::media::MAX_INDIVIDUAL_MEDIA_FILE_SIZE;
 use crate::prelude::*;
-use crate::sync::media::database::client::MediaDatabase;
-use crate::sync::media::database::client::MediaEntry;
-use crate::sync::media::MAX_INDIVIDUAL_MEDIA_FILE_SIZE;
 
 struct FilesystemEntry {
     fname: String,
@@ -253,7 +253,7 @@ mod test {
     use crate::error::Result;
     use crate::media::files::sha1_of_data;
     use crate::media::MediaManager;
-    use crate::sync::media::database::client::MediaEntry;
+    use crate::media::database::MediaEntry;
 
     // helper
     fn change_mtime(p: &Path) {

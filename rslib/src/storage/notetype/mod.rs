@@ -314,6 +314,7 @@ impl SqliteStorage {
             .collect()
     }
 
+    #[cfg(test)]
     pub(crate) fn clear_notetype_usns(&self) -> Result<()> {
         self.db
             .prepare("update notetypes set usn = 0 where usn != 0")?

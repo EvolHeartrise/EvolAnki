@@ -2,7 +2,7 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 //! `POST /_anki/<camelCaseMethod>`: the equivalent of the post handlers in
-//! qt/aqt/mediasrv.py, minus Python and Qt.
+//! upstream Anki's qt/aqt/mediasrv.py.
 //!
 //! The request body is the protobuf-encoded input and the response body the
 //! protobuf-encoded output, as ts/lib/generated/post.ts expects. Failures are a
@@ -24,13 +24,11 @@ use prost::Message;
 include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 
 /// RPCs passed straight to the backend. Anything not listed here, in
-/// [UNSUPPORTED] or in [run] is refused, which keeps out e.g. closeCollection,
-/// the raw database proxy and the sync methods.
+/// [UNSUPPORTED] or in [run] is refused, which keeps out e.g. closeCollection.
 ///
 /// Methods that read or write arbitrary server-side paths or fetch URLs
-/// (import*, getCsvMetadata, addMediaFromPath/Url, getImageForOcclusion,
-/// getAbsoluteMediaPath) are exposed by mediasrv.py but deliberately absent: a
-/// browser page has no business naming files on the server. The editor and
+/// (import*, getCsvMetadata, addMediaFromPath, getImageForOcclusion,
+/// getAbsoluteMediaPath) are deliberately absent: a browser page has no business naming files on the server. The editor and
 /// importers will need upload-based replacements.
 pub const ALLOWED: &[&str] = &[
     // CollectionService
@@ -328,13 +326,9 @@ mod test {
             "closeCollection",
             "openCollection",
             "createBackup",
-            "syncCollection",
-            "fullUploadOrDownload",
-            "syncLogin",
             "checkDatabase",
             "importAnkiPackage",
             "addMediaFromPath",
-            "addMediaFromUrl",
             "getAbsoluteMediaPath",
             "exportAnkiPackage",
         ] {

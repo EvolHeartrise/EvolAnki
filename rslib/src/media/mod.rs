@@ -2,6 +2,7 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 pub mod check;
+pub(crate) mod database;
 pub mod files;
 mod service;
 
@@ -10,24 +11,28 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anki_io::create_dir_all;
-use reqwest::Client;
 
+use crate::media::database::changetracker::ChangeTracker;
+pub use crate::media::database::Checksums;
+use crate::media::database::MediaDatabase;
+use crate::media::database::MediaEntry;
 use crate::media::files::add_data_to_folder_uniquely;
 use crate::media::files::mtime_as_i64;
 use crate::media::files::remove_files;
 use crate::media::files::sha1_of_data;
 use crate::prelude::*;
-use crate::progress::ThrottlingProgressHandler;
-use crate::sync::http_client::HttpSyncClient;
-use crate::sync::login::SyncAuth;
-use crate::sync::media::database::client::changetracker::ChangeTracker;
-pub use crate::sync::media::database::client::Checksums;
-use crate::sync::media::database::client::MediaDatabase;
-use crate::sync::media::database::client::MediaEntry;
-use crate::sync::media::progress::MediaSyncProgress;
-use crate::sync::media::syncer::MediaSyncer;
 
 pub type Sha1Hash = [u8; 20];
+
+/// The maximum length we allow a filename to be. When combined
+/// with the rest of the path, the full path needs to be under ~240 chars
+/// on some platforms, and some filesystems like eCryptFS will increase
+/// the length of the filename.
+pub(crate) const MAX_MEDIA_FILENAME_LENGTH: usize = 120;
+
+/// Files above this size aren't tracked in the media database. Anki's media
+/// sync had this limit, and .colpkg files may have been made under it.
+pub(crate) const MAX_INDIVIDUAL_MEDIA_FILE_SIZE: usize = 100 * 1024 * 1024;
 
 impl Collection {
     pub fn media(&self) -> Result<MediaManager> {
@@ -139,19 +144,6 @@ impl MediaManager {
             sha1: Some(sha1),
             sync_required: true,
         })
-    }
-
-    /// Sync media.
-    pub async fn sync_media(
-        self,
-        progress: ThrottlingProgressHandler<MediaSyncProgress>,
-        auth: SyncAuth,
-        client: Client,
-        server_usn: Option<Usn>,
-    ) -> Result<()> {
-        let client = HttpSyncClient::new(auth, client);
-        let mut syncer = MediaSyncer::new(self, progress, client)?;
-        syncer.sync(server_usn).await
     }
 
     pub fn all_checksums_after_checking(

@@ -2,7 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use anyhow::Result;
-use ninja_gen::action::BuildAction;
 use ninja_gen::copy::CopyFiles;
 use ninja_gen::glob;
 use ninja_gen::hashmap;

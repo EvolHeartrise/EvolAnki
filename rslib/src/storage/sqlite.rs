@@ -42,10 +42,8 @@ fn unicase_compare(s1: &str, s2: &str) -> Ordering {
 // fixme: need to drop out of wal prior to vacuuming to fix page size of older
 // collections
 
-// currently public for dbproxy
 #[derive(Debug)]
 pub struct SqliteStorage {
-    // currently crate-visible for dbproxy
     pub(crate) db: Connection,
 }
 

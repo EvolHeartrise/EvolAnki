@@ -28,6 +28,7 @@ impl SqliteStorage {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn set_last_sync(&self, stamp: TimestampMillis) -> Result<()> {
         self.db.prepare("update col set ls = ?")?.execute([stamp])?;
         Ok(())

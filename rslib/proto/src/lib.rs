@@ -14,8 +14,6 @@ macro_rules! protobuf {
     };
 }
 
-protobuf!(ankidroid, "ankidroid");
-protobuf!(ankiweb, "ankiweb");
 protobuf!(backend, "backend");
 protobuf!(card_rendering, "card_rendering");
 protobuf!(cards, "cards");
@@ -34,7 +32,4 @@ protobuf!(notetypes, "notetypes");
 protobuf!(scheduler, "scheduler");
 protobuf!(search, "search");
 protobuf!(stats, "stats");
-protobuf!(sync, "sync");
 protobuf!(tags, "tags");
-protobuf!(ankihub, "ankihub");
-protobuf!(github, "github");

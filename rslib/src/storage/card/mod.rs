@@ -455,20 +455,12 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
+    #[cfg(test)]
     pub(crate) fn clear_pending_card_usns(&self) -> Result<()> {
         self.db
             .prepare("update cards set usn = 0 where usn = -1")?
             .execute([])?;
         Ok(())
-    }
-
-    pub(crate) fn have_at_least_one_card(&self) -> Result<bool> {
-        self.db
-            .prepare_cached("select null from cards")?
-            .query([])?
-            .next()
-            .map(|o| o.is_some())
-            .map_err(Into::into)
     }
 
     pub fn all_cards_of_note(&self, nid: NoteId) -> Result<Vec<Card>> {
