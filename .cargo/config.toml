@@ -1,5 +1,5 @@
 [build]
-rustc-wrapper = "tools/rustc-wrapper"
+rustc-wrapper = "tools/sccache"
 
 [env]
 STRINGS_PY = { value = "out/pylib/anki/_fluent.py", relative = true }

@@ -1,12 +1,11 @@
 #!/bin/sh
 # Cargo's rustc wrapper (see .cargo/config.toml). Caches compiled dependencies in
 # sccache's per-user cache, so new worktrees and target dirs don't rebuild them.
-# Falls back to plain rustc on machines without sccache.
+# Falls back to the plain compiler on machines without sccache.
+# Keep this filename: the cc crate only caches C builds when the wrapper is called sccache.
 # sccache hashes CARGO_* variables, and this one differs per worktree. rustc ignores it.
 unset CARGO_TARGET_DIR
-if command -v sccache >/dev/null 2>&1; then
-    exec sccache "$@"
-elif [ -x "$HOME/.cargo/bin/sccache" ]; then
+if [ -x "$HOME/.cargo/bin/sccache" ]; then
     exec "$HOME/.cargo/bin/sccache" "$@"
 fi
 exec "$@"
