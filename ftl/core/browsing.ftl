@@ -22,7 +22,7 @@ browsing-question = Question
 browsing-select-deck = Select Deck
 # The field that is used for sorting (sort is an adjective here, not a verb)
 browsing-sort-field = Sort Field
-browsing-tooltip-card-modified = The last time changes were made to a card, including reviews, flags and deck changes
+browsing-tooltip-card-modified = The last time changes were made to a card, including reviews and deck changes
 browsing-tooltip-note-modified = The last time changes were made to a note, usually field content or tag edits
 browsing-tooltip-card = The name of a card's card template
 browsing-tooltip-cards = The number of cards a note has

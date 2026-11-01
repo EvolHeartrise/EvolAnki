@@ -14,6 +14,5 @@ SET nid = ?,
   left = ?,
   odue = ?,
   odid = ?,
-  flags = ?,
   data = ?
 WHERE id = ?

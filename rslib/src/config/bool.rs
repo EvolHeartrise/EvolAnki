@@ -13,7 +13,6 @@ pub enum BoolKey {
     CardCountsSeparateInactive,
     CollapseCardState,
     CollapseDecks,
-    CollapseFlags,
     CollapseNotetypes,
     CollapseSavedSearches,
     CollapseTags,

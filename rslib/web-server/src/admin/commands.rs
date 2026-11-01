@@ -338,7 +338,6 @@ fn card_json(card: &Card) -> Value {
         "lapses": card.lapses,
         "original_due": card.original_due,
         "original_deck_id": card.original_deck_id,
-        "flags": card.flags,
         "stability": card.memory_state.as_ref().map(|m| m.stability),
         "difficulty": card.memory_state.as_ref().map(|m| m.difficulty),
         "desired_retention": card.desired_retention,

@@ -660,23 +660,12 @@ impl RowContext {
                 Color::Default
             }
         } else {
-            match self.cards[0].flags {
-                1 => Color::FlagRed,
-                2 => Color::FlagOrange,
-                3 => Color::FlagGreen,
-                4 => Color::FlagBlue,
-                5 => Color::FlagPink,
-                6 => Color::FlagTurquoise,
-                7 => Color::FlagPurple,
-                _ => {
-                    if self.note.is_marked() {
-                        Color::Marked
-                    } else {
-                        match self.cards[0].queue {
-                            CardQueue::Suspended => Color::Suspended,
-                            _ => Color::Default,
-                        }
-                    }
+            if self.note.is_marked() {
+                Color::Marked
+            } else {
+                match self.cards[0].queue {
+                    CardQueue::Suspended => Color::Suspended,
+                    _ => Color::Default,
                 }
             }
         }

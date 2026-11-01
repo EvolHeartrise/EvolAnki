@@ -254,16 +254,16 @@ mod test {
         assert_eq!(
             StateKind::Due
                 .or(StateKind::New)
-                .and(SearchBuilder::any((1..4).map(SearchNode::Flag)))
+                .and(SearchBuilder::any((1..4).map(SearchNode::AddedInDays)))
                 .write(),
-            "(is:due OR is:new) (flag:1 OR flag:2 OR flag:3)"
+            "(is:due OR is:new) (added:1 OR added:2 OR added:3)"
         );
         assert_eq!(
             StateKind::Due
                 .or(StateKind::New)
-                .and_flat(SearchBuilder::any((1..4).map(SearchNode::Flag)))
+                .and_flat(SearchBuilder::any((1..4).map(SearchNode::AddedInDays)))
                 .write(),
-            "is:due OR is:new flag:1 OR flag:2 OR flag:3"
+            "is:due OR is:new added:1 OR added:2 OR added:3"
         );
         assert_eq!(
             StateKind::Due

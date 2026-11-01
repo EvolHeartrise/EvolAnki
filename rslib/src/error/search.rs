@@ -28,7 +28,6 @@ pub enum SearchErrorKind {
     MissingKey,
     UnknownEscape { provided: String },
     InvalidState { provided: String },
-    InvalidFlag,
     InvalidPropProperty { provided: String },
     InvalidPropOperator { provided: String },
     InvalidNumber { provided: String, context: String },
@@ -96,7 +95,6 @@ impl SearchErrorKind {
                 tr.search_invalid_argument("is:", provided.replace('`', "'"))
             }
 
-            SearchErrorKind::InvalidFlag => tr.search_invalid_flag_2(),
             SearchErrorKind::InvalidPropProperty { provided } => {
                 tr.search_invalid_argument("prop:", provided.replace('`', "'"))
             }

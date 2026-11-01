@@ -329,57 +329,6 @@ $vars: (
                 ),
             ),
         ),
-        flag: (
-            1: (
-                "Flag 1 (red)",
-                (
-                    light: palette(red, 5),
-                    dark: palette(red, 4),
-                ),
-            ),
-            2: (
-                "Flag 2 (orange)",
-                (
-                    light: palette(orange, 4),
-                    dark: palette(orange, 3),
-                ),
-            ),
-            3: (
-                "Flag 3 (green)",
-                (
-                    light: palette(green, 4),
-                    dark: palette(green, 3),
-                ),
-            ),
-            4: (
-                "Flag 4 (blue)",
-                (
-                    light: palette(blue, 5),
-                    dark: palette(blue, 4),
-                ),
-            ),
-            5: (
-                "Flag 5 (pink)",
-                (
-                    light: palette(fuchsia, 4),
-                    dark: palette(fuchsia, 3),
-                ),
-            ),
-            6: (
-                "Flag 6 (turquoise)",
-                (
-                    light: palette(teal, 4),
-                    dark: palette(teal, 3),
-                ),
-            ),
-            7: (
-                "Flag 7 (purple)",
-                (
-                    light: palette(purple, 5),
-                    dark: palette(purple, 4),
-                ),
-            ),
-        ),
         state: (
             new: (
                 "Accent color for new cards",

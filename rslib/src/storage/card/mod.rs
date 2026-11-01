@@ -70,7 +70,7 @@ impl FromSql for CardQueue {
 }
 
 fn row_to_card(row: &Row) -> result::Result<Card, rusqlite::Error> {
-    let data: CardData = row.get(17)?;
+    let data: CardData = row.get(16)?;
     Ok(Card {
         id: row.get(0)?,
         note_id: row.get(1)?,
@@ -88,7 +88,6 @@ fn row_to_card(row: &Row) -> result::Result<Card, rusqlite::Error> {
         remaining_steps: row.get(13)?,
         original_due: row.get(14).ok().unwrap_or_default(),
         original_deck_id: row.get(15)?,
-        flags: row.get(16)?,
         original_position: data.original_position,
         memory_state: data.memory_state(),
         desired_retention: data.fsrs_desired_retention,
@@ -153,7 +152,6 @@ impl super::SqliteStorage {
             card.remaining_steps,
             card.original_due,
             card.original_deck_id,
-            card.flags,
             CardData::from_card(card).convert_to_json()?,
             card.id,
         ])?;
@@ -180,7 +178,6 @@ impl super::SqliteStorage {
             card.remaining_steps,
             card.original_due,
             card.original_deck_id,
-            card.flags,
             CardData::from_card(card).convert_to_json()?,
         ])?;
         card.id = CardId(self.db.last_insert_rowid());
@@ -208,7 +205,6 @@ impl super::SqliteStorage {
                 card.remaining_steps,
                 card.original_due,
                 card.original_deck_id,
-                card.flags,
                 CardData::from_card(card).convert_to_json()?,
             ])
             .map(|n_rows| n_rows == 1)
@@ -235,7 +231,6 @@ impl super::SqliteStorage {
             card.remaining_steps,
             card.original_due,
             card.original_deck_id,
-            card.flags,
             CardData::from_card(card).convert_to_json()?,
         ])?;
 
@@ -738,7 +733,7 @@ impl super::SqliteStorage {
     #[cfg(test)]
     pub(crate) fn get_all_cards(&self) -> Vec<Card> {
         self.db
-            .prepare("SELECT * FROM cards")
+            .prepare(include_str!("get_card.sql"))
             .unwrap()
             .query_and_then([], row_to_card)
             .unwrap()

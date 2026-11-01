@@ -69,14 +69,6 @@ impl crate::services::CardsService for Collection {
         let deck_id = input.deck_id.into();
         self.set_deck(&cids, deck_id).map(Into::into)
     }
-
-    fn set_flag(
-        &mut self,
-        input: anki_proto::cards::SetFlagRequest,
-    ) -> error::Result<anki_proto::collection::OpChangesWithCount> {
-        self.set_card_flag(&to_card_ids(input.card_ids), input.flag)
-            .map(Into::into)
-    }
 }
 
 impl TryFrom<anki_proto::cards::Card> for Card {
@@ -102,7 +94,6 @@ impl TryFrom<anki_proto::cards::Card> for Card {
             remaining_steps: c.remaining_steps,
             original_due: c.original_due,
             original_deck_id: DeckId(c.original_deck_id),
-            flags: c.flags as u8,
             original_position: c.original_position,
             memory_state: c.memory_state.map(Into::into),
             desired_retention: c.desired_retention,
@@ -132,7 +123,6 @@ impl From<Card> for anki_proto::cards::Card {
             remaining_steps: c.remaining_steps,
             original_due: c.original_due,
             original_deck_id: c.original_deck_id.0,
-            flags: c.flags as u32,
             original_position: c.original_position,
             memory_state: c.memory_state.map(Into::into),
             desired_retention: c.desired_retention,
@@ -141,10 +131,6 @@ impl From<Card> for anki_proto::cards::Card {
             custom_data: c.custom_data,
         }
     }
-}
-
-fn to_card_ids(v: Vec<i64>) -> Vec<CardId> {
-    v.into_iter().map(CardId).collect()
 }
 
 impl From<anki_proto::cards::CardId> for CardId {

@@ -92,7 +92,6 @@ pub struct Card {
     pub(crate) remaining_steps: u32,
     pub(crate) original_due: i32,
     pub(crate) original_deck_id: DeckId,
-    pub(crate) flags: u8,
     /// The position in the new queue before leaving it.
     pub(crate) original_position: Option<u32>,
     pub(crate) memory_state: Option<FsrsMemoryState>,
@@ -145,7 +144,6 @@ impl Default for Card {
             remaining_steps: 0,
             original_due: 0,
             original_deck_id: DeckId(0),
-            flags: 0,
             original_position: None,
             memory_state: None,
             desired_retention: None,
@@ -198,19 +196,6 @@ impl Card {
         self.remove_from_filtered_deck_restoring_queue();
         self.clear_fsrs_data();
         self.deck_id = deck;
-    }
-
-    /// True if flag changed.
-    fn set_flag(&mut self, flag: u8) -> bool {
-        // The first 3 bits represent one of the 7 supported flags, the rest of
-        // the flag byte is preserved.
-        let updated_flags = (self.flags & !0b111) | flag;
-        if self.flags != updated_flags {
-            self.flags = updated_flags;
-            true
-        } else {
-            false
-        }
     }
 
     /// Return the total number of steps left to do, ignoring the
@@ -414,27 +399,6 @@ impl Collection {
                     .try_into_search()?,
                     ignore_before: ignore_revlogs_before_ms_from_config(&config)?,
                 }])?;
-            }
-            Ok(count)
-        })
-    }
-
-    pub fn set_card_flag(&mut self, cards: &[CardId], flag: u32) -> Result<OpOutput<usize>> {
-        require!(flag < 8, "invalid flag");
-        let flag = flag as u8;
-
-        let usn = self.usn()?;
-        self.transact(Op::SetFlag, |col| {
-            let mut count = 0;
-            for mut card in col.all_cards_for_ids(cards, false)? {
-                let original = card.clone();
-                if card.set_flag(flag) {
-                    // To avoid having to rebuild the study queues, we mark the card as requiring
-                    // a sync, but do not change its modification time.
-                    card.usn = usn;
-                    col.update_card_undoable(&mut card, original)?;
-                    count += 1;
-                }
             }
             Ok(count)
         })

@@ -23,7 +23,6 @@ impl TryFrom<anki_proto::search::SearchNode> for Node {
     fn try_from(msg: anki_proto::search::SearchNode) -> std::result::Result<Self, Self::Error> {
         use anki_proto::search::search_node::group::Joiner;
         use anki_proto::search::search_node::Filter;
-        use anki_proto::search::search_node::Flag;
         Ok(if let Some(filter) = msg.filter {
             match filter {
                 Filter::Tag(s) => SearchNode::from_tag_name(&s).into(),
@@ -63,17 +62,6 @@ impl TryFrom<anki_proto::search::SearchNode> for Node {
                         .unwrap_or_default()
                         .into(),
                 )),
-                Filter::Flag(flag) => match Flag::try_from(flag).unwrap_or(Flag::Any) {
-                    Flag::None => Node::Search(SearchNode::Flag(0)),
-                    Flag::Any => Node::Not(Box::new(Node::Search(SearchNode::Flag(0)))),
-                    Flag::Red => Node::Search(SearchNode::Flag(1)),
-                    Flag::Orange => Node::Search(SearchNode::Flag(2)),
-                    Flag::Green => Node::Search(SearchNode::Flag(3)),
-                    Flag::Blue => Node::Search(SearchNode::Flag(4)),
-                    Flag::Pink => Node::Search(SearchNode::Flag(5)),
-                    Flag::Turquoise => Node::Search(SearchNode::Flag(6)),
-                    Flag::Purple => Node::Search(SearchNode::Flag(7)),
-                },
                 Filter::Negated(term) => Node::try_from(*term)?.negated(),
                 Filter::Group(mut group) => {
                     match group.nodes.len() {
@@ -234,32 +222,6 @@ mod tests {
     }
 
     #[test]
-    fn flag_none_becomes_flag_zero() {
-        use anki_proto::search::search_node::Flag;
-        let proto = ProtoSearchNode {
-            filter: Some(Filter::Flag(Flag::None as i32)),
-        };
-        let node: Node = proto.try_into().unwrap();
-        assert!(
-            matches!(node, Node::Search(SearchNode::Flag(0))),
-            "expected Flag(0) for Flag::None"
-        );
-    }
-
-    #[test]
-    fn flag_any_becomes_negated_flag_zero() {
-        use anki_proto::search::search_node::Flag;
-        let proto = ProtoSearchNode {
-            filter: Some(Filter::Flag(Flag::Any as i32)),
-        };
-        let node: Node = proto.try_into().unwrap();
-        assert!(
-            matches!(node, Node::Not(ref inner) if matches!(inner.as_ref(), Node::Search(SearchNode::Flag(0)))),
-            "expected Not(Flag(0)) for Flag::Any"
-        );
-    }
-
-    #[test]
     fn negated_filter_wraps_inner_node_in_not() {
         let inner = ProtoSearchNode {
             filter: Some(Filter::Tag("foo".to_string())),
@@ -383,30 +345,6 @@ mod tests {
     }
 
     #[test]
-    fn flag_colored_variants_convert_to_numbered_flags() {
-        use anki_proto::search::search_node::Flag;
-        let cases = [
-            (Flag::Red, 1u8),
-            (Flag::Orange, 2),
-            (Flag::Green, 3),
-            (Flag::Blue, 4),
-            (Flag::Pink, 5),
-            (Flag::Turquoise, 6),
-            (Flag::Purple, 7),
-        ];
-        for (flag, expected_n) in cases {
-            let proto = ProtoSearchNode {
-                filter: Some(Filter::Flag(flag as i32)),
-            };
-            let node: Node = proto.try_into().unwrap();
-            assert!(
-                matches!(node, Node::Search(SearchNode::Flag(n)) if n == expected_n),
-                "expected Flag({expected_n}) for {flag:?}"
-            );
-        }
-    }
-
-    #[test]
     fn template_filter_converts_to_card_template_ordinal() {
         let proto = ProtoSearchNode {
             filter: Some(Filter::Template(2)),
@@ -488,20 +426,6 @@ mod tests {
                 assert_eq!(got, want, "wrong button number for {rating:?}");
             }
         }
-    }
-
-    #[test]
-    fn invalid_flag_value_falls_back_to_flag_any() {
-        // Protobuf forward-compat: an unknown flag i32 falls back to Flag::Any,
-        // which means NOT(Flag(0)) — "card has any flag" — not an error.
-        let proto = ProtoSearchNode {
-            filter: Some(Filter::Flag(999)),
-        };
-        let node: Node = proto.try_into().unwrap();
-        assert!(
-            matches!(node, Node::Not(ref inner) if matches!(inner.as_ref(), Node::Search(SearchNode::Flag(0)))),
-            "unknown flag value should fall back to Flag::Any (Not(Flag(0))), got {node:?}"
-        );
     }
 
     #[test]

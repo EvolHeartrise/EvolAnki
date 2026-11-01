@@ -514,6 +514,32 @@ mod test {
     }
 
     #[test]
+    fn card_flag_field_renders_empty_and_new_cards_have_no_flags() {
+        let mut col = Collection::new();
+        let mut notetype = (*col.get_notetype_by_name("Basic").unwrap().unwrap()).clone();
+        notetype.templates[0].config.q_format = "{{Front}}[{{CardFlag}}]".into();
+        col.update_notetype(&mut notetype, false).unwrap();
+        NoteAdder::basic(&mut col)
+            .fields(&["front", "back"])
+            .add(&mut col);
+        let card_id = col.get_first_card().id.0;
+
+        let resp = CardRenderingService::render_existing_card(
+            &mut col,
+            RenderExistingCardRequest {
+                card_id,
+                browser: false,
+                partial_render: false,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(text_of(&resp.question_nodes), Some("front[]"));
+        let flags: u32 = col.storage.db_scalar("select flags from cards").unwrap();
+        assert_eq!(flags, 0);
+    }
+
+    #[test]
     fn render_existing_card_errors_for_unknown_card_id() {
         let mut col = Collection::new();
 

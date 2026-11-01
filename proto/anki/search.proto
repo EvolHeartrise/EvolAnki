@@ -32,17 +32,6 @@ message SearchNode {
     int64 notetype_id = 1;
     string first_field = 2;
   }
-  enum Flag {
-    FLAG_NONE = 0;
-    FLAG_ANY = 1;
-    FLAG_RED = 2;
-    FLAG_ORANGE = 3;
-    FLAG_GREEN = 4;
-    FLAG_BLUE = 5;
-    FLAG_PINK = 6;
-    FLAG_TURQUOISE = 7;
-    FLAG_PURPLE = 8;
-  }
   enum Rating {
     RATING_ANY = 0;
     RATING_AGAIN = 1;
@@ -95,7 +84,6 @@ message SearchNode {
     Rated rated = 8;
     uint32 added_in_days = 9;
     int32 due_in_days = 10;
-    Flag flag = 11;
     CardState card_state = 12;
     IdList nids = 13;
     uint32 edited_in_days = 14;
@@ -192,13 +180,6 @@ message BrowserRow {
     COLOR_DEFAULT = 0;
     COLOR_MARKED = 1;
     COLOR_SUSPENDED = 2;
-    COLOR_FLAG_RED = 3;
-    COLOR_FLAG_ORANGE = 4;
-    COLOR_FLAG_GREEN = 5;
-    COLOR_FLAG_BLUE = 6;
-    COLOR_FLAG_PINK = 7;
-    COLOR_FLAG_TURQUOISE = 8;
-    COLOR_FLAG_PURPLE = 9;
   }
   repeated Cell cells = 1;
   Color color = 2;

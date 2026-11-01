@@ -176,7 +176,6 @@ impl ExchangeData {
             if card.schedule_as_new(position, true, true) {
                 position += 1;
             }
-            card.flags = 0;
             card.deck_id = deck_id;
         }
     }

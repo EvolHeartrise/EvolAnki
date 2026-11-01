@@ -286,7 +286,6 @@ fn methods_off_the_allow_list_are_refused() {
         "getAbsoluteMediaPath",
         // removed from the pages, so nothing on the network should reach them
         "suspendCards",
-        "setFlag",
         "changeNotetype",
         "getChangeNotetypeInfo",
         // stubs for Qt that no longer exist at all

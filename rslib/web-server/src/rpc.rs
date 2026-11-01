@@ -172,7 +172,6 @@ mod test {
             "getAbsoluteMediaPath",
             "exportAnkiPackage",
             "suspendCards",
-            "setFlag",
             "changeNotetype",
             "getConfigJson",
             "setConfigJson",

@@ -104,7 +104,6 @@ pub enum SearchNode {
         text: String,
     },
     State(StateKind),
-    Flag(u8),
     NoteIds(String),
     CardIds(String),
     Property {
@@ -368,7 +367,6 @@ fn search_node_for_text_with_argument<'a>(
         "note" => SearchNode::Notetype(unescape(val)?),
         "tag" => parse_tag(val)?,
         "card" => parse_template(val)?,
-        "flag" => parse_flag(val)?,
         "resched" => parse_resched(val)?,
         "prop" => parse_prop(val)?,
         "added" => parse_added(val)?,
@@ -416,19 +414,6 @@ fn parse_template(s: &str) -> ParseResult<'_, SearchNode> {
         Ok(n) => TemplateKind::Ordinal(n.max(1) - 1),
         Err(_) => TemplateKind::Name(unescape(s)?),
     }))
-}
-
-/// flag:0-7
-fn parse_flag(s: &str) -> ParseResult<'_, SearchNode> {
-    if let Ok(flag) = s.parse::<u8>() {
-        if flag > 7 {
-            Err(parse_failure(s, FailKind::InvalidFlag))
-        } else {
-            Ok(SearchNode::Flag(flag))
-        }
-    } else {
-        Err(parse_failure(s, FailKind::InvalidFlag))
-    }
 }
 
 /// eg resched:3
@@ -943,6 +928,11 @@ mod test {
         assert_eq!(parse(r#"a"b"(c)"#)?, parse("a b (c)")?);
 
         assert_eq!(parse("added:3")?, vec![Search(AddedInDays(3))]);
+        // flags are gone, so this is a search of a field with that name
+        assert!(matches!(
+            parse("flag:3")?.as_slice(),
+            [Search(SingleField { field, text, .. })] if field == "flag" && text == "3"
+        ));
         assert_eq!(
             parse("card:front")?,
             vec![Search(CardTemplate(TemplateKind::Name("front".into())))]
@@ -987,7 +977,6 @@ mod test {
             vec![Search(NoteIds("1237123712,2,3".into()))]
         );
         assert_eq!(parse("is:due")?, vec![Search(State(StateKind::Due))]);
-        assert_eq!(parse("flag:3")?, vec![Search(Flag(3))]);
 
         assert_eq!(
             parse("prop:ivl>3")?,
@@ -1175,12 +1164,6 @@ mod test {
                 provided: "learn ".into(),
             },
         );
-
-        assert_err_kind(r#""flag: ""#, InvalidFlag);
-        assert_err_kind("flag:-0", InvalidFlag);
-        assert_err_kind("flag:", InvalidFlag);
-        assert_err_kind("flag:8", InvalidFlag);
-        assert_err_kind("flag:1.1", InvalidFlag);
 
         for term in &["added", "edited", "rated", "resched"] {
             assert!(matches!(

@@ -21,7 +21,6 @@ impl From<BoolKeyProto> for BoolKey {
             BoolKeyProto::CollapseSavedSearches => BoolKey::CollapseSavedSearches,
             BoolKeyProto::CollapseToday => BoolKey::CollapseToday,
             BoolKeyProto::CollapseCardState => BoolKey::CollapseCardState,
-            BoolKeyProto::CollapseFlags => BoolKey::CollapseFlags,
             BoolKeyProto::Sched2021 => BoolKey::Sched2021,
             BoolKeyProto::AddingDefaultsToCurrentDeck => BoolKey::AddingDefaultsToCurrentDeck,
             BoolKeyProto::HideAudioPlayButtons => BoolKey::HideAudioPlayButtons,

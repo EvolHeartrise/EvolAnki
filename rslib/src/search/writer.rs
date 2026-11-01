@@ -81,7 +81,6 @@ fn write_search_node(node: &SearchNode) -> String {
         Tag { tag, mode } => write_single_field("tag", tag, *mode),
         Duplicates { notetype_id, text } => write_dupe(notetype_id, text),
         State(k) => write_state(k),
-        Flag(u) => format!("flag:{u}"),
         NoteIds(s) => format!("nid:{s}"),
         CardIds(s) => format!("cid:{s}"),
         Property { operator, kind } => write_property(operator, kind),

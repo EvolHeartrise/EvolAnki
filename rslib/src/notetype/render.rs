@@ -179,8 +179,9 @@ impl Collection {
             .or_insert_with(|| subdeck_name.to_string().into());
         map.entry("Deck")
             .or_insert_with(|| deck_name.to_string().into());
-        map.entry("CardFlag")
-            .or_insert_with(|| flag_name(card.flags).into());
+        // Flags are gone, but a template from elsewhere may name this. Without it,
+        // the card wouldn't render at all.
+        map.entry("CardFlag").or_insert_with(|| "".into());
         map.entry("Card")
             .or_insert_with(|| template.name.clone().into());
         map.entry("CardID")
@@ -188,10 +189,6 @@ impl Collection {
 
         Ok(())
     }
-}
-
-fn flag_name(n: u8) -> String {
-    format!("flag{n}")
 }
 
 fn fill_empty_fields(note: &mut Note, qfmt: &str, nt: &Notetype, tr: &I18n) {

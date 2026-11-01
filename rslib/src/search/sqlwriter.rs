@@ -183,9 +183,6 @@ impl SqlWriter<'_> {
 
             SearchNode::Tag { tag, mode } => self.write_tag(&norm(tag), *mode),
             SearchNode::State(state) => self.write_state(state)?,
-            SearchNode::Flag(flag) => {
-                write!(self.sql, "(c.flags & 7) == {flag}").unwrap();
-            }
             SearchNode::NoteIds(nids) => {
                 write!(self.sql, "{} in ({})", self.note_id_column(), nids).unwrap();
             }
@@ -1082,7 +1079,6 @@ impl SearchNode {
             SearchNode::DeckIdWithChildren(_) => RequiredTable::Cards,
             SearchNode::Rated { .. } => RequiredTable::Cards,
             SearchNode::State(_) => RequiredTable::Cards,
-            SearchNode::Flag(_) => RequiredTable::Cards,
             SearchNode::CardIds(_) => RequiredTable::Cards,
             SearchNode::Property { .. } => RequiredTable::Cards,
             SearchNode::CustomData { .. } => RequiredTable::Cards,
@@ -1263,10 +1259,6 @@ mod test {
         assert_eq!(s(ctx, "nid:3"), ("(n.id in (3))".into(), vec![]));
         assert_eq!(s(ctx, "nid:3,4"), ("(n.id in (3,4))".into(), vec![]));
         assert_eq!(s(ctx, "cid:3,4"), ("(c.id in (3,4))".into(), vec![]));
-
-        // flags
-        assert_eq!(s(ctx, "flag:2"), ("((c.flags & 7) == 2)".into(), vec![]));
-        assert_eq!(s(ctx, "flag:0"), ("((c.flags & 7) == 0)".into(), vec![]));
 
         // dupes
         assert_eq!(s(ctx, "dupe:123,test"), ("(n.id in ())".into(), vec![]));

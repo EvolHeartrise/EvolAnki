@@ -14,7 +14,6 @@ service CardsService {
   rpc UpdateCards(UpdateCardsRequest) returns (collection.OpChanges);
   rpc RemoveCards(RemoveCardsRequest) returns (collection.OpChangesWithCount);
   rpc SetDeck(SetDeckRequest) returns (collection.OpChangesWithCount);
-  rpc SetFlag(SetFlagRequest) returns (collection.OpChangesWithCount);
 }
 
 // Implicitly includes any of the above methods that are not listed in the
@@ -46,7 +45,6 @@ message Card {
   uint32 remaining_steps = 14;
   sint32 original_due = 15;
   int64 original_deck_id = 16;
-  uint32 flags = 17;
   optional uint32 original_position = 18;
   optional FsrsMemoryState memory_state = 20;
   optional float desired_retention = 21;
@@ -72,9 +70,4 @@ message RemoveCardsRequest {
 message SetDeckRequest {
   repeated int64 card_ids = 1;
   int64 deck_id = 2;
-}
-
-message SetFlagRequest {
-  repeated int64 card_ids = 1;
-  uint32 flag = 2;
 }

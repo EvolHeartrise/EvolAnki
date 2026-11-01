@@ -31,13 +31,5 @@ actions-remove-notetype = Remove Note Type
 actions-update-notetype = Update Note Type
 actions-update-config = Update Config
 
-## The same translation may used for two independent actions:
-## searching for cards with a flag of the specified color, and
-## toggling the flag of the specified color on a card.
-
-
-##
-
-actions-set-flag = Set Flag
 actions-auto-advance = Auto Advance
 actions-processing = Processing...

@@ -14,6 +14,5 @@ SELECT id,
   left,
   odue,
   odid,
-  flags,
   data
 FROM cards
