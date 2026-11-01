@@ -3,9 +3,10 @@
 Hosts untrusted card HTML. Served with `sandbox allow-scripts`, so its origin is
 opaque whichever way it is opened; see src/frame.rs and docs/web-server.md.
 
-The private MessagePort is received and captured here before any untrusted code
-exists in this document. Card scripts therefore can't reach it. They can call
-window.parent.postMessage, but nothing in the parent listens for that.
+The CSP allows the nonced scripts below and MathJax, so nothing in a card runs: not
+its script tags, not inline handlers, not javascript: links. The private MessagePort
+would stay out of reach even if something did, as it's captured in a closure before
+any card content arrives, and the parent listens to nothing else.
 -->
 <html>
 <head>
@@ -74,7 +75,7 @@ window.parent.postMessage, but nothing in the parent listens for that.
         }).observe(document.documentElement);
     });
 
-    // Only real key presses count, so a script can't answer or suspend cards.
+    // Only real key presses count.
     window.addEventListener("keydown", (event) => {
         if (!event.isTrusted || !post || event.ctrlKey || event.metaKey || event.altKey) {
             return;
@@ -92,10 +93,32 @@ window.parent.postMessage, but nothing in the parent listens for that.
         post({ type: "key", key: event.key, repeat: event.repeat });
     }, true);
 
-    // The sandbox has no popups, and following a link would replace the card.
+    // What cards used inline handlers for, and links. The sandbox has no popups, and
+    // following a link would replace the card.
     document.addEventListener("click", (event) => {
         const link = event.target && event.target.closest && event.target.closest("a[href]");
-        if (!link || (link.getAttribute("href") || "").startsWith("#")) {
+        if (!link) {
+            return;
+        }
+        const play = /^([qa]):(\d{1,6})$/.exec(link.dataset.play || "");
+        if (play) {
+            event.preventDefault();
+            if (event.isTrusted && post) {
+                post({ type: "play", side: play[1], index: Number(play[2]) });
+            }
+            return;
+        }
+        if (link.dataset.hint) {
+            // from the hint: filter in rslib/src/template_filters.rs
+            event.preventDefault();
+            const hint = document.getElementById(link.dataset.hint);
+            if (hint) {
+                link.style.display = "none";
+                hint.style.display = "block";
+            }
+            return;
+        }
+        if ((link.getAttribute("href") || "").startsWith("#")) {
             return;
         }
         event.preventDefault();
@@ -103,20 +126,6 @@ window.parent.postMessage, but nothing in the parent listens for that.
             post({ type: "open", url: link.href });
         }
     }, true);
-
-    // What templates and reviewer.js expect from Qt. Scripts can call this, so
-    // it can do no more than play the card's audio or reveal its answer.
-    window.pycmd = window.bridgeCommand = function (command) {
-        if (!post || typeof command !== "string") {
-            return;
-        }
-        const play = /^play:([qa]):(\d{1,6})$/.exec(command);
-        if (play) {
-            post({ type: "play", side: play[1], index: Number(play[2]) });
-        } else if (command === "ans") {
-            post({ type: "reveal" });
-        }
-    };
 })();
 </script>
 <link rel="stylesheet" href="../a/css/webview.css">

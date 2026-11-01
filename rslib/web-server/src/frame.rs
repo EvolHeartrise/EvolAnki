@@ -27,10 +27,8 @@ use crate::AppState;
 const DOCUMENT: &str = include_str!("card_frame.html");
 const CARD_HEAD: &str = r#"<link rel="stylesheet" href="../a/css/reviewer.css">"#;
 const CARD_STYLE: &str = "body { background-color: var(--canvas); }";
-const CARD_BODY: &str = r#"<div id="_mark" hidden>&#x2605;</div>
-<div id="_flag" hidden>&#x2691;</div>
-<div id="qa" dir="auto"></div>
-<script src="../a/js/reviewer.js"></script>"#;
+const CARD_BODY: &str = r#"<div id="qa" dir="auto"></div>
+<script nonce="@NONCE@" src="../a/js/reviewer.js"></script>"#;
 const STATIC_STYLE: &str = "body { margin: 0; padding: 0; color: var(--fg); \
      background: transparent; overflow-wrap: break-word; } \
      a { color: var(--fg-link); } img { max-width: 100%; }";
@@ -92,10 +90,10 @@ fn document(state: &AppState, is_static: bool) -> Response {
         (CARD_HEAD, CARD_STYLE, CARD_BODY)
     };
     let html = DOCUMENT
-        .replace("@NONCE@", &nonce)
         .replace("@HEAD@", head)
         .replace("@STYLE@", style)
-        .replace("@BODY@", body);
+        .replace("@BODY@", body)
+        .replace("@NONCE@", &nonce);
     (
         [
             (header::CONTENT_TYPE, "text/html; charset=utf-8".to_string()),
@@ -110,26 +108,45 @@ fn document(state: &AppState, is_static: bool) -> Response {
         .into_response()
 }
 
-/// A description runs no scripts but our nonced one, while a card's own inline
-/// scripts have to run. Neither can connect anywhere, or load anything from
-/// outside the prefix, and the sandbox directive holds even if the page is
-/// opened directly instead of through the iframe that asks for it.
+/// Only our nonced scripts and MathJax can run, and MathJax is limited to its own
+/// files; card and media scripts have neither a nonce nor a matching path. Nothing
+/// can connect anywhere, or load anything from outside the prefix, and the sandbox
+/// directive holds even if the page is opened directly instead of through the
+/// iframe that asks for it.
 fn document_csp(state: &AppState, is_static: bool, nonce: &str) -> String {
     let port = state.port;
     let token = &state.frame_token;
-    let ours =
-        format!("http://127.0.0.1:{port}/_frame/{token}/ http://localhost:{port}/_frame/{token}/");
+    let hosts = [
+        format!("http://127.0.0.1:{port}"),
+        format!("http://localhost:{port}"),
+    ];
+    let ours = hosts
+        .iter()
+        .map(|host| format!("{host}/_frame/{token}/"))
+        .collect::<Vec<_>>()
+        .join(" ");
     let scripts = if is_static {
         format!("'nonce-{nonce}'")
     } else {
-        format!("'unsafe-inline' 'unsafe-eval' {ours}")
+        let mathjax = hosts
+            .iter()
+            .map(|host| {
+                format!(
+                    "{host}/_frame/{token}/a/js/mathjax.js \
+                     {host}/_frame/{token}/a/js/vendor/mathjax/"
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!("'nonce-{nonce}' {mathjax}")
     };
     format!(
         "default-src 'none'; script-src {scripts}; style-src 'unsafe-inline' {ours}; \
          img-src data: blob: {ours}; media-src data: blob: {ours}; font-src data: {ours}; \
          connect-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; \
          worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; \
-         frame-ancestors http://127.0.0.1:{port} http://localhost:{port}; sandbox allow-scripts"
+         frame-ancestors {} {}; sandbox allow-scripts",
+        hosts[0], hosts[1]
     )
 }
 

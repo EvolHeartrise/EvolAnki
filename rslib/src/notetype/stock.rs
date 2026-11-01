@@ -180,3 +180,41 @@ pub(crate) fn cloze(tr: &I18n) -> Notetype {
     nt.add_template(nt.name.clone(), qfmt, afmt);
     nt
 }
+
+#[cfg(test)]
+mod test {
+    use anki_proto::notetypes::stock_notetype::OriginalStockKind;
+
+    use crate::prelude::*;
+
+    /// What collections with the removed image occlusion notetype store.
+    const IMAGE_OCCLUSION: i32 = 6;
+
+    #[test]
+    fn a_stored_image_occlusion_notetype_is_harmless() -> Result<()> {
+        let mut col = Collection::new();
+        let mut nt = col.get_notetype_by_name("Cloze")?.unwrap().as_ref().clone();
+        nt.id = NotetypeId(0);
+        nt.name = "Image Occlusion".into();
+        nt.config.original_stock_kind = IMAGE_OCCLUSION;
+        col.add_notetype(&mut nt, false)?;
+
+        let out = col.check_database()?;
+        assert_eq!(out.to_i18n_strings(&col.tr), Vec::<String>::new());
+
+        let stored = col.storage.get_notetype(nt.id)?.unwrap();
+        assert_eq!(stored.config.original_stock_kind, IMAGE_OCCLUSION);
+        assert_eq!(stored.config.original_stock_kind(), OriginalStockKind::Unknown);
+        // an error, as for any notetype without a known stock kind
+        assert!(col.restore_notetype_to_stock(nt.id.into(), None).is_err());
+        col.remove_notetype(nt.id)?;
+        Ok(())
+    }
+
+    #[test]
+    fn new_collections_get_no_image_occlusion_notetype() -> Result<()> {
+        let mut col = Collection::new();
+        assert!(col.get_notetype_by_name("Image Occlusion")?.is_none());
+        Ok(())
+    }
+}

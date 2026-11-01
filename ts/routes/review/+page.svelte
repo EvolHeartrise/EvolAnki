@@ -524,9 +524,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             case "play":
                 playFromCard(message.side, message.index);
                 break;
-            case "reveal":
-                reveal();
-                break;
             case "typed":
                 resolveTyped?.(message.value);
                 resolveTyped = null;

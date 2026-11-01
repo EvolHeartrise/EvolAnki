@@ -16,6 +16,8 @@ use anki_proto::notes::AddNoteRequest;
 use anki_proto::notes::AddNoteResponse;
 use anki_proto::notes::Note;
 use anki_proto::notes::NoteId;
+use anki_proto::notetypes::notetype;
+use anki_proto::notetypes::Notetype;
 use anki_proto::notetypes::NotetypeId;
 use anki_proto::notetypes::NotetypeNames;
 use anki_proto::scheduler::card_answer::Rating;
@@ -84,6 +86,20 @@ struct SeedFile {
     decks: Vec<SeedDeck>,
     #[serde(default)]
     notes: Vec<SeedNote>,
+    #[serde(default)]
+    notetypes: Vec<SeedNotetype>,
+}
+
+/// One card template, based on the Basic notetype.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SeedNotetype {
+    name: String,
+    fields: Vec<String>,
+    front: String,
+    back: String,
+    /// Store this raw value, for a notetype kind that this version doesn't know.
+    original_stock_kind: Option<i32>,
 }
 
 #[derive(Deserialize)]
@@ -125,6 +141,16 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
     }
 
     let names: NotetypeNames = call_typed(backend, "getNotetypeNames", &generic::Empty {})?;
+    let basic = names
+        .entries
+        .iter()
+        .find(|e| e.name == "Basic")
+        .context("no Basic notetype")?
+        .id;
+    for seed_notetype in seed.notetypes {
+        add_notetype(backend, basic, seed_notetype)?;
+    }
+    let names: NotetypeNames = call_typed(backend, "getNotetypeNames", &generic::Empty {})?;
     for seed_note in seed.notes {
         let notetype = names
             .entries
@@ -165,5 +191,37 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
             )?;
         }
     }
+    Ok(())
+}
+
+fn add_notetype(backend: &Backend, basic: i64, seed: SeedNotetype) -> Result<()> {
+    let mut notetype: Notetype = call_typed(backend, "getNotetype", &NotetypeId { ntid: basic })?;
+    notetype.id = 0;
+    notetype.name = seed.name;
+    let field = notetype.fields[0].clone();
+    notetype.fields = seed
+        .fields
+        .into_iter()
+        .map(|name| notetype::Field {
+            ord: None,
+            name,
+            ..field.clone()
+        })
+        .collect();
+    notetype.templates.truncate(1);
+    let template = &mut notetype.templates[0];
+    template.ord = None;
+    template.id = None;
+    let config = template.config.as_mut().context("no template config")?;
+    config.q_format = seed.front;
+    config.a_format = seed.back;
+    if let Some(kind) = seed.original_stock_kind {
+        notetype
+            .config
+            .as_mut()
+            .context("no notetype config")?
+            .original_stock_kind = kind;
+    }
+    let _: OpChangesWithId = call_typed(backend, "addNotetype", &notetype)?;
     Ok(())
 }

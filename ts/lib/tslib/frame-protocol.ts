@@ -2,15 +2,14 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 /** What the sandboxed frame (rslib/web-server/src/card_frame.html) may tell the
-    page. Untrusted code shares that frame, and although it can't reach the port
-    these arrive on, everything is checked as if it could. */
+    page. Untrusted content shares that frame, and although nothing in it can run
+    or reach the port these arrive on, everything is checked as if it could. */
 export type FrameMessage =
     | { type: "ready" }
     | { type: "shown"; seq: number }
     | { type: "resize"; height: number }
     | { type: "key"; key: string; repeat: boolean }
     | { type: "play"; side: "q" | "a"; index: number }
-    | { type: "reveal" }
     | { type: "typed"; value: string }
     | { type: "open"; url: string };
 
@@ -28,8 +27,6 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
     switch (msg.type) {
         case "ready":
             return { type: "ready" };
-        case "reveal":
-            return { type: "reveal" };
         case "shown":
             return isCount(msg.seq) ? { type: "shown", seq: msg.seq } : null;
         case "resize":

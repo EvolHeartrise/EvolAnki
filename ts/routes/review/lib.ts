@@ -32,14 +32,15 @@ export function withStyle(css: string, html: string): string {
     return `<style>${css}</style>${html}`;
 }
 
-const AV_REF = /\[anki:(play:([qa]):(\d+))\]/g;
+const AV_REF = /\[anki:play:([qa]:\d+)\]/g;
 
-/** av_refs_to_play_icons() in qt/aqt/sound.py. */
+/** av_refs_to_play_icons() in qt/aqt/sound.py. The frame handles the click, as
+    its CSP stops inline handlers. */
 export function avRefsToPlayIcons(text: string): string {
     return text.replace(
         AV_REF,
-        (_match, command: string) =>
-            `<a class="replay-button soundLink" href="#" onclick="pycmd('${command}'); return false;" draggable="false">`
+        (_match, reference: string) =>
+            `<a class="replay-button soundLink" href="#" data-play="${reference}" draggable="false">`
             + `<svg class="playImage" viewBox="0 0 64 64" version="1.1"><circle cx="32" cy="32" r="29" />`
             + `<path d="M56.502,32.301l-37.502,20.101l0.329,-40.804l37.173,20.703Z" /></svg></a>`,
     );

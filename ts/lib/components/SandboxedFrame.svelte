@@ -10,7 +10,7 @@ The only way to show untrusted HTML in the web app. See docs/web-server.md.
 
     /** From getFrameBase(). */
     export let base: string;
-    /** "card" runs scripts in the content. "static" runs none of them. */
+    /** "card" also loads the reviewer's own scripts. Neither runs any in the content. */
     export let mode: "card" | "static" = "card";
     export let onMessage: (message: FrameMessage) => void;
     /** The frame went somewhere else, and has been replaced with a blank one. */

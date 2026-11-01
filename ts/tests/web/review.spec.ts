@@ -14,7 +14,7 @@ import { Server, tempCollection } from "./server";
 /** Where the malicious card records the result of each attempt. */
 const ATTACK_LOG = "attack-log";
 
-/** Runs in a card: tries everything a hostile shared deck might like to do. */
+/** Tries everything a hostile shared deck might like to do, if it could run. */
 const ATTACK_SCRIPT = `<div id="${ATTACK_LOG}">pending</div><script>
 (async () => {
     const results = {};
@@ -41,17 +41,18 @@ const ATTACK_SCRIPT = `<div id="${ATTACK_LOG}">pending</div><script>
         window.parent.postMessage({ type: "key", key, repeat: false }, "*");
         window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
     }
-    window.pycmd("answerCard");
     window.top.postMessage({ type: "answerCard" }, "*");
     await attempt("topNavigate", () => { window.top.location.href = "/graphs"; return "no error"; });
     await attempt("popup", () => window.open("/graphs"));
     document.getElementById("${ATTACK_LOG}").textContent = JSON.stringify(results);
+    window.top.postMessage({ results }, "*");
 })();
 </script>`;
 
 interface Seed {
     decks?: { name: string; description?: string; markdown?: boolean }[];
     notes?: { deck?: string; notetype: string; fields: string[]; due?: boolean }[];
+    notetypes?: { name: string; fields: string[]; front: string; back: string }[];
 }
 
 /** A short silent WAV, which any browser can play. */
@@ -451,32 +452,56 @@ test("cloze and type-answer cards compare what was typed", async ({ page }) => {
     expect(problems).toEqual([]);
 });
 
-test("MathJax typesets in the sandbox, and template scripts run", async ({ page }) => {
+test("MathJax typesets in the sandbox, while template scripts and inline handlers don't run", async ({ page }) => {
     await start({
         decks: [{ name: "Math" }],
         notes: [
             BASIC(
-                String.raw`\(x^2\)<div id="scripted"></div><script>
-                    document.getElementById("scripted").textContent = "ran "
-                        + document.body.className;
-                </script>`,
+                String.raw`\(x^2\)<div id="scripted">untouched</div><script>
+                    document.getElementById("scripted").textContent = "ran";
+                </script>
+                <img src="pixel.png" onload="document.getElementById('scripted').textContent = 'onload'">
+                <a id="clicker" href="#" onclick="document.getElementById('scripted').textContent = 'onclick'">x</a>
+                <a id="js-link" href="javascript:document.getElementById('scripted').textContent='link'">y</a>
+                <svg onload="document.getElementById('scripted').textContent = 'svg'"></svg>`,
                 "a",
                 "Math",
             ),
         ],
     });
-    const problems = failOnPageProblems(page);
+    // the frame's CSP reports what it stopped
+    const problems = failOnPageProblems(page, [/Content Security Policy|script-src/]);
     await study(page, "Math");
     await expect(card(page).locator("mjx-container")).toBeVisible({ timeout: 20_000 });
-    await expect(card(page).locator("#scripted")).toHaveText(/^ran .*\bcard1\b/);
     // the fonts come from the frame's own prefix too, and are fetched with CORS
     await expect
         .poll(() => card(page).evaluate(() => [...document.fonts].filter((f) => f.status === "loaded").length))
         .toBeGreaterThan(0);
+
+    await card(page).locator("#clicker").click();
+    await card(page).locator("#js-link").click();
+    await expect(card(page).locator("#scripted")).toHaveText("untouched");
     expect(problems).toEqual([]);
 });
 
-test("a malicious card can't touch the API, the page or the review", async ({ page, request }) => {
+test("the hint filter works without inline handlers", async ({ page }) => {
+    await start({
+        decks: [{ name: "Hints" }],
+        notes: [{ deck: "Hints", notetype: "Hinted", fields: ["question", "the hint text", "a"] }],
+        notetypes: [{ name: "Hinted", fields: ["Front", "Extra", "Back"], front: "{{Front}}{{hint:Extra}}", back: "{{Back}}" }],
+    });
+    const problems = failOnPageProblems(page);
+    await study(page, "Hints");
+    const hint = card(page).locator("div.hint");
+    await expect(hint).toBeHidden();
+    await card(page).locator("a.hint").click();
+    await expect(hint).toBeVisible();
+    await expect(hint).toHaveText("the hint text");
+    await expect(card(page).locator("a.hint")).toBeHidden();
+    expect(problems).toEqual([]);
+});
+
+test("a malicious card can't run, or touch the API, the page or the review", async ({ page, request }) => {
     const seenByServer: { url: string; status: number }[] = [];
     page.on("response", (response) => {
         if (response.request().method() === "POST" && response.frame() !== page.mainFrame()) {
@@ -498,22 +523,12 @@ test("a malicious card can't touch the API, the page or the review", async ({ pa
     });
     await study(page, "Evil");
 
+    // the script simply doesn't run
     const log = card(page).locator(`#${ATTACK_LOG}`);
-    await expect(log).not.toHaveText("pending");
-    const results = JSON.parse((await log.textContent())!);
-    console.log("malicious card's results:", results);
-    // the script ran, and got nowhere
-    expect(results.parentDocument).toMatch(/^threw SecurityError/);
-    expect(results.topDocument).toMatch(/^threw SecurityError/);
-    expect(results.fetchAnswer).toMatch(/^threw TypeError/);
-    expect(results.xhr).toBe("error");
-    expect(results.cookie).toMatch(/^threw SecurityError|^$/);
-    expect(results.storage).toMatch(/^threw SecurityError/);
-    expect(results.topNavigate).toMatch(/^threw/);
-    expect(results.popup).toBe("null");
-
-    // none of its forged keys counted: still on the question, of the same card
+    await expect(log).toHaveText("pending");
     await page.waitForTimeout(300);
+    await expect(log).toHaveText("pending");
+
     await expect(page).toHaveURL(/\/review$/);
     await expect(page.getByRole("button", { name: "Show Answer" })).toBeVisible();
     await expect(page.locator(".counts .new-count")).toHaveText("2");
@@ -521,17 +536,41 @@ test("a malicious card can't touch the API, the page or the review", async ({ pa
     expect(seenByServer).toEqual([]);
     expect(await page.title()).not.toContain("threw");
 
-    // The CSP stopped those requests before they left. So remove that layer, and
-    // show that the server refuses a sandboxed frame by itself.
+    // If it somehow did run, the sandbox and the server are still in its way. A
+    // sandboxed srcdoc frame has none of the card CSP, so use one to run the attack.
     // The reviewer's own CSP would apply to a srcdoc frame, so use a page without one.
     const plain = await page.context().newPage();
     await plain.goto(`${server.url}/graphs`);
+    const attempts = await plain.evaluate((attack) => {
+        return new Promise<unknown>((resolve) => {
+            const frame = document.createElement("iframe");
+            frame.setAttribute("sandbox", "allow-scripts");
+            window.addEventListener("message", (event) => {
+                if (event.source === frame.contentWindow && event.data.results) {
+                    resolve(event.data.results);
+                }
+            });
+            frame.srcdoc = attack;
+            document.body.append(frame);
+        });
+    }, ATTACK_SCRIPT);
+    console.log("the attack, without the card CSP:", attempts);
+    expect(attempts).toMatchObject({
+        parentDocument: expect.stringMatching(/^threw SecurityError/),
+        topDocument: expect.stringMatching(/^threw SecurityError/),
+        fetchAnswer: expect.stringMatching(/^threw TypeError/),
+        xhr: "error",
+        cookie: expect.stringMatching(/^threw SecurityError|^$/),
+        storage: expect.stringMatching(/^threw SecurityError/),
+        topNavigate: expect.stringMatching(/^threw/),
+        popup: "null",
+    });
     const refused = await plain.evaluate(() => {
         return new Promise<unknown>((resolve) => {
             const frame = document.createElement("iframe");
             frame.setAttribute("sandbox", "allow-scripts");
             window.addEventListener("message", (event) => {
-                if (event.source === frame.contentWindow) {
+                if (event.source === frame.contentWindow && !event.data.results) {
                     resolve(event.data);
                 }
             });
@@ -580,16 +619,14 @@ test("a malicious card can't touch the API, the page or the review", async ({ pa
     expect(revlog).toEqual([]);
 });
 
+// Card scripts don't run, but a meta refresh needs none: it's the remaining way for
+// content to move its frame.
 test("a card can't escape by navigating its frame", async ({ page }) => {
     await start({
         decks: [{ name: "Leaver" }],
         notes: [
-            BASIC(
-                `<script>location.href = "https://example.com/";</script><div>stays</div>`,
-                "a",
-                "Leaver",
-            ),
-            BASIC(`<script>location.href = location.href + "?again";</script>`, "b", "Leaver"),
+            BASIC(`<meta http-equiv="refresh" content="0;url=https://example.com/"><div>stays</div>`, "a", "Leaver"),
+            BASIC(`<meta http-equiv="refresh" content="0;url=?again">`, "b", "Leaver"),
             BASIC("plain", "c", "Leaver"),
         ],
     });
@@ -600,21 +637,30 @@ test("a card can't escape by navigating its frame", async ({ page }) => {
             external.push(r.url());
         }
     });
+    const newCount = page.locator(".counts .new-count");
+    /** Waits at each step, as the reviewer ignores keys while it's busy. */
+    const answerGood = async () => {
+        await page.locator(".counts").click();
+        await page.keyboard.press("Space");
+        await expect(page.locator("button[data-rating='3']")).toBeVisible();
+        await page.keyboard.press("3");
+    };
+
     await study(page, "Leaver");
+    await expect(newCount).toHaveText("3");
     // blocked by the page's frame-src, which still counts as trying
     await expect(card(page)).toContainText("kept trying to leave", { timeout: 10_000 });
     await expect(page).toHaveURL(/\/review$/);
     expect(external).toEqual([]);
 
-    await page.locator(".counts").click();
-    await page.keyboard.press("Space");
-    await page.keyboard.press("3");
+    await answerGood();
+    // The same text as the last card, so the count is what shows this is a new one.
+    await expect(newCount).toHaveText("2");
     // this one reloads its own frame, and is replaced each time until it's dropped
     await expect(card(page)).toContainText("kept trying to leave", { timeout: 10_000 });
-    await page.locator(".counts").click();
-    await page.keyboard.press("Space");
-    await expect(page.locator("button[data-rating='3']")).toBeVisible();
-    await page.keyboard.press("3");
+
+    await answerGood();
+    await expect(newCount).toHaveText("1");
     await expect(card(page)).toContainText("plain");
     expect(problems).toEqual([]);
 });
@@ -737,7 +783,7 @@ test("deck options reports a slow save and returns to the deck", async ({ page }
     await expect(page).toHaveURL(/\/overview\/\d+/);
     await expect(page.getByRole("status")).toContainText("saved");
 
-    // the customizer needs the Qt reviewer, and its setting is left alone
+    // the reviewer doesn't run custom scheduling, and its setting is left alone
     await page.getByRole("link", { name: "Options" }).click();
     await expect(page.locator(".row", { has: title }).locator("input").first()).toHaveValue("37");
     await expect(page.getByText("Custom scheduling")).toHaveCount(0);

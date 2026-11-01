@@ -33,7 +33,8 @@ test("finishRendering injects the front side only into the answer", () => {
 
 test("audio references", () => {
     const html = avRefsToPlayIcons("x[anki:play:q:12]y[anki:play:z:1]");
-    expect(html).toContain("pycmd('play:q:12')");
+    expect(html).toContain(`data-play="q:12"`);
+    expect(html).not.toContain("onclick");
     expect(html).toContain("[anki:play:z:1]");
     expect(stripAvRefs("x[anki:play:a:0]y")).toBe("xy");
 });
