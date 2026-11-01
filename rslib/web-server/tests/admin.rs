@@ -19,6 +19,10 @@ use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
 
+use anki_proto::deck_config::deck_config::Config;
+use anki_proto::decks::deck::kind_container;
+use anki_proto::decks::deck::KindContainer;
+use anki_proto::decks::deck::Normal;
 use anki_proto::import_export::export_limit::Limit;
 use anki_proto::import_export::ExportAnkiPackageOptions;
 use anki_proto::import_export::ExportAnkiPackageRequest;
@@ -159,6 +163,194 @@ impl Fixture {
             .as_i64()
             .unwrap()
     }
+}
+
+fn deck_kind(db: &rusqlite::Connection, did: i64) -> Normal {
+    let kind: Vec<u8> = db
+        .query_row("select kind from decks where id = ?", [did], |row| row.get(0))
+        .unwrap();
+    match KindContainer::decode(kind.as_slice()).unwrap().kind {
+        Some(kind_container::Kind::Normal(normal)) => normal,
+        _ => panic!("not a normal deck"),
+    }
+}
+
+/// Make `did` use row 1, as an older version would have left it, with an
+/// override of its own, and leave a row nothing uses.
+fn make_deck_share_settings(fx: &Fixture, did: i64) {
+    let db = rusqlite::Connection::open(fx.collection()).unwrap();
+    let mut normal = deck_kind(&db, did);
+    normal.config_id = 1;
+    normal.new_limit = Some(7);
+    let container = KindContainer {
+        kind: Some(kind_container::Kind::Normal(normal)),
+    };
+    db.execute(
+        "update decks set kind = ? where id = ?",
+        rusqlite::params![container.encode_to_vec(), did],
+    )
+    .unwrap();
+    db.execute(
+        "delete from deck_config where id = ?", [did]
+    )
+    .unwrap();
+    db.execute(
+        "insert into deck_config select 12345, 'Unused', mtime_secs, usn, config
+         from deck_config where id = 1",
+        [],
+    )
+    .unwrap();
+}
+
+fn settings_rows(path: &Path) -> Vec<i64> {
+    let db = rusqlite::Connection::open(path).unwrap();
+    let mut statement = db.prepare("select id from deck_config order by id").unwrap();
+    let rows = statement.query_map([], |row| row.get(0)).unwrap();
+    rows.map(|row| row.unwrap()).collect()
+}
+
+/// The backup taken of the collection in the state make_deck_share_settings()
+/// left it in, if there is one.
+fn backup_from_before_migrating(fx: &Fixture) -> Option<PathBuf> {
+    fs::read_dir(fx.dir.path().join("backups"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.is_file())
+        .find(|path| settings_rows(path).contains(&12345))
+}
+
+#[test]
+fn opening_directly_backs_up_a_collection_about_to_be_migrated() {
+    let fx = Fixture::new();
+    let did = fx.ok("deck.create", json!({"name":"Mine"}))["id"]
+        .as_i64()
+        .unwrap();
+    make_deck_share_settings(&fx, did);
+    let backups_before = fx.backups();
+
+    fx.ok("stats.summary", json!({}));
+
+    assert_eq!(fx.backups(), backups_before + 1);
+    // from before it changed
+    let backup = backup_from_before_migrating(&fx).unwrap();
+    assert_eq!(deck_kind(&rusqlite::Connection::open(&backup).unwrap(), did).config_id, 1);
+    // and it has now
+    assert_eq!(settings_rows(&fx.collection()), vec![1, did]);
+    let db = rusqlite::Connection::open(fx.collection()).unwrap();
+    let normal = deck_kind(&db, did);
+    assert_eq!(normal.config_id, did);
+    assert_eq!(normal.new_limit, None);
+    let bytes: Vec<u8> = db
+        .query_row("select config from deck_config where id = ?", [did], |row| row.get(0))
+        .unwrap();
+    assert_eq!(Config::decode(bytes.as_slice()).unwrap().new_per_day, 7);
+    drop(db);
+
+    // nothing more to do, so no more copies from a command that only reads
+    fx.ok("stats.summary", json!({}));
+    assert_eq!(fx.backups(), backups_before + 1);
+}
+
+#[test]
+fn a_collection_that_cant_be_backed_up_is_not_migrated() {
+    let fx = Fixture::new();
+    let did = fx.ok("deck.create", json!({"name":"Mine"}))["id"]
+        .as_i64()
+        .unwrap();
+    make_deck_share_settings(&fx, did);
+    // the backups folder can't be made, as this is in the way
+    let folder = fx.dir.path().join("backups");
+    let _ = fs::remove_dir_all(&folder);
+    fs::write(&folder, b"").unwrap();
+
+    let response = fx.raw("stats.summary", &json!({}));
+    assert_ne!(response["ok"], true, "{response}");
+
+    assert!(settings_rows(&fx.collection()).contains(&12345));
+    let db = rusqlite::Connection::open(fx.collection()).unwrap();
+    assert_eq!(deck_kind(&db, did).config_id, 1);
+}
+
+#[test]
+fn the_server_backs_up_a_collection_about_to_be_migrated_too() {
+    let fx = Fixture::new();
+    let did = fx.ok("deck.create", json!({"name":"Mine"}))["id"]
+        .as_i64()
+        .unwrap();
+    make_deck_share_settings(&fx, did);
+    let backups_before = fx.backups();
+
+    let server = fx.start(&[]);
+    assert!(fx.backups() > backups_before);
+    assert!(backup_from_before_migrating(&fx).is_some());
+    server.stop();
+
+    assert_eq!(settings_rows(&fx.collection()), vec![1, did]);
+}
+
+#[test]
+fn a_shared_collection_is_given_its_own_settings_by_convert_and_validate_agrees() {
+    let fx = Fixture::new();
+    let did = fx.ok("deck.create", json!({"name":"Mine"}))["id"]
+        .as_i64()
+        .unwrap();
+    make_deck_share_settings(&fx, did);
+    fs::create_dir_all(fx.media()).unwrap();
+
+    let out = tempfile::tempdir().unwrap();
+    let target = out.path().join("converted/col.anki2");
+    let report = out.path().join("report.md");
+    let run = |args: &[&std::ffi::OsStr]| -> Value {
+        let output = Command::new(sibling("evolanki-admin"))
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        serde_json::from_slice(&output.stdout).unwrap()
+    };
+    run(&[
+        "convert".as_ref(),
+        "--source".as_ref(),
+        fx.collection().as_ref(),
+        "--target".as_ref(),
+        target.as_ref(),
+    ]);
+    assert_eq!(settings_rows(&target), vec![1, did]);
+    // the source is untouched
+    assert!(settings_rows(&fx.collection()).contains(&12345));
+
+    let validated = run(&[
+        "validate".as_ref(),
+        "--target".as_ref(),
+        target.as_ref(),
+        "--report".as_ref(),
+        report.as_ref(),
+        "--work-dir".as_ref(),
+        out.path().as_ref(),
+    ]);
+    let problems = validated["result"]["problems"].as_array().unwrap();
+    assert!(
+        !problems
+            .iter()
+            .any(|p| p.as_str().unwrap().contains("settings")),
+        "{problems:?}"
+    );
+    let report = fs::read_to_string(&report).unwrap();
+    assert!(report.contains("FSRS parameters per deck"), "{report}");
+    assert!(!report.to_lowercase().contains("preset"), "{report}");
+    assert!(report.contains("| Mine "), "{report}");
+}
+
+#[test]
+fn card_show_says_nothing_of_presets_and_preset_search_is_gone() {
+    let fx = Fixture::new();
+    let (_, card) = fx.add_note("q");
+    let shown = fx.ok("card.show", json!({"id":card,"render":false}));
+    assert!(shown.get("preset").is_none(), "{shown}");
+    // not a keyword any more, so it looks in a field of that name
+    let error = fx.raw("search.cards", &json!({"search":"preset:Default"}));
+    let found = error["result"]["ids"].as_array().map(Vec::len).unwrap_or(0);
+    assert_eq!(found, 0, "{error}");
 }
 
 /// Cards can still arrive buried, in a profile from desktop Anki.

@@ -13,7 +13,9 @@ tools/run-web --release path/to/collection.anki2
 This builds the pages and an optimised server, and serves that collection. It prints the
 addresses to open: type one into your phone's browser. Media comes from the matching
 `.media` folder, as in a desktop profile. Ctrl+C takes a last backup and closes the
-collection cleanly. Opening a collection migrates it to FSRS.
+collection cleanly. Opening a collection migrates it to FSRS, and gives each deck its own
+settings if a collection from an older version doesn't have them: see
+[Settings](#settings).
 
 Leave out `--release` for a quicker debug build, and the path for a demo collection in
 `out/web-dev`. It runs from any folder, and the repo path must not contain a space, as
@@ -132,7 +134,8 @@ link opens in a new tab, as a link should. Nothing else in the collection is rea
 The server keeps copies of the collection in a `backups` folder beside it, named like
 `col-2026-11-01-05.30.12.anki2`. There's no UI and nothing to set up. It takes one:
 
-- at every start, before opening the collection, so before anything can upgrade it;
+- at every start, before opening the collection, so before anything can upgrade it. If
+  opening would give decks their own settings, and this backup fails, the server won't start;
 - every 30 minutes at most while there have been changes;
 - at shutdown, if something changed since the last.
 
@@ -175,6 +178,21 @@ towards the same limits.
    from there. `a_backup_can_be_restored` in `tests/http.rs` follows these steps.
 
 Backups are ordinary collections, so `sqlite3` or a desktop Anki can read them too.
+
+## Settings
+
+A deck's settings are the row of `deck_config` with the same id as the deck, so nothing
+can point two decks at one row. `config_id` in a deck is kept equal to its id, but nothing
+reads it to find settings.
+
+On opening a collection that isn't like that yet, as on a database check, each normal deck
+gets its own row with what it was using: the row it pointed at, with any limit or desired
+retention it had set for itself. Rows no deck has are removed. All of this happens in one
+transaction, after a backup, and does nothing if there's nothing to do. Cards, notes and
+review history aren't touched.
+
+Going back: the older build can open a collection after this, and uses each deck's row. To
+go back to before, restore the backup taken at that start, as in [Restoring](#restoring).
 
 ## Phones
 
@@ -223,6 +241,18 @@ Safari 18.4. A file that can't play is skipped.
 - No pages for: adding or editing cards, the browser, changing a notetype, importing,
   making filtered decks, custom study, or managing decks and tags. Agents do those with
   [`evolanki-admin`](admin-cli.md). They aren't reachable over HTTP.
+- Every normal deck has its own settings, and no two decks can share them: there are no
+  presets, and no `preset:` search. A new deck starts from the built-in values, including
+  `Default`, the deck that's always there, and deleting a deck deletes its settings. If you
+  delete `Default`, it stays, empty, and goes back to built-in values. Subdecks have their
+  own too, with nothing inherited, though a parent's daily limit still caps its subdecks as
+  in desktop Anki. Filtered decks have none, as ever.
+- Each daily limit is one value, with a today-only change if you want one. FSRS parameters,
+  the simulator and the retention tools work on the deck and its subdecks, as `deck:` does,
+  without suspended cards. A search of your own in its advanced settings replaces that.
+  With fewer than 400 reviews to go on, optimizing leaves the parameters as they are.
+- The load balancer counts cards per deck, as it did per preset: it spaces out a deck's
+  own cards, not those of other decks.
 - Deck options has no easy days section. Stored values are used as before; with none,
   every day counts as normal. The load balancer has no control either, and stays on
   unless the collection's config says otherwise.

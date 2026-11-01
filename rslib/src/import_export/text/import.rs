@@ -809,6 +809,23 @@ mod test {
     }
 
     #[test]
+    fn a_deck_made_by_importing_text_has_its_own_settings() {
+        let mut col = Collection::new();
+        col.update_default_deck_config(|c| c.new_per_day = 77);
+        let mut data = ForeignData::with_defaults();
+        data.add_note(&["foo"]);
+        data.default_deck = NameOrId::Name("From text::Sub".to_string());
+        let progress = col.new_progress_handler();
+        data.import(&mut col, progress).unwrap();
+
+        for name in ["From text", "From text::Sub"] {
+            let deck = col.get_deck_id(name).unwrap().unwrap();
+            let config = col.get_deck_config(DeckConfigId(deck.0), false).unwrap();
+            assert_eq!(config.unwrap().inner, DeckConfig::default().inner);
+        }
+    }
+
+    #[test]
     fn should_add_global_tags() {
         let mut col = Collection::new();
         let mut data = ForeignData::with_defaults();

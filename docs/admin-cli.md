@@ -43,6 +43,9 @@ collection, `collection.admin.sock`, and the tool sends the command there. With 
 the tool opens the collection, runs the command, and closes it. You needn't care which,
 except that:
 
+- Opening a collection with no server can change it for good, if it's from a version where
+  decks shared settings. A backup comes first, and if that fails, nothing runs.
+
 - **Undo only spans a running server's life.** `undo` undoes the last operation of any
   kind in that server's memory, including a review the owner just did. Check `undo.status`
   first. With no server each command is its own process, so there is nothing to undo, and
@@ -123,8 +126,10 @@ opened, so also in `convert` and when importing: see
 - Deck arguments are a name (`A::B`, whose parents are created as needed) or an id. Same
   for note types.
 - `deck.delete` also **deletes the cards in the deck and its children**, with their review
-  history. Move them first if you don't mean that. With a filtered deck, cards go home
-  instead.
+  history, and their settings. Move them first if you don't mean that. With a filtered deck,
+  cards go home instead.
+- A new deck, including a parent made along the way, starts from built-in settings. To copy
+  or share settings isn't possible: each deck has its own.
 - `tag.rename` also renames children of the tag.
 - `notetype.add-field` adds it at the end, empty on all existing notes.
   `notetype.edit-template` is refused if the template is invalid, such as naming a field
@@ -159,6 +164,10 @@ One way, into this collection. `import` takes `.apkg` or `.colpkg` by extension.
   scheduling or deck options, and keeps your notes if theirs aren't newer. `with_scheduling`
   brings reviews too, and any such cards lacking a memory state get one. `found_notes`,
   `new`, `updated` and others say what happened.
+- Each deck has its own settings: see [web-server.md](web-server.md#settings). A deck a
+  package adds starts from the built-in values, and one already here keeps what it has.
+  `with_deck_configs` replaces those with what the deck had in the package, each with its own
+  copy, even if that package has decks sharing them.
 - `.colpkg`: **replaces the whole collection**, and adds the package's media to what's
   there. Requires `"replace_collection":true`.
   Pages get an error while that runs, for a few seconds, and work again afterwards. If the
@@ -204,7 +213,8 @@ them before and after, and fails if they changed. A snapshot of the source stays
 `conversion/`, and `validate` compares against that. Run `validate` with no server on the
 target; it runs anything touching the backend on a throwaway copy, in the work folder, which
 needs room for all the media. Run it again whenever you like, though expect the report to
-show what's changed since then.
+show what's changed since then. It checks each deck's settings against what the deck used in
+that snapshot. `convert` itself gives every deck its own settings, as any opening does.
 
 ## What's not here
 
