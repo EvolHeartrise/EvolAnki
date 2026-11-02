@@ -18,7 +18,7 @@ media-check-extracted-count = Extracted images: { $count }
 ## Shown at the top of each section
 
 media-check-renamed-header = Some files have been renamed for compatibility:
-media-check-oversize-header = Files over 100MB can not be synced with AnkiWeb.
+media-check-oversize-header = Files over 100MB are not tracked in the media database.
 media-check-subfolder-header = Folders inside the media folder are not supported.
 media-check-missing-header = The following files are referenced by cards, but were not found in the media folder:
 media-check-unused-header = The following files were found in the media folder, but do not appear to be used on any cards:

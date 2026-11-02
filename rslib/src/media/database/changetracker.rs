@@ -13,7 +13,7 @@ use crate::media::database::MediaEntry;
 use crate::media::files::filename_if_normalized;
 use crate::media::files::mtime_as_i64;
 use crate::media::files::sha1_of_file;
-use crate::media::files::NONSYNCABLE_FILENAME;
+use crate::media::files::UNTRACKED_FILENAME;
 use crate::media::MAX_INDIVIDUAL_MEDIA_FILE_SIZE;
 use crate::prelude::*;
 
@@ -21,7 +21,6 @@ struct FilesystemEntry {
     fname: String,
     sha1: Option<Sha1Hash>,
     mtime: i64,
-    is_new: bool,
 }
 
 pub(crate) struct ChangeTracker<'a, F>
@@ -119,7 +118,7 @@ where
             };
 
             // ignore blacklisted files
-            if NONSYNCABLE_FILENAME.is_match(fname.as_ref()) {
+            if UNTRACKED_FILENAME.is_match(fname.as_ref()) {
                 continue;
             }
 
@@ -155,7 +154,6 @@ where
                 fname: fname.to_string(),
                 sha1,
                 mtime,
-                is_new: previous_mtime.is_none(),
             });
             debug!(
                 fname = fname.as_ref(),
@@ -180,31 +178,16 @@ where
     }
 
     /// Add added/updated entries to the media DB.
-    ///
-    /// Skip files where the mod time differed, but checksums are the same.
     fn add_updated_entries(
         &mut self,
         ctx: &MediaDatabase,
         entries: Vec<FilesystemEntry>,
     ) -> Result<()> {
         for fentry in entries {
-            let mut sync_required = true;
-            if !fentry.is_new {
-                if let Some(db_entry) = ctx.get_entry(&fentry.fname)? {
-                    if db_entry.sha1 == fentry.sha1 {
-                        // mtime bumped but file contents are the same,
-                        // so we can preserve the current updated flag.
-                        // we still need to update the mtime however.
-                        sync_required = db_entry.sync_required
-                    }
-                }
-            };
-
             ctx.set_entry(&MediaEntry {
                 fname: fentry.fname,
                 sha1: fentry.sha1,
                 mtime: fentry.mtime,
-                sync_required,
             })?;
 
             self.checked += 1;
@@ -219,12 +202,7 @@ where
     /// Remove deleted files from the media DB.
     fn remove_deleted_files(&mut self, ctx: &MediaDatabase, removed: Vec<String>) -> Result<()> {
         for fname in removed {
-            ctx.set_entry(&MediaEntry {
-                fname,
-                sha1: None,
-                mtime: 0,
-                sync_required: true,
-            })?;
+            ctx.remove_entry(&fname)?;
 
             self.checked += 1;
             if self.checked % 10 == 0 {
@@ -285,10 +263,9 @@ mod test {
 
         mgr.register_changes(&mut progress_cb)?;
 
-        let mut entry = mgr.db.transact(|ctx| {
+        mgr.db.transact(|ctx| {
             assert_eq!(ctx.count()?, 1);
-            assert!(!ctx.get_pending_uploads(1)?.is_empty());
-            let mut entry = ctx.get_entry("file.jpg")?.unwrap();
+            let entry = ctx.get_entry("file.jpg")?.unwrap();
             assert_eq!(
                 entry,
                 MediaEntry {
@@ -300,14 +277,8 @@ mod test {
                         .duration_since(time::UNIX_EPOCH)
                         .unwrap()
                         .as_secs() as i64,
-                    sync_required: true,
                 }
             );
-
-            // mark it as unmodified
-            entry.sync_required = false;
-            ctx.set_entry(&entry)?;
-            assert!(ctx.get_pending_uploads(1)?.is_empty());
 
             // modify it
             write_file(&f1, "hello1")?;
@@ -315,14 +286,13 @@ mod test {
 
             change_mtime(&media_dir);
 
-            Ok(entry)
+            Ok(())
         })?;
 
         ChangeTracker::new(&mgr.media_folder, progress_cb).register_changes(&mgr.db)?;
 
         mgr.db.transact(|ctx| {
             assert_eq!(ctx.count()?, 1);
-            assert!(!ctx.get_pending_uploads(1)?.is_empty());
             assert_eq!(
                 ctx.get_entry("file.jpg")?.unwrap(),
                 MediaEntry {
@@ -334,14 +304,8 @@ mod test {
                         .duration_since(time::UNIX_EPOCH)
                         .unwrap()
                         .as_secs() as i64,
-                    sync_required: true,
                 }
             );
-
-            // mark it as unmodified
-            entry.sync_required = false;
-            ctx.set_entry(&entry)?;
-            assert!(ctx.get_pending_uploads(1)?.is_empty());
 
             Ok(())
         })?;
@@ -354,16 +318,7 @@ mod test {
         ChangeTracker::new(&mgr.media_folder, progress_cb).register_changes(&mgr.db)?;
 
         assert_eq!(mgr.db.count()?, 0);
-        assert!(!mgr.db.get_pending_uploads(1)?.is_empty());
-        assert_eq!(
-            mgr.db.get_entry("file.jpg")?.unwrap(),
-            MediaEntry {
-                fname: "file.jpg".into(),
-                sha1: None,
-                mtime: 0,
-                sync_required: true,
-            }
-        );
+        assert_eq!(mgr.db.get_entry("file.jpg")?, None);
 
         Ok(())
     }

@@ -54,7 +54,7 @@ static WINDOWS_TRAILING_CHAR: LazyLock<Regex> = LazyLock::new(|| {
     )
     .unwrap()
 });
-pub(crate) static NONSYNCABLE_FILENAME: LazyLock<Regex> = LazyLock::new(|| {
+pub(crate) static UNTRACKED_FILENAME: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r#"(?xi)
             ^

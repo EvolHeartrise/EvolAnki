@@ -29,8 +29,8 @@ pub type Sha1Hash = [u8; 20];
 /// the length of the filename.
 pub(crate) const MAX_MEDIA_FILENAME_LENGTH: usize = 120;
 
-/// Files above this size aren't tracked in the media database. Anki's media
-/// sync had this limit, and .colpkg files may have been made under it.
+/// Files above this size aren't tracked in the media database. Stock Anki had
+/// this limit, and .colpkg files may have been made under it.
 pub(crate) const MAX_INDIVIDUAL_MEDIA_FILE_SIZE: usize = 100 * 1024 * 1024;
 
 impl Collection {
@@ -85,7 +85,6 @@ impl MediaManager {
                     fname: chosen_fname.to_string(),
                     sha1: new_sha1,
                     mtime: file_mtime,
-                    sync_required: true,
                 })?;
             }
 
@@ -102,8 +101,8 @@ impl MediaManager {
 
             let mut meta = db.get_meta()?;
             if meta.folder_mtime == start_folder_mtime {
-                // if media db was in sync with folder prior to this add,
-                // we can keep it in sync
+                // if media db matched the folder prior to this add,
+                // it can keep matching
                 meta.folder_mtime = mtime_as_i64(&self.media_folder)?;
                 db.set_meta(&meta)?;
             } else {
@@ -123,7 +122,6 @@ impl MediaManager {
             fname,
             mtime,
             sha1: Some(sha1),
-            sync_required: true,
         })
     }
 

@@ -11,7 +11,6 @@ use rusqlite::Row;
 
 use crate::error;
 use crate::media::Sha1Hash;
-use crate::prelude::Usn;
 use crate::prelude::*;
 
 pub mod changetracker;
@@ -33,18 +32,14 @@ impl Checksums {
 #[derive(Debug, PartialEq, Eq)]
 pub struct MediaEntry {
     pub fname: String,
-    /// If None, file has been deleted
+    /// None only if what's stored can't be read.
     pub sha1: Option<Sha1Hash>,
-    // Modification time; 0 if deleted
     pub mtime: i64,
-    /// True if changed since last sync
-    pub sync_required: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MediaDatabaseMetadata {
     pub folder_mtime: i64,
-    pub last_sync_usn: Usn,
 }
 
 pub struct MediaDatabase {
@@ -97,7 +92,7 @@ impl MediaDatabase {
         self.db
             .prepare_cached(
                 "
-select fname, csum, mtime, dirty from media where fname=?",
+select fname, csum, mtime from media where fname=?",
             )?
             .query_row(params![fname], row_to_entry)
             .optional()
@@ -109,34 +104,35 @@ select fname, csum, mtime, dirty from media where fname=?",
         self.db
             .prepare_cached(
                 "
-insert or replace into media (fname, csum, mtime, dirty)
-values (?, ?, ?, ?)",
+insert or replace into media (fname, csum, mtime)
+values (?, ?, ?)",
             )?
-            .execute(params![
-                entry.fname,
-                sha1_str,
-                entry.mtime,
-                entry.sync_required
-            ])?;
+            .execute(params![entry.fname, sha1_str, entry.mtime])?;
 
         Ok(())
     }
 
+    pub(crate) fn remove_entry(&self, fname: &str) -> error::Result<()> {
+        self.db
+            .prepare_cached("delete from media where fname = ?")?
+            .execute([fname])?;
+        Ok(())
+    }
+
     pub(crate) fn get_meta(&self) -> error::Result<MediaDatabaseMetadata> {
-        let mut stmt = self.db.prepare("select dirMod, lastUsn from meta")?;
+        let mut stmt = self.db.prepare("select dirMod from meta")?;
 
         stmt.query_row([], |row| {
             Ok(MediaDatabaseMetadata {
                 folder_mtime: row.get(0)?,
-                last_sync_usn: row.get(1)?,
             })
         })
         .map_err(Into::into)
     }
 
     pub(crate) fn set_meta(&self, meta: &MediaDatabaseMetadata) -> error::Result<()> {
-        let mut stmt = self.db.prepare("update meta set dirMod = ?, lastUsn = ?")?;
-        stmt.execute(params![meta.folder_mtime, meta.last_sync_usn])?;
+        let mut stmt = self.db.prepare("update meta set dirMod = ?")?;
+        stmt.execute(params![meta.folder_mtime])?;
 
         Ok(())
     }
@@ -150,21 +146,6 @@ values (?, ?, ?, ?)",
                 |row| row.get(0),
             )
             .map_err(Into::into)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn get_pending_uploads(&self, max_entries: u32) -> error::Result<Vec<MediaEntry>> {
-        let mut stmt = self
-            .db
-            .prepare("select fname from media where dirty=1 limit ?")?;
-        let results: error::Result<Vec<_>> = stmt
-            .query_and_then(params![max_entries], |row| {
-                let fname = row.get_ref_unwrap(0).as_str()?;
-                Ok(self.get_entry(fname)?.unwrap())
-            })?
-            .collect();
-
-        results
     }
 
     pub(crate) fn all_mtimes(&self) -> error::Result<HashMap<String, i64>> {
@@ -204,7 +185,6 @@ fn row_to_entry(row: &Row) -> rusqlite::Result<MediaEntry> {
         fname: row.get(0)?,
         sha1: sha1_array,
         mtime: row.get(2)?,
-        sync_required: row.get(3)?,
     })
 }
 
@@ -249,7 +229,7 @@ fn initial_db_setup(db: &mut Connection) -> error::Result<()> {
         .prepare_cached("select null from sqlite_master where type = 'table' and name = 'media'")?
         .exists([])?
     {
-        return Ok(());
+        return remove_sync_state(db);
     }
 
     db.execute("begin", [])?;
@@ -259,9 +239,30 @@ fn initial_db_setup(db: &mut Connection) -> error::Result<()> {
     Ok(())
 }
 
+/// A database from before sync was removed has a flag per file, tombstones of
+/// deleted files, and a sync counter. In one transaction, so it's all or nothing.
+fn remove_sync_state(db: &mut Connection) -> error::Result<()> {
+    if !db
+        .prepare_cached("select null from pragma_table_info('media') where name = 'dirty'")?
+        .exists([])?
+    {
+        return Ok(());
+    }
+    let transaction = db.transaction()?;
+    transaction.execute_batch(
+        "DROP INDEX IF EXISTS idx_media_dirty;
+         ALTER TABLE media DROP COLUMN dirty;
+         ALTER TABLE meta DROP COLUMN lastUsn;
+         DELETE FROM media WHERE csum IS NULL;",
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use anki_io::new_tempfile;
+    use rusqlite::Connection;
     use tempfile::TempDir;
 
     use crate::error::Result;
@@ -284,7 +285,6 @@ mod test {
                 fname: "test.mp3".into(),
                 sha1: None,
                 mtime: 0,
-                sync_required: false,
             };
             ctx.set_entry(&entry)?;
             assert_eq!(ctx.get_entry("test.mp3")?.unwrap(), entry);
@@ -292,24 +292,18 @@ mod test {
             // update it
             entry.sha1 = Some(sha1_of_data(b"hello"));
             entry.mtime = 123;
-            entry.sync_required = true;
             ctx.set_entry(&entry)?;
             assert_eq!(ctx.get_entry("test.mp3")?.unwrap(), entry);
 
-            assert_eq!(ctx.get_pending_uploads(25)?, vec![entry]);
-
             let mut meta = ctx.get_meta()?;
             assert_eq!(meta.folder_mtime, 0);
-            assert_eq!(meta.last_sync_usn.0, 0);
 
             meta.folder_mtime = 123;
-            meta.last_sync_usn.0 = 321;
 
             ctx.set_meta(&meta)?;
 
             meta = ctx.get_meta()?;
             assert_eq!(meta.folder_mtime, 123);
-            assert_eq!(meta.last_sync_usn.0, 321);
 
             Ok(())
         })?;
@@ -320,6 +314,49 @@ mod test {
         let meta = mgr.db.get_meta()?;
         assert_eq!(meta.folder_mtime, 123);
 
+        Ok(())
+    }
+
+    /// A media database from before keeps what it knows about the files, and
+    /// loses what was only for sync, however many times it's opened.
+    #[test]
+    fn old_database_loses_its_sync_state() -> Result<()> {
+        let folder = TempDir::new()?;
+        let db_file = new_tempfile()?;
+        let sha1 = hex::encode(sha1_of_data(b"hello"));
+        {
+            let db = Connection::open(db_file.path())?;
+            db.execute_batch(&format!(
+                "CREATE TABLE media (fname text NOT NULL PRIMARY KEY, csum text,
+                   mtime int NOT NULL, dirty int NOT NULL) without rowid;
+                 CREATE INDEX idx_media_dirty ON media (dirty) WHERE dirty = 1;
+                 CREATE TABLE meta (dirMod int, lastUsn int);
+                 INSERT INTO meta VALUES (55, 66);
+                 INSERT INTO media VALUES ('kept.jpg', '{sha1}', 77, 1);
+                 INSERT INTO media VALUES ('deleted.jpg', NULL, 0, 1);"
+            ))?;
+        }
+        for _ in 0..2 {
+            let mgr = MediaManager::new(folder.path(), db_file.path())?;
+            assert_eq!(mgr.db.get_meta()?.folder_mtime, 55);
+            assert_eq!(mgr.db.get_entry("deleted.jpg")?, None);
+            assert_eq!(
+                mgr.db.get_entry("kept.jpg")?,
+                Some(MediaEntry {
+                    fname: "kept.jpg".into(),
+                    sha1: Some(sha1_of_data(b"hello")),
+                    mtime: 77,
+                })
+            );
+        }
+        let db = Connection::open(db_file.path())?;
+        let columns: String = db.query_row(
+            "select group_concat(name) from (select name from pragma_table_info('media')
+             union all select name from pragma_table_info('meta'))",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(columns, "fname,csum,mtime,dirMod");
         Ok(())
     }
 }
