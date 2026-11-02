@@ -8,7 +8,6 @@ impl From<anki_proto::scheduler::scheduling_state::Review> for ReviewState {
         ReviewState {
             scheduled_days: state.scheduled_days,
             elapsed_days: state.elapsed_days,
-            ease_factor: state.ease_factor,
             lapses: state.lapses,
             memory_state: state.memory_state.map(Into::into),
         }
@@ -20,7 +19,6 @@ impl From<ReviewState> for anki_proto::scheduler::scheduling_state::Review {
         anki_proto::scheduler::scheduling_state::Review {
             scheduled_days: state.scheduled_days,
             elapsed_days: state.elapsed_days,
-            ease_factor: state.ease_factor,
             lapses: state.lapses,
             memory_state: state.memory_state.map(Into::into),
         }

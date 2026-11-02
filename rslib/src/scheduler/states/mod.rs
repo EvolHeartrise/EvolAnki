@@ -80,7 +80,6 @@ pub(crate) struct StateContext<'a> {
     pub fsrs_allow_short_term: bool,
     // learning
     pub steps: LearningSteps<'a>,
-    pub initial_ease_factor: f32,
 
     // reviewing
     pub maximum_review_interval: u32,
@@ -109,7 +108,6 @@ impl StateContext<'_> {
         Self {
             fuzz_factor: None,
             steps: LearningSteps::new(&[1.0, 10.0]),
-            initial_ease_factor: 2.5,
             maximum_review_interval: 36500,
             load_balancer_ctx: None,
             relearn_steps: LearningSteps::new(&[10.0]),

@@ -87,7 +87,6 @@ impl CardStateUpdater {
         StateContext {
             fuzz_factor: get_fuzz_factor(self.fuzz_seed),
             steps: self.learn_steps(),
-            initial_ease_factor: self.config.inner.initial_ease,
             maximum_review_interval: self.config.inner.maximum_review_interval,
             load_balancer_ctx: load_balancer_ctx
                 .map(|load_balancer_ctx| load_balancer_ctx.set_fuzz_seed(self.fuzz_seed)),
@@ -804,8 +803,10 @@ pub(crate) mod test {
         assert_eq!(card.queue, CardQueue::Review);
         assert_eq!(card.interval, scheduled_days(post_answer.new_state));
         assert_eq!(card.remaining_steps, 0);
+        // a new card has no factor until it graduates
+        assert_eq!(card.ease_factor, 2500);
 
-        // answering a review card again; easy boost
+        // answering a review card again; its factor no longer moves
         col.storage.db.execute_batch("update cards set due=0")?;
         col.clear_study_queues();
         let mut post_answer = col.answer_easy();
@@ -818,7 +819,7 @@ pub(crate) mod test {
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
         assert_eq!(card.interval, scheduled_days(post_answer.new_state));
-        assert_eq!(card.ease_factor, 2650);
+        assert_eq!(card.ease_factor, 2500);
 
         // lapsing it
         col.storage.db.execute_batch("update cards set due=0")?;
@@ -834,7 +835,7 @@ pub(crate) mod test {
         assert_eq!(card.queue, CardQueue::Learn);
         assert_eq!(card.ctype, CardType::Relearn);
         assert_eq!(card.interval, scheduled_days(post_answer.new_state));
-        assert_eq!(card.ease_factor, 2450);
+        assert_eq!(card.ease_factor, 2500);
         assert_eq!(card.lapses, 1);
 
         // failed in relearning
@@ -864,6 +865,46 @@ pub(crate) mod test {
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
         assert_eq!(card.interval, scheduled_days(post_answer.new_state));
+        assert_eq!(card.ease_factor, 2500);
+
+        Ok(())
+    }
+
+    /// Only a card that's becoming a review card gets a factor. It's what
+    /// FSRS would infer from if the memory state was ever lost.
+    #[test]
+    fn factor_is_filled_on_graduating_but_left_alone_on_a_review_card() -> Result<()> {
+        let mut col = Collection::new();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+        let mut note = nt.new_note();
+        col.add_note(&mut note, DeckId(1))?;
+
+        // an old factor on a new card stays, as it can't be 0 here
+        let cid = col.get_first_card().id;
+        col.storage
+            .db
+            .execute_batch("update cards set factor=1800")?;
+        col.clear_study_queues();
+        col.answer_easy();
+        assert_eq!(col.storage.get_card(cid)?.unwrap().ease_factor, 1800);
+
+        // on a review card, a factor of 0 is left alone
+        col.storage
+            .db
+            .execute_batch("update cards set factor=0, due=0")?;
+        col.clear_study_queues();
+        col.answer_good();
+        assert_eq!(col.storage.get_card(cid)?.unwrap().ease_factor, 0);
+
+        // when lapsed, it stays 0 until the card leaves relearning, and then is filled
+        col.storage.db.execute_batch("update cards set due=0")?;
+        col.clear_study_queues();
+        col.answer_again();
+        assert_eq!(col.storage.get_card(cid)?.unwrap().ease_factor, 0);
+        col.storage.db.execute_batch("update cards set due=0")?;
+        col.clear_study_queues();
+        col.answer_easy();
+        assert_eq!(col.storage.get_card(cid)?.unwrap().ease_factor, 2500);
 
         Ok(())
     }

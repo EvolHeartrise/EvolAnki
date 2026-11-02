@@ -62,7 +62,6 @@ impl CardStateUpdater {
     fn normal_study_state(&self, due: i32) -> NormalState {
         let interval = self.card.interval;
         let lapses = self.card.lapses;
-        let ease_factor = self.card.ease_factor();
         let remaining_steps = self.card.remaining_steps();
         let memory_state = self.card.memory_state;
         let elapsed_secs = |last_ivl: u32| {
@@ -107,7 +106,6 @@ impl CardStateUpdater {
                 scheduled_days: interval,
                 elapsed_days: ((interval as i32) - (due - self.timing.days_elapsed as i32)).max(0)
                     as u32,
-                ease_factor,
                 lapses,
                 memory_state,
             }
@@ -124,7 +122,6 @@ impl CardStateUpdater {
                     review: ReviewState {
                         scheduled_days: interval,
                         elapsed_days: interval,
-                        ease_factor,
                         lapses,
                         memory_state,
                     },

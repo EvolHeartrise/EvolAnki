@@ -68,7 +68,6 @@ impl LearnState {
                         minimum,
                         maximum,
                     ),
-                    ease_factor: ctx.initial_ease_factor,
                     memory_state,
                     ..Default::default()
                 }
@@ -109,7 +108,6 @@ impl LearnState {
                         minimum,
                         maximum,
                     ),
-                    ease_factor: ctx.initial_ease_factor,
                     memory_state,
                     ..Default::default()
                 }
@@ -150,7 +148,6 @@ impl LearnState {
                         minimum,
                         maximum,
                     ),
-                    ease_factor: ctx.initial_ease_factor,
                     memory_state,
                     ..Default::default()
                 }
@@ -167,7 +164,6 @@ impl LearnState {
         let interval = states.easy.interval.round().max(1.0) as u32;
         ReviewState {
             scheduled_days: ctx.with_review_fuzz(interval as f32, minimum, maximum),
-            ease_factor: ctx.initial_ease_factor,
             memory_state: Some(states.easy.memory.into()),
             ..Default::default()
         }

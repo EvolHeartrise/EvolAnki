@@ -14,11 +14,13 @@ impl CardStateUpdater {
         current: CardState,
         next: ReviewState,
     ) -> RevlogEntryPartial {
+        if self.card.ctype != CardType::Review {
+            self.card.set_initial_factor_if_missing();
+        }
         self.card.queue = CardQueue::Review;
         self.card.ctype = CardType::Review;
         self.card.interval = next.scheduled_days;
         self.card.due = (self.timing.days_elapsed + next.scheduled_days) as i32;
-        self.card.ease_factor = (next.ease_factor * 1000.0).round() as u16;
         self.card.lapses = next.lapses;
         self.card.remaining_steps = 0;
         if let Some(position) = current.new_position() {
@@ -32,7 +34,7 @@ impl CardStateUpdater {
             self.card
                 .memory_state
                 .map(|d| d.difficulty_shifted())
-                .unwrap_or(next.ease_factor),
+                .unwrap_or(self.card.ease_factor()),
             self.secs_until_rollover(),
         )
     }

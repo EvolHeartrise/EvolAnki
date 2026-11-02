@@ -367,9 +367,6 @@ fn add_review(out: &mut Map<String, Value>, review: &Value, context: &StateConte
     out.insert("elapsed_days".into(), or_zero(&review["elapsed_days"]));
     out.insert("lapses".into(), or_zero(&review["lapses"]));
     // left as reported, and missing if the backend stops reporting it
-    if let Some(ease) = review.get("ease_factor") {
-        out.insert("ease_factor".into(), ease.clone());
-    }
     out.insert(
         "due_estimate".into(),
         json!({ "day": context.timing.today + days }),

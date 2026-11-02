@@ -72,7 +72,7 @@ message SchedulingState {
   message Review {
     uint32 scheduled_days = 1;
     uint32 elapsed_days = 2;
-    float ease_factor = 3;
+    reserved 3;
     uint32 lapses = 4;
     optional cards.FsrsMemoryState memory_state = 6;
   }

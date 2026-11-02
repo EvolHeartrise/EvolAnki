@@ -217,7 +217,6 @@ mod tests {
             review: ReviewState {
                 scheduled_days: 3,
                 elapsed_days: 3,
-                ease_factor: 2.5,
                 lapses: 1,
                 memory_state: None,
             },
@@ -481,7 +480,6 @@ mod tests {
             review: ReviewState {
                 scheduled_days: 3,
                 elapsed_days: 3,
-                ease_factor: 2.5,
                 lapses: 1,
                 memory_state: None,
             },

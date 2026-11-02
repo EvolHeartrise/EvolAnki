@@ -19,7 +19,6 @@ impl CardStateUpdater {
         self.card.remaining_steps = next.learning.remaining_steps;
         self.card.ctype = CardType::Relearn;
         self.card.lapses = next.review.lapses;
-        self.card.ease_factor = (next.review.ease_factor * 1000.0).round() as u16;
         if let Some(position) = current.new_position() {
             self.card.original_position = Some(position)
         }
@@ -45,7 +44,7 @@ impl CardStateUpdater {
             self.card
                 .memory_state
                 .map(|d| d.difficulty_shifted())
-                .unwrap_or(next.review.ease_factor),
+                .unwrap_or(self.card.ease_factor()),
             self.secs_until_rollover(),
         )
     }

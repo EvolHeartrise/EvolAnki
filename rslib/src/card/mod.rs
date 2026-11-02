@@ -16,6 +16,7 @@ use serde_repr::Serialize_repr;
 use crate::collection::Collection;
 use crate::config::SchedulerVersion;
 use crate::deckconfig::DeckConfig;
+use crate::deckconfig::INITIAL_EASE_FACTOR_THOUSANDS;
 use crate::decks::DeckId;
 use crate::define_newtype;
 use crate::error::AnkiError;
@@ -216,6 +217,15 @@ impl Card {
     /// Return ease factor as a multiplier (eg 2.5)
     pub fn ease_factor(&self) -> f32 {
         (self.ease_factor as f32) / 1000.0
+    }
+
+    /// FSRS doesn't change the factor, but it's what a memory state is inferred
+    /// from if a review card has no usable history, and 0 would make that card
+    /// as difficult as can be.
+    pub(crate) fn set_initial_factor_if_missing(&mut self) {
+        if self.ease_factor == 0 {
+            self.ease_factor = INITIAL_EASE_FACTOR_THOUSANDS;
+        }
     }
 
     /// Don't use this in situations where you may be using original_due, since
@@ -520,7 +530,7 @@ mod test {
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
 
-        // Graduate card to review without a memory state, as SM-2 would leave it
+        // Graduate card to review, and lose its memory state
         col.answer_easy();
         col.clear_memory_states();
 

@@ -11,31 +11,12 @@ use super::StateContext;
 use crate::card::FsrsMemoryState;
 use crate::revlog::RevlogReviewKind;
 
-pub const INITIAL_EASE_FACTOR: f32 = 2.5;
-pub const MINIMUM_EASE_FACTOR: f32 = 1.3;
-pub const EASE_FACTOR_AGAIN_DELTA: f32 = -0.2;
-pub const EASE_FACTOR_HARD_DELTA: f32 = -0.15;
-pub const EASE_FACTOR_EASY_DELTA: f32 = 0.15;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ReviewState {
     pub scheduled_days: u32,
     pub elapsed_days: u32,
-    pub ease_factor: f32,
     pub lapses: u32,
     pub memory_state: Option<FsrsMemoryState>,
-}
-
-impl Default for ReviewState {
-    fn default() -> Self {
-        ReviewState {
-            scheduled_days: 0,
-            elapsed_days: 0,
-            ease_factor: INITIAL_EASE_FACTOR,
-            lapses: 0,
-            memory_state: None,
-        }
-    }
 }
 
 impl ReviewState {
@@ -81,7 +62,6 @@ impl ReviewState {
         let again_review = ReviewState {
             scheduled_days: scheduled_days.round().max(1.0) as u32,
             elapsed_days: 0,
-            ease_factor: (self.ease_factor + EASE_FACTOR_AGAIN_DELTA).max(MINIMUM_EASE_FACTOR),
             lapses,
             memory_state,
         };
@@ -120,7 +100,6 @@ impl ReviewState {
         ReviewState {
             scheduled_days,
             elapsed_days: 0,
-            ease_factor: (self.ease_factor + EASE_FACTOR_HARD_DELTA).max(MINIMUM_EASE_FACTOR),
             memory_state: Some(ctx.fsrs_next_states.hard.memory.into()),
             ..self
         }
@@ -139,7 +118,6 @@ impl ReviewState {
         ReviewState {
             scheduled_days,
             elapsed_days: 0,
-            ease_factor: self.ease_factor + EASE_FACTOR_EASY_DELTA,
             memory_state: Some(ctx.fsrs_next_states.easy.memory.into()),
             ..self
         }
@@ -201,7 +179,6 @@ mod test {
         ReviewState {
             scheduled_days,
             elapsed_days: scheduled_days,
-            ease_factor: 1.3,
             lapses: 0,
             memory_state: None,
         }

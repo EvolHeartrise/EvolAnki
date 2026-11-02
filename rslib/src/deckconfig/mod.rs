@@ -21,12 +21,11 @@ pub use schema11::DeckConfSchema11;
 pub(crate) use update::default_param_search;
 pub use update::UpdateDeckConfigsRequest;
 
-/// Old deck config and cards table store 250% as 2500.
-pub(crate) const INITIAL_EASE_FACTOR_THOUSANDS: u16 = (INITIAL_EASE_FACTOR * 1000.0) as u16;
+/// The cards table stores 250% as 2500.
+pub(crate) const INITIAL_EASE_FACTOR_THOUSANDS: u16 = 2500;
 
 use crate::define_newtype;
 use crate::prelude::*;
-use crate::scheduler::states::review::INITIAL_EASE_FACTOR;
 
 define_newtype!(DeckConfigId, i64);
 
