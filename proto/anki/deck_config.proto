@@ -135,7 +135,8 @@ message DeckConfig {
     uint32 new_per_day_minimum = 35;
 
     // Old rows can still hold the ease, multipliers, minimum lapse interval and
-    // graduating intervals, which FSRS has no use for. They're dropped when read.
+    // graduating intervals, which FSRS has no use for. They're dropped when
+    // read.
     reserved 11 to 15, 17 to 19;
 
     uint32 maximum_review_interval = 16;
