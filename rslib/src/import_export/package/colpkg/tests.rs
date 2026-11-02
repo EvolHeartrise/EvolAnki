@@ -99,3 +99,42 @@ fn normalization_check_on_export() -> Result<()> {
 
     Ok(())
 }
+
+/// A whole collection in the old package format, which is schema 11, replaces
+/// this one, at this schema.
+#[test]
+fn a_collection_package_with_schema_11_imports() -> Result<()> {
+    use std::io::Write;
+
+    let _dir = tempdir()?;
+    let dir = _dir.path();
+    let colpkg_name = dir.join("old.colpkg");
+    let mut writer = zip::ZipWriter::new(std::fs::File::create(&colpkg_name)?);
+    let options = zip::write::SimpleFileOptions::default();
+    writer.start_file("collection.anki2", options)?;
+    writer.write_all(include_bytes!("../../../../tests/support/mediacheck.anki2"))?;
+    writer.start_file("media", options)?;
+    writer.write_all(b"{}")?;
+    writer.finish()?;
+
+    let col = collection_with_media(dir, "unrelated")?;
+    let progress = col.new_progress_handler();
+    drop(col);
+    let anki2_name = dir.join("imported.anki2");
+    let media_dir = dir.join("imported.media");
+    create_dir_all(&media_dir)?;
+    let media_db = dir.join("imported.mdb");
+    MediaManager::new(&media_dir, &media_db)?;
+    import_colpkg(
+        &colpkg_name.to_string_lossy(),
+        &anki2_name.to_string_lossy(),
+        &media_dir,
+        &media_db,
+        progress,
+    )?;
+
+    assert_eq!(crate::storage::stored_schema_version(&anki2_name)?, 19);
+    let mut col = CollectionBuilder::new(&anki2_name).build()?;
+    assert_eq!(col.search_notes_unordered("")?.len(), 3);
+    Ok(())
+}

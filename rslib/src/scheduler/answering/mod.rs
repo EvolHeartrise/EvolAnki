@@ -321,7 +321,6 @@ impl Collection {
             .get_card(answer.card_id)?
             .or_not_found(answer.card_id)?;
         let original = card.clone();
-        let usn = self.usn()?;
 
         let mut updater = self.card_state_updater(card)?;
         answer.cap_answer_secs(updater.config.inner.cap_answer_time_to_secs);
@@ -336,9 +335,9 @@ impl Collection {
         );
 
         let revlog_partial = updater.apply_study_state(current_state, answer.new_state)?;
-        self.add_partial_revlog(revlog_partial, usn, answer)?;
+        self.add_partial_revlog(revlog_partial, answer)?;
 
-        self.update_deck_stats_from_answer(usn, answer, &updater, original.queue)?;
+        self.update_deck_stats_from_answer(answer, &updater, original.queue)?;
         let timing = updater.timing;
         let deckconfig_id = updater.original_deck.config_id();
         let mut card = updater.into_card();
@@ -353,7 +352,7 @@ impl Collection {
             card.validate_custom_data()?;
         }
 
-        self.update_card_inner(&mut card, original, usn)?;
+        self.update_card_inner(&mut card, original)?;
 
         if card.queue == CardQueue::Review {
             if let Some(load_balancer) = self
@@ -389,11 +388,9 @@ impl Collection {
     fn add_partial_revlog(
         &mut self,
         partial: RevlogEntryPartial,
-        usn: Usn,
         answer: &CardAnswer,
     ) -> Result<()> {
         let revlog = partial.into_revlog_entry(
-            usn,
             answer.card_id,
             answer.rating.as_number(),
             answer.answered_at,
@@ -405,7 +402,6 @@ impl Collection {
 
     fn update_deck_stats_from_answer(
         &mut self,
-        usn: Usn,
         answer: &CardAnswer,
         updater: &CardStateUpdater,
         from_queue: CardQueue,
@@ -419,7 +415,6 @@ impl Collection {
         }
         self.update_deck_stats(
             updater.timing.days_elapsed,
-            usn,
             anki_proto::scheduler::UpdateStatsRequest {
                 deck_id: updater.deck.id.0,
                 new_delta,

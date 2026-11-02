@@ -6,17 +6,16 @@ impl Collection {
     pub fn remove_decks_and_child_decks(&mut self, dids: &[DeckId]) -> Result<OpOutput<usize>> {
         self.transact(Op::RemoveDeck, |col| {
             let mut card_count = 0;
-            let usn = col.usn()?;
             for did in dids {
                 if let Some(deck) = col.storage.get_deck(*did)? {
                     let child_decks = col.storage.child_decks(&deck)?;
 
                     // top level
-                    card_count += col.remove_single_deck(&deck, usn)?;
+                    card_count += col.remove_single_deck(&deck)?;
 
                     // remove children
                     for deck in child_decks {
-                        card_count += col.remove_single_deck(&deck, usn)?;
+                        card_count += col.remove_single_deck(&deck)?;
                     }
                 }
             }
@@ -24,7 +23,7 @@ impl Collection {
         })
     }
 
-    pub(crate) fn remove_single_deck(&mut self, deck: &Deck, usn: Usn) -> Result<usize> {
+    pub(crate) fn remove_single_deck(&mut self, deck: &Deck) -> Result<usize> {
         let card_count = match deck.kind {
             DeckKind::Normal(_) => self.delete_all_cards_in_normal_deck(deck.id)?,
             DeckKind::Filtered(_) => {
@@ -39,8 +38,8 @@ impl Collection {
             let mut modified_default = deck.clone();
             modified_default.name =
                 NativeDeckName::from_native_str(self.tr.deck_config_default_name());
-            self.prepare_deck_for_update(&mut modified_default, usn)?;
-            modified_default.set_modified(usn);
+            self.prepare_deck_for_update(&mut modified_default)?;
+            modified_default.set_modified();
             self.update_single_deck_undoable(&mut modified_default, deck.clone())?;
             self.reset_settings(deck.id)?;
         } else {

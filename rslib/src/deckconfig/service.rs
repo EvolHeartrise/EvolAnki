@@ -116,7 +116,6 @@ impl From<DeckConfig> for anki_proto::deck_config::DeckConfig {
             id: c.id.0,
             name: c.name,
             mtime_secs: c.mtime_secs.0,
-            usn: c.usn.0,
             config: Some(c.inner),
         }
     }
@@ -146,7 +145,6 @@ impl From<anki_proto::deck_config::DeckConfig> for DeckConfig {
             id: c.id.into(),
             name: c.name,
             mtime_secs: c.mtime_secs.into(),
-            usn: c.usn.into(),
             inner: c.config.unwrap_or_default(),
         }
     }

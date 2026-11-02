@@ -23,7 +23,6 @@ impl SqliteStorage {
                 self.set_config_entry(&ConfigEntry::boxed(
                     ConfigKey::CurrentNotetypeId.into(),
                     serde_json::to_vec(&nt.id)?,
-                    self.usn()?,
                     TimestampSecs::now(),
                 ))?;
             }

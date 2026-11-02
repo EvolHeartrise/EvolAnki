@@ -26,14 +26,13 @@ impl Collection {
         }
     }
 
-    /// Updates an existing tag, saving an undo entry. Caller must update usn.
+    /// Updates an existing tag, saving an undo entry.
     pub(super) fn update_tag_undoable(&mut self, tag: &Tag, original: Tag) -> Result<()> {
         self.save_undo(UndoableTagChange::Updated(Box::new(original)));
         self.storage.update_tag(tag)
     }
 
     /// Adds an already-validated tag to the tag list, saving an undo entry.
-    /// Caller is responsible for setting usn.
     pub(super) fn register_tag_undoable(&mut self, tag: &Tag) -> Result<()> {
         self.save_undo(UndoableTagChange::Added(Box::new(tag.clone())));
         self.storage.register_tag(tag)

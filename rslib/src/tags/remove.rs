@@ -19,8 +19,6 @@ impl Collection {
 
 impl Collection {
     fn remove_tags_from_notes_inner(&mut self, nids: &[NoteId], tags: &str) -> Result<usize> {
-        let usn = self.usn()?;
-
         let mut re = TagMatcher::new(tags)?;
         let mut match_count = 0;
         let notes = self.storage.get_note_tags_by_id_list(nids)?;
@@ -33,7 +31,7 @@ impl Collection {
             match_count += 1;
             let original = note.clone();
             note.tags = re.remove(&note.tags);
-            note.set_modified(usn);
+            note.set_modified();
             self.update_note_tags_undoable(&note, original)?;
         }
 

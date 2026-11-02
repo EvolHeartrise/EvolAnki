@@ -2,7 +2,6 @@ INSERT
   OR IGNORE INTO revlog (
     id,
     cid,
-    usn,
     ease,
     ivl,
     lastIvl,
@@ -24,7 +23,6 @@ VALUES (
         ELSE ?2
       END
     ),
-    ?,
     ?,
     ?,
     ?,

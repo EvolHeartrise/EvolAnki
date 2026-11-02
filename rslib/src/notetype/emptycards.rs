@@ -25,7 +25,7 @@ pub struct EmptyCardsForNote {
 impl Collection {
     fn empty_cards_for_notetype(&self, nt: &Notetype) -> Result<Vec<EmptyCardsForNote>> {
         let last_deck = self.get_last_deck_added_to_for_notetype(nt.id);
-        let ctx = CardGenContext::new(nt, last_deck, self.usn()?);
+        let ctx = CardGenContext::new(nt, last_deck);
         let existing_cards = self.storage.existing_cards_for_notetype(nt.id)?;
         let by_note = group_generated_cards_by_note(existing_cards);
         let mut out = Vec::with_capacity(by_note.len());

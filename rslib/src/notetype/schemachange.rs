@@ -67,7 +67,6 @@ impl Collection {
         previous_sort_idx: u32,
         normalize_text: bool,
     ) -> Result<()> {
-        let usn = self.usn()?;
         let ords: Vec<_> = nt.fields.iter().map(|f| f.ord).collect();
         if !ords_changed(&ords, previous_field_count) {
             if nt.config.sort_field_idx != previous_sort_idx {
@@ -80,7 +79,6 @@ impl Collection {
                         note: &mut note,
                         original: &original,
                         notetype: nt,
-                        usn,
                         mark_note_modified: true,
                         normalize_text,
                         update_tags: false,
@@ -95,7 +93,6 @@ impl Collection {
 
         // fields have changed
         let nids = self.search_notes_unordered(nt.id)?;
-        let usn = self.usn()?;
         for nid in nids {
             let mut note = self.storage.get_note(nid)?.unwrap();
             let original = note.clone();
@@ -104,7 +101,6 @@ impl Collection {
                 note: &mut note,
                 original: &original,
                 notetype: nt,
-                usn,
                 mark_note_modified: true,
                 normalize_text,
                 update_tags: false,
@@ -122,7 +118,6 @@ impl Collection {
         nt: &Notetype,
         old_templates: &[CardTemplate],
     ) -> Result<()> {
-        let usn = self.usn()?;
         let ords: Vec<_> = nt.templates.iter().map(|f| f.ord).collect();
         let changes = TemplateOrdChanges::new(ords, old_templates.len() as u32);
 
@@ -140,13 +135,13 @@ impl Collection {
             for mut card in self.all_cards_for_search(nt.id.and(ords))? {
                 let original = card.clone();
                 card.template_idx = *changes.moved.get(&card.template_idx).unwrap();
-                self.update_card_inner(&mut card, original, usn)?;
+                self.update_card_inner(&mut card, original)?;
             }
         }
 
         if should_generate_cards(&changes, nt, old_templates) {
             let last_deck = self.get_last_deck_added_to_for_notetype(nt.id);
-            let ctx = CardGenContext::new(nt, last_deck, usn);
+            let ctx = CardGenContext::new(nt, last_deck);
             self.generate_cards_for_notetype(&ctx)?;
         }
 

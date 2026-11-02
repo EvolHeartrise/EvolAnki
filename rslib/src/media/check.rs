@@ -386,7 +386,6 @@ impl MediaChecker<'_> {
         let mut collection_modified = false;
 
         let nids = self.col.search_notes_unordered("")?;
-        let usn = self.col.usn()?;
         for nid in nids {
             self.increment_progress()?;
             let mut note = self.col.storage.get_note(nid)?.unwrap();
@@ -400,7 +399,7 @@ impl MediaChecker<'_> {
             if self.fix_and_extract_media_refs(&mut note, &mut tracker, renamed)? {
                 // note was modified, needs saving
                 note.prepare_for_update(nt, false)?;
-                note.set_modified(usn);
+                note.set_modified();
                 self.col.storage.update_note(&note)?;
                 collection_modified = true;
             }

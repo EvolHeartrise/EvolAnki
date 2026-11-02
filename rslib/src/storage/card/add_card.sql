@@ -4,7 +4,6 @@ INSERT INTO cards (
     did,
     ord,
     mod,
-    usn,
     type,
     queue,
     due,
@@ -31,7 +30,6 @@ VALUES (
         ELSE ?1
       END
     ),
-    ?,
     ?,
     ?,
     ?,

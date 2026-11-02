@@ -35,13 +35,12 @@ fn row_to_revlog_entry(row: &Row) -> Result<RevlogEntry> {
     Ok(RevlogEntry {
         id: row.get(0)?,
         cid: row.get(1)?,
-        usn: row.get(2)?,
-        button_chosen: row.get(3)?,
-        interval: row.get(4)?,
-        last_interval: row.get(5)?,
-        ease_factor: row.get(6)?,
-        taken_millis: row.get(7).unwrap_or_default(),
-        review_kind: row.get(8).unwrap_or_default(),
+        button_chosen: row.get(2)?,
+        interval: row.get(3)?,
+        last_interval: row.get(4)?,
+        ease_factor: row.get(5)?,
+        taken_millis: row.get(6).unwrap_or_default(),
+        review_kind: row.get(7).unwrap_or_default(),
     })
 }
 
@@ -68,7 +67,6 @@ impl SqliteStorage {
                 uniquify,
                 entry.id,
                 entry.cid,
-                entry.usn,
                 entry.button_chosen,
                 entry.interval,
                 entry.last_interval,
@@ -316,9 +314,9 @@ mod test {
         storage
             .db
             .execute(
-                "insert into revlog (id, cid, usn, ease, ivl, lastIvl, factor, time, type) \
-                 values (?,?,?,?,?,?,?,?,?)",
-                params![100i64, 1i64, 0, 3, 0, 0, 0, 0, 99],
+                "insert into revlog (id, cid, ease, ivl, lastIvl, factor, time, type) \
+                 values (?,?,?,?,?,?,?,?)",
+                params![100i64, 1i64, 3, 0, 0, 0, 0, 99],
             )
             .unwrap();
 

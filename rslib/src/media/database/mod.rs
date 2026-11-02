@@ -240,7 +240,8 @@ fn initial_db_setup(db: &mut Connection) -> error::Result<()> {
 }
 
 /// A database from before sync was removed has a flag per file, tombstones of
-/// deleted files, and a sync counter. In one transaction, so it's all or nothing.
+/// deleted files, and a sync counter. In one transaction, so it's all or
+/// nothing.
 fn remove_sync_state(db: &mut Connection) -> error::Result<()> {
     if !db
         .prepare_cached("select null from pragma_table_info('media') where name = 'dirty'")?

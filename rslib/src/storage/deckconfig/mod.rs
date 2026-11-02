@@ -18,7 +18,7 @@ use crate::deckconfig::DeckConfigInner;
 use crate::prelude::*;
 
 fn row_to_deckconf(row: &Row, fix_invalid: bool) -> Result<DeckConfig> {
-    let mut config = DeckConfigInner::decode(row.get_ref_unwrap(4).as_blob()?)?;
+    let mut config = DeckConfigInner::decode(row.get_ref_unwrap(3).as_blob()?)?;
     if fix_invalid {
         ensure_deck_config_values_valid(&mut config);
     }
@@ -26,7 +26,6 @@ fn row_to_deckconf(row: &Row, fix_invalid: bool) -> Result<DeckConfig> {
         id: row.get(0)?,
         name: row.get(1)?,
         mtime_secs: row.get(2)?,
-        usn: row.get(3)?,
         inner: config,
     })
 }
@@ -73,13 +72,7 @@ impl SqliteStorage {
         conf.inner.encode(&mut conf_bytes)?;
         self.db
             .prepare_cached(include_str!("add_if_unique.sql"))?
-            .execute(params![
-                conf.id,
-                conf.name,
-                conf.mtime_secs,
-                conf.usn,
-                conf_bytes,
-            ])
+            .execute(params![conf.id, conf.name, conf.mtime_secs, conf_bytes,])
             .map(|added| added == 1)
             .map_err(Into::into)
     }
@@ -89,13 +82,7 @@ impl SqliteStorage {
         conf.inner.encode(&mut conf_bytes)?;
         self.db
             .prepare_cached(include_str!("update.sql"))?
-            .execute(params![
-                conf.name,
-                conf.mtime_secs,
-                conf.usn,
-                conf_bytes,
-                conf.id,
-            ])?;
+            .execute(params![conf.name, conf.mtime_secs, conf_bytes, conf.id,])?;
         Ok(())
     }
 
@@ -110,13 +97,7 @@ impl SqliteStorage {
         conf.inner.encode(&mut conf_bytes)?;
         self.db
             .prepare_cached(include_str!("add_or_update.sql"))?
-            .execute(params![
-                conf.id,
-                conf.name,
-                conf.mtime_secs,
-                conf.usn,
-                conf_bytes,
-            ])?;
+            .execute(params![conf.id, conf.name, conf.mtime_secs, conf_bytes,])?;
         Ok(())
     }
 
@@ -138,7 +119,6 @@ impl SqliteStorage {
                 conf.id,
                 conf.name,
                 conf.mtime,
-                conf.usn,
                 &serde_json::to_vec(conf)?,
             ])?;
         let id = self.db.last_insert_rowid();

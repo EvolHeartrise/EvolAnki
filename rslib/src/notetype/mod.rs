@@ -78,7 +78,6 @@ pub struct Notetype {
     pub id: NotetypeId,
     pub name: String,
     pub mtime_secs: TimestampSecs,
-    pub usn: Usn,
     pub fields: Vec<NoteField>,
     pub templates: Vec<CardTemplate>,
     pub config: NotetypeConfig,
@@ -90,7 +89,6 @@ impl Default for Notetype {
             id: NotetypeId(0),
             name: "".into(),
             mtime_secs: TimestampSecs(0),
-            usn: Usn(0),
             fields: vec![],
             templates: vec![],
             config: Notetype::new_config(),
@@ -130,9 +128,8 @@ impl Collection {
         skip_checks: bool,
     ) -> Result<OpOutput<()>> {
         self.transact(Op::AddNotetype, |col| {
-            let usn = col.usn()?;
-            notetype.set_modified(usn);
-            col.add_notetype_inner(notetype, usn, skip_checks)
+            notetype.set_modified();
+            col.add_notetype_inner(notetype, skip_checks)
         })
     }
 
@@ -150,14 +147,8 @@ impl Collection {
                 .storage
                 .get_notetype(notetype.id)?
                 .or_not_found(notetype.id)?;
-            let usn = col.usn()?;
-            notetype.set_modified(usn);
-            col.add_or_update_notetype_with_existing_id_inner(
-                notetype,
-                Some(original),
-                usn,
-                skip_checks,
-            )
+            notetype.set_modified();
+            col.add_or_update_notetype_with_existing_id_inner(notetype, Some(original), skip_checks)
         })
     }
 
@@ -217,9 +208,8 @@ impl Notetype {
         }
     }
 
-    pub(crate) fn set_modified(&mut self, usn: Usn) {
+    pub(crate) fn set_modified(&mut self) {
         self.mtime_secs = TimestampSecs::now();
-        self.usn = usn;
     }
 
     fn updated_requirements(
@@ -633,7 +623,6 @@ impl From<Notetype> for NotetypeProto {
             id: nt.id.0,
             name: nt.name,
             mtime_secs: nt.mtime_secs.0,
-            usn: nt.usn.0,
             config: Some(nt.config),
             fields: nt.fields.into_iter().map(Into::into).collect(),
             templates: nt.templates.into_iter().map(Into::into).collect(),
@@ -642,11 +631,7 @@ impl From<Notetype> for NotetypeProto {
 }
 
 impl Collection {
-    pub(crate) fn ensure_notetype_name_unique(
-        &self,
-        notetype: &mut Notetype,
-        usn: Usn,
-    ) -> Result<()> {
+    pub(crate) fn ensure_notetype_name_unique(&self, notetype: &mut Notetype) -> Result<()> {
         loop {
             match self.storage.get_notetype_id(&notetype.name)? {
                 Some(id) if id == notetype.id => {
@@ -656,7 +641,7 @@ impl Collection {
                 _ => (),
             }
             notetype.name += "+";
-            notetype.set_modified(usn);
+            notetype.set_modified();
         }
 
         Ok(())
@@ -666,11 +651,10 @@ impl Collection {
     pub(crate) fn add_notetype_inner(
         &mut self,
         notetype: &mut Notetype,
-        usn: Usn,
         skip_checks: bool,
     ) -> Result<()> {
         notetype.prepare_for_update(None, skip_checks)?;
-        self.ensure_notetype_name_unique(notetype, usn)?;
+        self.ensure_notetype_name_unique(notetype)?;
         self.add_notetype_undoable(notetype)?;
         self.set_current_notetype_id(notetype.id)
     }
@@ -681,12 +665,11 @@ impl Collection {
         &mut self,
         notetype: &mut Notetype,
         original: Option<Notetype>,
-        usn: Usn,
         skip_checks: bool,
     ) -> Result<()> {
         let normalize = self.get_config_bool(BoolKey::NormalizeNoteText);
         notetype.prepare_for_update(original.as_ref(), skip_checks)?;
-        self.ensure_notetype_name_unique(notetype, usn)?;
+        self.ensure_notetype_name_unique(notetype)?;
 
         if let Some(original) = original {
             self.update_notes_for_changed_fields(
@@ -716,9 +699,8 @@ impl Collection {
         };
 
         // remove associated cards/notes
-        let usn = self.usn()?;
         let note_ids = self.search_notes_unordered(ntid)?;
-        self.remove_notes_inner(&note_ids, usn)?;
+        self.remove_notes_inner(&note_ids)?;
 
         // remove notetype
         self.state.notetype_cache.remove(&ntid);
@@ -729,7 +711,7 @@ impl Collection {
         let all = self.storage.get_all_notetype_names()?;
         if all.is_empty() {
             let mut nt = all_stock_notetypes(&self.tr).remove(0);
-            self.add_notetype_inner(&mut nt, self.usn()?, true)?;
+            self.add_notetype_inner(&mut nt, true)?;
             self.set_current_notetype_id(nt.id)
         } else {
             self.set_current_notetype_id(all[0].0)

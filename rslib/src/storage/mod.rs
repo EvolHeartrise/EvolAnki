@@ -11,7 +11,6 @@ mod note;
 mod notetype;
 mod revlog;
 mod sqlite;
-mod sync;
 mod tag;
 mod upgrades;
 
@@ -33,9 +32,14 @@ pub const QUEUE_ONCE_OPENED_SQL: &str = "CASE
 pub(crate) use deck::all_decks;
 pub(crate) use deckconfig::all_deck_config_unchecked;
 pub use sqlite::copy_database;
+pub use sqlite::schema_upgrade_needed;
+#[cfg(test)]
+pub(crate) use sqlite::stored_schema_version;
 pub use sqlite::verify_copied_collection;
 pub(crate) use sqlite::ProcessTextFlags;
 pub(crate) use sqlite::SqliteStorage;
+#[cfg(test)]
+pub(crate) use upgrades::test::turn_into_schema_18;
 
 /// Write a list of IDs as '(x,y,...)' into the provided string.
 pub fn ids_to_string<D, I>(buf: &mut String, ids: I)

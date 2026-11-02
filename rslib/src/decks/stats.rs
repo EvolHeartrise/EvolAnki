@@ -22,7 +22,6 @@ impl Collection {
     pub(crate) fn update_deck_stats(
         &mut self,
         today: u32,
-        usn: Usn,
         input: anki_proto::scheduler::UpdateStatsRequest,
     ) -> Result<()> {
         let did = input.deck_id.into();
@@ -32,9 +31,9 @@ impl Collection {
             c.milliseconds_studied += input.millisecond_delta;
         };
         if let Some(mut deck) = self.storage.get_deck(did)? {
-            self.update_deck_stats_single(today, usn, &mut deck, mutator)?;
+            self.update_deck_stats_single(today, &mut deck, mutator)?;
             for mut deck in self.storage.parent_decks(&deck)? {
-                self.update_deck_stats_single(today, usn, &mut deck, mutator)?;
+                self.update_deck_stats_single(today, &mut deck, mutator)?;
             }
         }
         Ok(())
@@ -48,7 +47,6 @@ impl Collection {
     pub(crate) fn extend_limits(
         &mut self,
         today: u32,
-        usn: Usn,
         did: DeckId,
         new_delta: i32,
         review_delta: i32,
@@ -58,10 +56,10 @@ impl Collection {
             c.review_studied -= review_delta;
         };
         if let Some(mut deck) = self.storage.get_deck(did)? {
-            self.update_deck_stats_single(today, usn, &mut deck, mutator)?;
+            self.update_deck_stats_single(today, &mut deck, mutator)?;
             if self.get_config_bool(BoolKey::ApplyAllParentLimits) {
                 for mut parent in self.storage.parent_decks(&deck)? {
-                    self.update_deck_stats_single(today, usn, &mut parent, mutator)?;
+                    self.update_deck_stats_single(today, &mut parent, mutator)?;
                 }
             }
         }
@@ -71,20 +69,14 @@ impl Collection {
 }
 
 impl Collection {
-    fn update_deck_stats_single<F>(
-        &mut self,
-        today: u32,
-        usn: Usn,
-        deck: &mut Deck,
-        mutator: F,
-    ) -> Result<()>
+    fn update_deck_stats_single<F>(&mut self, today: u32, deck: &mut Deck, mutator: F) -> Result<()>
     where
         F: FnOnce(&mut DeckCommon),
     {
         let original = deck.clone();
         deck.reset_stats_if_day_changed(today);
         mutator(&mut deck.common);
-        deck.set_modified(usn);
+        deck.set_modified();
         self.update_single_deck_undoable(deck, original)
     }
 }

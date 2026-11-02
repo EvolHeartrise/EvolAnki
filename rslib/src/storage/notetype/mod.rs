@@ -22,12 +22,11 @@ use crate::notetype::NotetypeSchema11;
 use crate::prelude::*;
 
 fn row_to_notetype_core(row: &Row) -> Result<Notetype> {
-    let config = NotetypeConfig::decode(row.get_ref_unwrap(4).as_blob()?)?;
+    let config = NotetypeConfig::decode(row.get_ref_unwrap(3).as_blob()?)?;
     Ok(Notetype {
         id: row.get(0)?,
         name: row.get(1)?,
         mtime_secs: row.get(2)?,
-        usn: row.get(3)?,
         config,
         fields: vec![],
         templates: vec![],
@@ -82,12 +81,11 @@ impl SqliteStorage {
         self.db
             .prepare_cached(include_str!("get_templates.sql"))?
             .query_and_then([ntid], |row| {
-                let config = CardTemplateConfig::decode(row.get_ref_unwrap(4).as_blob()?)?;
+                let config = CardTemplateConfig::decode(row.get_ref_unwrap(3).as_blob()?)?;
                 Ok(CardTemplate {
                     ord: row.get(0)?,
                     name: row.get(1)?,
                     mtime_secs: row.get(2)?,
-                    usn: row.get(3)?,
                     config,
                 })
             })?
@@ -189,7 +187,6 @@ impl SqliteStorage {
                 ord as u32,
                 template.name,
                 template.mtime_secs,
-                template.usn,
                 config_bytes,
             ])?;
         }
@@ -203,7 +200,7 @@ impl SqliteStorage {
         let mut stmt = self.db.prepare_cached(include_str!("add_or_update.sql"))?;
         let mut config_bytes = vec![];
         nt.config.encode(&mut config_bytes)?;
-        stmt.execute(params![nt.id, nt.name, nt.mtime_secs, nt.usn, config_bytes])?;
+        stmt.execute(params![nt.id, nt.name, nt.mtime_secs, config_bytes])?;
 
         Ok(())
     }
@@ -218,7 +215,6 @@ impl SqliteStorage {
             TimestampMillis::now(),
             nt.name,
             nt.mtime_secs,
-            nt.usn,
             config_bytes
         ])?;
         nt.id.0 = self.db.last_insert_rowid();

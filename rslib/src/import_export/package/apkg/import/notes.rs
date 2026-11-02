@@ -24,7 +24,6 @@ use crate::text::replace_media_refs;
 #[derive(Debug)]
 struct NoteContext<'a> {
     target_col: &'a mut Collection,
-    usn: Usn,
     normalize_notes: bool,
     remapped_notetypes: HashMap<NotetypeId, NotetypeId>,
     remapped_fields: HashMap<NotetypeId, Vec<Option<u32>>>,
@@ -94,7 +93,6 @@ impl Context<'_> {
         media_map: &mut MediaUseMap,
     ) -> Result<NoteImports> {
         let mut ctx = NoteContext::new(
-            self.usn,
             self.target_col,
             media_map,
             self.merge_notetypes,
@@ -109,7 +107,6 @@ impl Context<'_> {
 
 impl<'n> NoteContext<'n> {
     fn new<'a: 'n>(
-        usn: Usn,
         target_col: &'a mut Collection,
         media_map: &'a mut MediaUseMap,
         merge_notetypes: bool,
@@ -121,7 +118,6 @@ impl<'n> NoteContext<'n> {
         let target_notetypes = target_col.get_all_notetypes()?;
         Ok(Self {
             target_col,
-            usn,
             normalize_notes,
             remapped_notetypes: HashMap::new(),
             remapped_fields: HashMap::new(),
@@ -203,9 +199,7 @@ impl<'n> NoteContext<'n> {
 
     fn add_notetype(&mut self, notetype: &mut Notetype) -> Result<()> {
         notetype.prepare_for_update(None, true)?;
-        self.target_col
-            .ensure_notetype_name_unique(notetype, self.usn)?;
-        notetype.usn = self.usn;
+        self.target_col.ensure_notetype_name_unique(notetype)?;
         self.target_col
             .add_notetype_with_unique_id_undoable(notetype)
     }
@@ -217,13 +211,12 @@ impl<'n> NoteContext<'n> {
         modified: bool,
     ) -> Result<()> {
         if modified {
-            notetype.set_modified(self.usn);
+            notetype.set_modified();
             notetype.prepare_for_update(Some(&original), true)?;
         } else {
-            notetype.usn = self.usn;
         }
         self.target_col
-            .add_or_update_notetype_with_existing_id_inner(notetype, Some(original), self.usn, true)
+            .add_or_update_notetype_with_existing_id_inner(notetype, Some(original), true)
     }
 
     fn update_or_merge_notetype(
@@ -314,9 +307,7 @@ impl<'n> NoteContext<'n> {
 
     fn add_notetype_with_remapped_id(&mut self, notetype: &mut Notetype) -> Result<()> {
         let old_id = mem::take(&mut notetype.id);
-        notetype.usn = self.usn;
-        self.target_col
-            .add_notetype_inner(notetype, self.usn, true)?;
+        self.target_col.add_notetype_inner(notetype, true)?;
         self.remapped_notetypes.insert(old_id, notetype.id);
         Ok(())
     }
@@ -417,10 +408,9 @@ impl<'n> NoteContext<'n> {
 
     fn add_note(&mut self, mut note: Note) -> Result<()> {
         self.munge_media(&mut note)?;
-        self.target_col.canonify_note_tags(&mut note, self.usn)?;
+        self.target_col.canonify_note_tags(&mut note)?;
         let notetype = self.get_expected_notetype(note.notetype_id)?;
         note.prepare_for_update(&notetype, self.normalize_notes)?;
-        note.usn = self.usn;
         let old_id = self.uniquify_note_id(&mut note);
 
         self.target_col.add_note_only_with_id_undoable(&mut note)?;
@@ -459,7 +449,6 @@ impl<'n> NoteContext<'n> {
                 note: &mut note,
                 original: &original,
                 notetype: &notetype,
-                usn: self.usn,
                 mark_note_modified: true,
                 normalize_text: self.normalize_notes,
                 update_tags: true,
@@ -654,7 +643,6 @@ mod test {
             let mut progress_handler = col.new_progress_handler();
             let media_map = Box::leak(Box::new(self.media_map));
             let mut ctx = NoteContext::new(
-                Usn(1),
                 col,
                 media_map,
                 self.merge_notetypes,
@@ -929,7 +917,7 @@ mod test {
         // ... which was modified and has notes
         remapped.fields.push(NoteField::new("new remapped"));
         remapped.id.0 = 0;
-        col.add_notetype_inner(&mut remapped, Usn(0), true).unwrap();
+        col.add_notetype_inner(&mut remapped, true).unwrap();
         let mut note = Note::new(&remapped);
         *note.fields_mut() = vec![
             String::from("front"),
@@ -1031,7 +1019,7 @@ mod test {
             .fields
             .push(NoteField::new("new existing"));
         existing_notetype.id.0 = 0;
-        col.add_notetype_inner(&mut existing_notetype, Usn(0), true)
+        col.add_notetype_inner(&mut existing_notetype, true)
             .unwrap();
         // incoming conflicts with existing note, e.g. because it was remapped during a
         // previous import (which wasn't recording the origninal id of the notetype yet)

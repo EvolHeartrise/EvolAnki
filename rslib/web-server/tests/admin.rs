@@ -195,7 +195,7 @@ fn make_deck_share_settings(fx: &Fixture, did: i64) {
     db.execute("delete from deck_config where id = ?", [did])
         .unwrap();
     db.execute(
-        "insert into deck_config select 12345, 'Unused', mtime_secs, usn, config
+        "insert into deck_config select 12345, 'Unused', mtime_secs, config
          from deck_config where id = 1",
         [],
     )
@@ -219,6 +219,112 @@ fn backup_from_before_migrating(fx: &Fixture) -> Option<PathBuf> {
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.is_file())
         .find(|path| settings_rows(path).contains(&12345))
+}
+
+/// What a closed collection has if it's from before schema 19, with rows that
+/// show which file a backup was taken of.
+fn make_schema_18(fx: &Fixture) {
+    let db = rusqlite::Connection::open(fx.collection()).unwrap();
+    for table in [
+        "notes",
+        "cards",
+        "revlog",
+        "deck_config",
+        "config",
+        "templates",
+        "notetypes",
+        "decks",
+        "tags",
+    ] {
+        db.execute_batch(&format!(
+            "ALTER TABLE {table} ADD COLUMN usn integer NOT NULL DEFAULT -1"
+        ))
+        .unwrap();
+    }
+    db.execute_batch(
+        "CREATE INDEX ix_cards_usn ON cards (usn);
+         CREATE TABLE graves (oid integer NOT NULL, type integer NOT NULL,
+           usn integer NOT NULL, PRIMARY KEY (oid, type)) WITHOUT ROWID;
+         INSERT INTO graves VALUES (123, 0, -1);
+         ALTER TABLE col ADD COLUMN scm integer NOT NULL DEFAULT 5;
+         ALTER TABLE col ADD COLUMN dty integer NOT NULL DEFAULT 0;
+         ALTER TABLE col ADD COLUMN usn integer NOT NULL DEFAULT 7;
+         ALTER TABLE col ADD COLUMN ls integer NOT NULL DEFAULT 8;
+         UPDATE col SET ver = 18;",
+    )
+    .unwrap();
+}
+
+fn schema_version(path: &Path) -> u8 {
+    rusqlite::Connection::open(path)
+        .unwrap()
+        .query_row("select ver from col", [], |row| row.get(0))
+        .unwrap()
+}
+
+/// The backup at schema 18, with a grave still in it, if there is one.
+fn backup_from_before_the_schema_change(fx: &Fixture) -> Option<PathBuf> {
+    fs::read_dir(fx.dir.path().join("backups"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.is_file())
+        .find(|path| schema_version(path) == 18)
+}
+
+#[test]
+fn opening_directly_backs_up_before_the_schema_change() {
+    let fx = Fixture::new();
+    let (note, _) = fx.add_note("kept");
+    make_schema_18(&fx);
+    let backups_before = fx.backups();
+
+    fx.ok("note.show", json!({"id":note}));
+
+    assert_eq!(schema_version(&fx.collection()), 19);
+    assert_eq!(fx.backups(), backups_before + 1);
+    let backup = backup_from_before_the_schema_change(&fx).unwrap();
+    let graves: i64 = rusqlite::Connection::open(backup)
+        .unwrap()
+        .query_row("select count() from graves", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(graves, 1);
+}
+
+#[test]
+fn the_server_backs_up_before_the_schema_change() {
+    let fx = Fixture::new();
+    make_schema_18(&fx);
+
+    let server = fx.start(&[]);
+    assert!(backup_from_before_the_schema_change(&fx).is_some());
+    server.stop();
+
+    assert_eq!(schema_version(&fx.collection()), 19);
+}
+
+#[test]
+fn neither_changes_the_schema_if_the_backup_fails() {
+    let fx = Fixture::new();
+    make_schema_18(&fx);
+    fs::rename(fx.dir.path().join("backups"), fx.dir.path().join("moved")).unwrap();
+    fs::write(fx.dir.path().join("backups"), "").unwrap();
+
+    let response = fx.raw("stats.summary", &json!({}));
+    assert_ne!(response["ok"], true, "{response}");
+    assert_eq!(schema_version(&fx.collection()), 18);
+
+    let status = Command::new(sibling("evolanki-server"))
+        .arg("--collection")
+        .arg(fx.collection())
+        .arg("--web-root")
+        .arg(fx.dir.path().join("web"))
+        .args(["--port", "0", "--host", "127.0.0.1"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert_eq!(schema_version(&fx.collection()), 18);
 }
 
 #[test]

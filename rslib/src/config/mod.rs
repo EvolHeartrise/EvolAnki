@@ -26,16 +26,14 @@ use crate::prelude::*;
 pub(crate) struct ConfigEntry {
     pub key: String,
     pub value: Vec<u8>,
-    pub usn: Usn,
     pub mtime: TimestampSecs,
 }
 
 impl ConfigEntry {
-    pub(crate) fn boxed(key: &str, value: Vec<u8>, usn: Usn, mtime: TimestampSecs) -> Box<Self> {
+    pub(crate) fn boxed(key: &str, value: Vec<u8>, mtime: TimestampSecs) -> Box<Self> {
         Box::new(Self {
             key: key.into(),
             value,
-            usn,
             mtime,
         })
     }
@@ -102,12 +100,7 @@ impl Collection {
     where
         K: Into<&'a str>,
     {
-        let entry = ConfigEntry::boxed(
-            key.into(),
-            serde_json::to_vec(val)?,
-            self.usn()?,
-            TimestampSecs::now(),
-        );
+        let entry = ConfigEntry::boxed(key.into(), serde_json::to_vec(val)?, TimestampSecs::now());
         self.set_config_undoable(entry)
     }
 

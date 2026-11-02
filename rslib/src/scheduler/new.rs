@@ -156,7 +156,6 @@ impl Collection {
         reset_counts: bool,
         context: Option<ScheduleAsNewContext>,
     ) -> Result<OpOutput<()>> {
-        let usn = self.usn()?;
         let mut position = self.get_next_card_position();
         self.transact(Op::ScheduleAsNew, |col| {
             let cards = col.all_cards_for_ids(cids, true)?;
@@ -166,9 +165,9 @@ impl Collection {
                     position += 1;
                 }
                 if log {
-                    col.log_manually_scheduled_review(&card, original.interval, usn)?;
+                    col.log_manually_scheduled_review(&card, original.interval)?;
                 }
-                col.update_card_inner(&mut card, original, usn)?;
+                col.update_card_inner(&mut card, original)?;
             }
             col.set_next_card_position(position)?;
 
@@ -196,14 +195,13 @@ impl Collection {
         order: NewCardDueOrder,
         shift: bool,
     ) -> Result<OpOutput<usize>> {
-        let usn = self.usn()?;
         self.transact(Op::SortCards, |col| {
             col.set_config_bool_inner(
                 BoolKey::RandomOrderReposition,
                 order == NewCardDueOrder::Random,
             )?;
             col.set_config_bool_inner(BoolKey::ShiftPositionOfExistingCards, shift)?;
-            col.sort_cards_inner(cids, starting_from, step, order, shift, usn)
+            col.sort_cards_inner(cids, starting_from, step, order, shift)
         })
     }
 
@@ -214,13 +212,12 @@ impl Collection {
         step: u32,
         order: NewCardDueOrder,
         shift: bool,
-        usn: Usn,
     ) -> Result<usize> {
         if self.scheduler_version() == SchedulerVersion::V1 {
             return Err(AnkiError::SchedulerUpgradeRequired);
         }
         if shift {
-            self.shift_existing_cards(starting_from, step * cids.len() as u32, usn)?;
+            self.shift_existing_cards(starting_from, step * cids.len() as u32)?;
         }
         let cards = self.all_cards_for_ids(cids, true)?;
         let sorter = NewCardSorter::new(&cards, starting_from, step, order);
@@ -229,30 +226,25 @@ impl Collection {
             let original = card.clone();
             if card.set_new_position(sorter.position(&card)) {
                 count += 1;
-                self.update_card_inner(&mut card, original, usn)?;
+                self.update_card_inner(&mut card, original)?;
             }
         }
         Ok(count)
     }
 
-    pub(crate) fn sort_deck(
-        &mut self,
-        deck: DeckId,
-        order: NewCardInsertOrder,
-        usn: Usn,
-    ) -> Result<usize> {
+    pub(crate) fn sort_deck(&mut self, deck: DeckId, order: NewCardInsertOrder) -> Result<usize> {
         let cids = self.search_cards(
             SearchNode::DeckIdsWithoutChildren(deck.to_string()).and(StateKind::New),
             SortMode::NoOrder,
         )?;
-        self.sort_cards_inner(&cids, 1, 1, order.into(), false, usn)
+        self.sort_cards_inner(&cids, 1, 1, order.into(), false)
     }
 
-    fn shift_existing_cards(&mut self, start: u32, by: u32, usn: Usn) -> Result<()> {
+    fn shift_existing_cards(&mut self, start: u32, by: u32) -> Result<()> {
         for mut card in self.storage.all_cards_at_or_above_position(start)? {
             let original = card.clone();
             card.set_new_position(card.due as u32 + by);
-            self.update_card_inner(&mut card, original, usn)?;
+            self.update_card_inner(&mut card, original)?;
         }
         Ok(())
     }

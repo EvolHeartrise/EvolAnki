@@ -26,7 +26,6 @@ use crate::progress::ProgressState;
 use crate::scheduler::queue::CardQueues;
 use crate::scheduler::SchedulerInfo;
 use crate::storage::SqliteStorage;
-use crate::types::Usn;
 use crate::undo::UndoManager;
 
 #[derive(Default)]
@@ -141,9 +140,5 @@ impl Collection {
     /// Closes the database, which happens when the connection is dropped.
     pub fn close(self) -> Result<()> {
         Ok(())
-    }
-
-    pub(crate) fn usn(&self) -> Result<Usn> {
-        self.storage.usn()
     }
 }

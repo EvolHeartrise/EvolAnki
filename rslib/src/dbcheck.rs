@@ -171,7 +171,6 @@ impl Collection {
         } = self.storage.fix_card_properties(
             timing.days_elapsed,
             TimestampSecs::now(),
-            self.usn()?,
             self.scheduler_version() == SchedulerVersion::V1,
         )?;
         out.card_position_too_high = new_cards_fixed;
@@ -190,9 +189,8 @@ impl Collection {
     }
 
     fn check_missing_deck_ids(&mut self, out: &mut CheckDatabaseOutput) -> Result<()> {
-        let usn = self.usn()?;
         for did in self.storage.missing_decks()? {
-            self.recover_missing_deck(did, usn)?;
+            self.recover_missing_deck(did)?;
             out.decks_missing += 1;
         }
         Ok(())
@@ -229,7 +227,6 @@ impl Collection {
     ) -> Result<()> {
         let nids_by_notetype = self.storage.all_note_ids_by_notetype()?;
         let norm = self.get_config_bool(BoolKey::NormalizeNoteText);
-        let usn = self.usn()?;
         let stamp_millis = TimestampMillis::now();
         let stamp_secs = TimestampSecs::now();
 
@@ -290,7 +287,6 @@ impl Collection {
                     CardGenContext::new(
                         nt.as_ref(),
                         self.get_last_deck_added_to_for_notetype(nt.id),
-                        usn,
                     )
                 });
                 self.update_note_inner_generating_cards(
@@ -307,7 +303,7 @@ impl Collection {
         // least one note type exists
         if self.storage.get_all_notetype_names()?.is_empty() {
             let mut nt = all_stock_notetypes(&self.tr).remove(0);
-            self.add_notetype_inner(&mut nt, usn, true)?;
+            self.add_notetype_inner(&mut nt, true)?;
         }
 
         Ok(())
@@ -505,8 +501,8 @@ mod test {
 
         col.storage.db.execute_batch(
             "
-        insert into revlog (id,cid,usn,ease,ivl,lastIvl,factor,time,type)
-        values (0,0,0,0,1.5,1.5,0,0,0)",
+        insert into revlog (id,cid,ease,ivl,lastIvl,factor,time,type)
+        values (0,0,0,1.5,1.5,0,0,0)",
         )?;
 
         let out = col.check_database()?;

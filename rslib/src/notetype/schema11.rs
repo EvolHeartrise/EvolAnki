@@ -25,7 +25,6 @@ use crate::serde::deserialize_bool_from_anything;
 use crate::serde::deserialize_number_from_string;
 use crate::serde::is_default;
 use crate::timestamp::TimestampSecs;
-use crate::types::Usn;
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Eq, Debug, Clone)]
 #[repr(u8)]
@@ -44,7 +43,6 @@ pub struct NotetypeSchema11 {
     pub(crate) kind: NotetypeKind,
     #[serde(rename = "mod")]
     pub(crate) mtime: TimestampSecs,
-    pub(crate) usn: Usn,
     pub(crate) sortf: u16,
     #[serde(deserialize_with = "default_on_invalid")]
     pub(crate) did: Option<DeckId>,
@@ -94,7 +92,6 @@ impl From<NotetypeSchema11> for Notetype {
             id: nt.id,
             name: nt.name,
             mtime_secs: nt.mtime,
-            usn: nt.usn,
             config: NotetypeConfig {
                 kind: nt.kind as i32,
                 sort_field_idx: nt.sortf as u32,
@@ -106,12 +103,19 @@ impl From<NotetypeSchema11> for Notetype {
                 reqs: nt.req.0.into_iter().map(Into::into).collect(),
                 original_stock_kind: nt.original_stock_kind,
                 original_id: nt.original_id,
-                other: other_to_bytes(&nt.other),
+                other: other_to_bytes_without_usn(nt.other),
             },
             fields: nt.flds.into_iter().map(Into::into).collect(),
             templates: nt.tmpls.into_iter().map(Into::into).collect(),
         }
     }
+}
+
+/// Old JSON has a usn, which isn't kept. As there's no field for it, it would
+/// end up with the keys this doesn't know.
+pub(crate) fn other_to_bytes_without_usn(mut other: HashMap<String, Value>) -> Vec<u8> {
+    other.remove("usn");
+    other_to_bytes(&other)
 }
 
 fn other_to_bytes(other: &HashMap<String, Value>) -> Vec<u8> {
@@ -252,7 +256,6 @@ impl From<CardTemplateSchema11> for CardTemplate {
             ord: t.ord.map(|t| t as u32),
             name: t.name,
             mtime_secs: TimestampSecs(0),
-            usn: Usn(0),
             config: CardTemplateConfig {
                 q_format: t.qfmt,
                 a_format: t.afmt,

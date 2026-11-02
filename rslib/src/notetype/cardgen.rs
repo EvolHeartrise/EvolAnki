@@ -44,7 +44,6 @@ pub(crate) struct SingleCardGenContext {
 /// Info required to determine which cards should be generated when note
 /// added/updated, and where they should be placed.
 pub(crate) struct CardGenContext<N: Deref<Target = Notetype>> {
-    pub usn: Usn,
     pub notetype: N,
     /// The last deck that was added to with this note type
     pub last_deck: Option<DeckId>,
@@ -59,7 +58,7 @@ pub(crate) struct CardGenCache {
 }
 
 impl<N: Deref<Target = Notetype>> CardGenContext<N> {
-    pub(crate) fn new(nt: N, last_deck: Option<DeckId>, usn: Usn) -> CardGenContext<N> {
+    pub(crate) fn new(nt: N, last_deck: Option<DeckId>) -> CardGenContext<N> {
         let cards = nt
             .templates
             .iter()
@@ -69,7 +68,6 @@ impl<N: Deref<Target = Notetype>> CardGenContext<N> {
             })
             .collect();
         CardGenContext {
-            usn,
             last_deck,
             notetype: nt,
             cards,
@@ -399,7 +397,7 @@ mod test {
         // create a new note of the basic type
         let mut note = note_type.new_note();
         // create a new context for the card generation
-        let context = CardGenContext::new(note_type, None, Usn(-1));
+        let context = CardGenContext::new(note_type, None);
         // set the front field of the note to "Hello World"
         note.set_field(0, "Hello World").unwrap();
 
@@ -414,7 +412,7 @@ mod test {
         let mut col = CollectionBuilder::default().build().unwrap();
         let note_type = col.get_notetype_by_name("Cloze").unwrap().unwrap();
         let mut note = note_type.new_note();
-        let context = CardGenContext::new(note_type, None, Usn(-1));
+        let context = CardGenContext::new(note_type, None);
         note.set_field(0, "Hello {{c1::World}}").unwrap();
 
         let cards = context.new_cards_required(&note, &[], true);
@@ -428,7 +426,7 @@ mod test {
         let mut col = CollectionBuilder::default().build().unwrap();
         let note_type = col.get_notetype_by_name("Cloze").unwrap().unwrap();
         let mut note = note_type.new_note();
-        let context = CardGenContext::new(note_type, None, Usn(-1));
+        let context = CardGenContext::new(note_type, None);
         note.set_field(0, "{{c1::Rome}} is in {{c2::Italy}}")
             .unwrap();
 
@@ -450,7 +448,7 @@ mod test {
         let mut note_type = (*arc_note_type).clone();
         note_type.templates[0].config.q_format = "{{#Tags}}{{Front}}{{/Tags}}".to_string();
         let mut note = note_type.new_note();
-        let context = CardGenContext::new(&note_type, None, Usn(-1));
+        let context = CardGenContext::new(&note_type, None);
         note.set_field(0, "Hello").unwrap();
         note.tags = vec!["vocabolary".to_string(), "english".to_string()];
 
@@ -469,7 +467,7 @@ mod test {
         let mut note_type = (*arc_note_type).clone();
         note_type.templates[0].config.q_format = "{{#Tags}}{{Front}}{{/Tags}}".to_string();
         let mut note = note_type.new_note();
-        let context = CardGenContext::new(&note_type, None, Usn(-1));
+        let context = CardGenContext::new(&note_type, None);
         note.set_field(0, "Hello").unwrap();
         note.tags = vec![];
 
@@ -487,7 +485,7 @@ mod test {
         note_type.templates[0].config.q_format =
             "{{#FrontSide}}{{Front}}{{/FrontSide}}".to_string();
         let mut note = note_type.new_note();
-        let context = CardGenContext::new(&note_type, None, Usn(-1));
+        let context = CardGenContext::new(&note_type, None);
         note.set_field(0, "Hello").unwrap();
 
         let cards = context.new_cards_required(&note, &[], false);
@@ -505,7 +503,7 @@ mod test {
         note_type.templates[0].config.q_format = "{{#Deck}}{{Front}}{{/Deck}}".to_string();
         let mut note = note_type.new_note();
         note.set_field(0, "Hello").unwrap();
-        let context = CardGenContext::new(&note_type, None, Usn(-1));
+        let context = CardGenContext::new(&note_type, None);
 
         assert!(context.new_cards_required(&note, &[], false).is_empty());
 
@@ -522,7 +520,7 @@ mod test {
             .unwrap()
             .unwrap();
         let mut note = note_type.new_note();
-        let context = CardGenContext::new(note_type, None, Usn(-1));
+        let context = CardGenContext::new(note_type, None);
         note.set_field(0, "Cat").unwrap();
         note.set_field(1, "Neko").unwrap();
 

@@ -67,8 +67,6 @@ macro_rules! define_newtype {
     };
 }
 
-define_newtype!(Usn, i32);
-
 pub(crate) trait IntoNewtypeVec {
     fn into_newtype<F, T>(self, func: F) -> Vec<T>
     where

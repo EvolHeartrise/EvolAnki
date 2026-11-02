@@ -11,7 +11,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use anki::deckconfig::settings_repair_needed;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
@@ -25,6 +24,7 @@ use evolanki_server::admin::validate;
 use evolanki_server::admin::Admin;
 use evolanki_server::admin::Effect;
 use evolanki_server::admin::Request;
+use evolanki_server::backups::opening_would_change;
 use evolanki_server::backups::Backups;
 use evolanki_server::collection::close_collection;
 use evolanki_server::collection::open_collection;
@@ -177,9 +177,10 @@ fn run_directly(collection: &Path, request: &Request) -> Result<Value> {
         );
     }
     let backups = Arc::new(Backups::new(collection)?);
-    // opening an SM-2 collection migrates it, as does one with settings shared
-    // between decks, which is worth having a copy from before, as the server does
-    if settings_repair_needed(collection).unwrap_or(true) {
+    // opening an SM-2 collection migrates it, as does one with an older schema or
+    // settings shared between decks, which is worth having a copy from before,
+    // as the server does
+    if opening_would_change(collection) {
         backups.take_before_opening(collection)?;
     } else if !fsrs_is_on(collection) {
         backups.take_of_closed_file(collection);

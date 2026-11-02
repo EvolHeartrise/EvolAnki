@@ -33,7 +33,6 @@ message Card {
   int64 deck_id = 3;
   uint32 template_idx = 4;
   int64 mtime_secs = 5;
-  sint32 usn = 6;
   uint32 ctype = 7;
   sint32 queue = 8;
   sint32 due = 9;

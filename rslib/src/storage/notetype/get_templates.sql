@@ -1,7 +1,6 @@
 SELECT ord,
   name,
   mtime_secs,
-  usn,
   config
 FROM templates
 WHERE ntid = ?

@@ -9,13 +9,11 @@ use rusqlite::Row;
 use super::SqliteStorage;
 use crate::error::Result;
 use crate::tags::Tag;
-use crate::types::Usn;
 
 fn row_to_tag(row: &Row) -> Result<Tag> {
     Ok(Tag {
         name: row.get(0)?,
-        usn: row.get(1)?,
-        expanded: !row.get(2)?,
+        expanded: !row.get(1)?,
     })
 }
 
@@ -56,7 +54,7 @@ impl SqliteStorage {
     pub(crate) fn register_tag(&self, tag: &Tag) -> Result<()> {
         self.db
             .prepare_cached(include_str!("add.sql"))?
-            .execute(params![tag.name, tag.usn, !tag.expanded])?;
+            .execute(params![tag.name, !tag.expanded])?;
         Ok(())
     }
 
@@ -81,8 +79,7 @@ impl SqliteStorage {
             if want(tag) {
                 output.push(Tag {
                     name: tag.to_owned(),
-                    usn: row.get(1)?,
-                    expanded: !row.get(2)?,
+                    expanded: !row.get(1)?,
                 })
             }
         }
@@ -100,7 +97,7 @@ impl SqliteStorage {
     pub(crate) fn update_tag(&self, tag: &Tag) -> Result<()> {
         self.db
             .prepare_cached(include_str!("update.sql"))?
-            .execute(params![&tag.name, tag.usn, !tag.expanded])?;
+            .execute(params![&tag.name, !tag.expanded])?;
         Ok(())
     }
 
@@ -109,24 +106,22 @@ impl SqliteStorage {
         Ok(())
     }
 
-    // fixme: in the future we could just register tags as part of the sync
-    // instead of sending the tag list separately
-
     // Upgrading/downgrading
 
     pub(super) fn upgrade_tags_to_schema14(&self) -> Result<()> {
+        // the values are usns, which aren't kept
         let tags = self
             .db
             .query_row_and_then("select tags from col", [], |row| {
-                let tags: Result<HashMap<String, Usn>> =
+                let tags: Result<HashMap<String, serde_json::Value>> =
                     serde_json::from_str(row.get_ref_unwrap(0).as_str()?).map_err(Into::into);
                 tags
             })?;
         let mut stmt = self
             .db
-            .prepare_cached("insert or ignore into tags (tag, usn) values (?, ?)")?;
-        for (tag, usn) in tags.into_iter() {
-            stmt.execute(params![tag, usn])?;
+            .prepare_cached("insert or ignore into tags (tag) values (?)")?;
+        for tag in tags.into_keys() {
+            stmt.execute([tag])?;
         }
         self.db.execute_batch("update col set tags=''")?;
 
@@ -136,11 +131,12 @@ impl SqliteStorage {
     pub(super) fn upgrade_tags_to_schema17(&self) -> Result<()> {
         let tags = self
             .db
-            .prepare_cached("select tag, usn from tags")?
-            .query_and_then([], |r| Ok(Tag::new(r.get(0)?, r.get(1)?)))?
+            .prepare_cached("select tag from tags")?
+            .query_and_then([], |r| Ok(Tag::new(r.get(0)?)))?
             .collect::<Result<Vec<Tag>>>()?;
         self.db
             .execute_batch(include_str!["../upgrades/schema17_upgrade.sql"])?;
+        self.drop_usn_columns()?;
         tags.into_iter()
             .try_for_each(|tag| -> Result<()> { self.register_tag(&tag) })
     }

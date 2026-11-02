@@ -13,6 +13,7 @@ use super::DeckCommon;
 use super::FilteredDeck;
 use super::FilteredSearchTerm;
 use super::NormalDeck;
+use crate::notetype::schema11::other_to_bytes_without_usn;
 use crate::prelude::*;
 use crate::serde::default_on_invalid;
 use crate::serde::deserialize_bool_from_anything;
@@ -95,7 +96,6 @@ pub struct DeckCommonSchema11 {
     )]
     pub(crate) mtime: TimestampSecs,
     pub(crate) name: String,
-    pub(crate) usn: Usn,
     #[serde(flatten)]
     pub(crate) today: DeckTodaySchema11,
     #[serde(rename = "collapsed")]
@@ -228,7 +228,6 @@ impl Default for NormalDeckSchema11 {
                 id: DeckId(0),
                 mtime: TimestampSecs(0),
                 name: "".to_string(),
-                usn: Usn(0),
                 study_collapsed: false,
                 browser_collapsed: false,
                 desc: "".to_string(),
@@ -258,7 +257,6 @@ impl From<DeckSchema11> for Deck {
                 id: d.common.id,
                 name: NativeDeckName::from_human_name(&d.common.name),
                 mtime_secs: d.common.mtime,
-                usn: d.common.usn,
                 common: (&d.common).into(),
                 kind: DeckKind::Normal(d.into()),
             },
@@ -266,7 +264,6 @@ impl From<DeckSchema11> for Deck {
                 id: d.common.id,
                 name: NativeDeckName::from_human_name(&d.common.name),
                 mtime_secs: d.common.mtime,
-                usn: d.common.usn,
                 common: (&d.common).into(),
                 kind: DeckKind::Filtered(d.into()),
             },
@@ -276,11 +273,7 @@ impl From<DeckSchema11> for Deck {
 
 impl From<&DeckCommonSchema11> for DeckCommon {
     fn from(common: &DeckCommonSchema11) -> Self {
-        let other = if common.other.is_empty() {
-            vec![]
-        } else {
-            serde_json::to_vec(&common.other).unwrap_or_default()
-        };
+        let other = other_to_bytes_without_usn(common.other.clone());
         // since we're combining the day values into a single value,
         // any items from an earlier day need to be reset
         let mut today = common.today.clone();

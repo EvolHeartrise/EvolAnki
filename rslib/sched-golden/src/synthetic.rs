@@ -233,8 +233,8 @@ fn build_fixtures(fixtures: &Path, now: i64) -> Result<()> {
         for (idx, row) in rows.iter().enumerate() {
             let age = rows.len() as i64 - idx as i64;
             db.execute(
-                "insert into revlog (id,cid,usn,ease,ivl,lastIvl,factor,time,type)
-                 values (?,?,-1,?,?,?,?,5000,?)",
+                "insert into revlog (id,cid,ease,ivl,lastIvl,factor,time,type)
+                 values (?,?,?,?,?,?,5000,?)",
                 rusqlite::params![
                     now * 1000 - age * 12 * DAY_MS + (*cid / 1000 % 100_000),
                     cid,

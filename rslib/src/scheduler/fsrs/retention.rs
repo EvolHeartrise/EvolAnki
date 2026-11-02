@@ -65,7 +65,8 @@ impl From<crate::revlog::RevlogEntry> for fsrs::RevlogEntry {
         fsrs::RevlogEntry {
             id: entry.id.into(),
             cid: entry.cid.into(),
-            usn: entry.usn.into(),
+            // the fsrs crate's struct has this field, and doesn't use it
+            usn: 0,
             button_chosen: entry.button_chosen,
             interval: entry.interval,
             last_interval: entry.last_interval,

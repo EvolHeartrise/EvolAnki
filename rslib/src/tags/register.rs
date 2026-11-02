@@ -12,28 +12,21 @@ use super::split_tags;
 use super::Tag;
 use crate::prelude::*;
 use crate::text::normalize_to_nfc;
-use crate::types::Usn;
 
 impl Collection {
     /// Given a list of tags, fix case, ordering and duplicates.
     /// Returns true if any new tags were added.
     /// Each tag is split on spaces, so if you have a &str, you
     /// can pass that in as a one-element vec.
-    pub(crate) fn canonify_tags(
-        &mut self,
-        tags: Vec<String>,
-        usn: Usn,
-    ) -> Result<(Vec<String>, bool)> {
-        self.canonify_tags_inner(tags, usn, true)
+    pub(crate) fn canonify_tags(&mut self, tags: Vec<String>) -> Result<(Vec<String>, bool)> {
+        self.canonify_tags_inner(tags, true)
     }
 
     pub(crate) fn canonify_tags_without_registering(
         &mut self,
         tags: Vec<String>,
-        usn: Usn,
     ) -> Result<Vec<String>> {
-        self.canonify_tags_inner(tags, usn, false)
-            .map(|(tags, _)| tags)
+        self.canonify_tags_inner(tags, false).map(|(tags, _)| tags)
     }
 
     /// Like [canonify_tags()], but doesn't save new tags. As a consequence, new
@@ -41,7 +34,6 @@ impl Collection {
     fn canonify_tags_inner(
         &mut self,
         tags: Vec<String>,
-        usn: Usn,
         register: bool,
     ) -> Result<(Vec<String>, bool)> {
         let mut seen = HashSet::new();
@@ -49,7 +41,7 @@ impl Collection {
 
         let tags: Vec<_> = tags.iter().flat_map(|t| split_tags(t)).collect();
         for tag in tags {
-            let mut tag = Tag::new(tag.to_string(), usn);
+            let mut tag = Tag::new(tag.to_string());
             if register {
                 added |= self.register_tag(&mut tag)?;
             } else {
@@ -72,15 +64,11 @@ impl Collection {
     }
 
     /// Returns true if any cards were added to the tag list.
-    pub(crate) fn canonified_tags_as_vec(
-        &mut self,
-        tags: &str,
-        usn: Usn,
-    ) -> Result<Vec<UniCase<String>>> {
+    pub(crate) fn canonified_tags_as_vec(&mut self, tags: &str) -> Result<Vec<UniCase<String>>> {
         let mut out_tags = vec![];
 
         for tag in split_tags(tags) {
-            let mut tag = Tag::new(tag.to_string(), usn);
+            let mut tag = Tag::new(tag.to_string());
             self.register_tag(&mut tag)?;
             out_tags.push(UniCase::new(tag.name));
         }
@@ -117,8 +105,8 @@ impl Collection {
         }
     }
 
-    pub(super) fn register_tag_string(&mut self, tag: String, usn: Usn) -> Result<bool> {
-        let mut tag = Tag::new(tag, usn);
+    pub(super) fn register_tag_string(&mut self, tag: String) -> Result<bool> {
+        let mut tag = Tag::new(tag);
         self.register_tag(&mut tag)
     }
 }

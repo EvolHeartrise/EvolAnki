@@ -74,7 +74,6 @@ struct Context<'a> {
     /// Contains the optional default notetype with the default key.
     notetypes: HashMap<NameOrId, Option<Arc<Notetype>>>,
     deck_ids: DeckIdsByNameOrId,
-    usn: Usn,
     normalize_notes: bool,
     timing: SchedTimingToday,
     dupe_resolution: DupeResolution,
@@ -147,7 +146,7 @@ impl Duplicate {
 }
 
 impl DeckIdsByNameOrId {
-    fn new(col: &mut Collection, default: &NameOrId, usn: Usn) -> Result<Self> {
+    fn new(col: &mut Collection, default: &NameOrId) -> Result<Self> {
         let names: HashMap<UniCase<String>, DeckId> = col
             .get_all_normal_deck_names(false)?
             .into_iter()
@@ -163,7 +162,7 @@ impl DeckIdsByNameOrId {
         if new.default.is_none() && *default != NameOrId::default() {
             let mut deck = Deck::new_normal();
             deck.name = NativeDeckName::from_human_name(default.to_string());
-            col.add_deck_inner(&mut deck, usn)?;
+            col.add_deck_inner(&mut deck)?;
             new.insert(deck.id, deck.human_name());
             new.default = Some(deck.id);
         }
@@ -192,7 +191,6 @@ impl DeckIdsByNameOrId {
 
 impl<'a> Context<'a> {
     fn new(data: &ForeignData, col: &'a mut Collection) -> Result<Self> {
-        let usn = col.usn()?;
         let normalize_notes = col.get_config_bool(BoolKey::NormalizeNoteText);
         let timing = col.timing_today()?;
         let mut notetypes = HashMap::new();
@@ -200,13 +198,12 @@ impl<'a> Context<'a> {
             NameOrId::default(),
             col.notetype_by_name_or_id(&data.default_notetype)?,
         );
-        let deck_ids = DeckIdsByNameOrId::new(col, &data.default_deck, usn)?;
+        let deck_ids = DeckIdsByNameOrId::new(col, &data.default_deck)?;
         let existing_checksums = ExistingChecksums::new(col, data.match_scope)?;
         let existing_guids = col.storage.all_notes_by_guid()?;
 
         Ok(Self {
             col,
-            usn,
             normalize_notes,
             timing,
             dupe_resolution: data.dupe_resolution,
@@ -221,9 +218,7 @@ impl<'a> Context<'a> {
     fn import_foreign_notetypes(&mut self, notetypes: Vec<ForeignNotetype>) -> Result<()> {
         for foreign in notetypes {
             let mut notetype = foreign.into_native();
-            notetype.usn = self.usn;
-            self.col
-                .add_notetype_inner(&mut notetype, self.usn, false)?;
+            self.col.add_notetype_inner(&mut notetype, false)?;
         }
         Ok(())
     }
@@ -279,7 +274,7 @@ impl<'a> Context<'a> {
         } else if let NameOrId::Name(name) = deck {
             let mut deck = Deck::new_normal();
             deck.name = NativeDeckName::from_human_name(name);
-            self.col.add_deck_inner(&mut deck, self.usn)?;
+            self.col.add_deck_inner(&mut deck)?;
             self.deck_ids.insert(deck.id, deck.human_name());
             if name.is_empty() {
                 self.deck_ids.default = Some(deck.id);
@@ -312,7 +307,7 @@ impl<'a> Context<'a> {
 
     fn prepare_foreign_note(&mut self, note: &mut ForeignNote) -> Result<()> {
         note.normalize_fields(self.normalize_notes);
-        self.col.canonify_foreign_tags(note, self.usn)
+        self.col.canonify_foreign_tags(note)
     }
 
     fn find_duplicates(
@@ -430,8 +425,8 @@ impl<'a> Context<'a> {
 
     fn prepare_note(&mut self, note: &mut Note, notetype: &Notetype) -> Result<()> {
         note.prepare_for_update(notetype, self.normalize_notes)?;
-        self.col.canonify_note_tags(note, self.usn)?;
-        note.set_modified(self.usn);
+        self.col.canonify_note_tags(note)?;
+        note.set_modified();
         Ok(())
     }
 
@@ -452,7 +447,7 @@ impl<'a> Context<'a> {
         let card_gen_context = self
             .card_gen_ctxs
             .entry((notetype.id, deck_id))
-            .or_insert_with(|| CardGenContext::new(notetype, Some(deck_id), self.usn));
+            .or_insert_with(|| CardGenContext::new(notetype, Some(deck_id)));
         self.col
             .generate_cards_for_existing_note(card_gen_context, note)
     }
@@ -546,10 +541,10 @@ impl Collection {
         }
     }
 
-    fn canonify_foreign_tags(&mut self, note: &mut ForeignNote, usn: Usn) -> Result<()> {
+    fn canonify_foreign_tags(&mut self, note: &mut ForeignNote) -> Result<()> {
         if let Some(tags) = note.tags.take() {
             note.tags
-                .replace(self.canonify_tags_without_registering(tags, usn)?);
+                .replace(self.canonify_tags_without_registering(tags)?);
         }
         Ok(())
     }

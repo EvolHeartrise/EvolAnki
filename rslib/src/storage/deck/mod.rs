@@ -22,14 +22,13 @@ use crate::error::DbErrorKind;
 use crate::prelude::*;
 
 fn row_to_deck(row: &Row) -> Result<Deck> {
-    let common = DeckCommon::decode(row.get_ref_unwrap(4).as_blob()?)?;
-    let kind = DeckKindContainer::decode(row.get_ref_unwrap(5).as_blob()?)?;
+    let common = DeckCommon::decode(row.get_ref_unwrap(3).as_blob()?)?;
+    let kind = DeckKindContainer::decode(row.get_ref_unwrap(4).as_blob()?)?;
     let id = row.get(0)?;
     Ok(Deck {
         id,
         name: NativeDeckName::from_native_str(row.get_ref_unwrap(1).as_str()?),
         mtime_secs: row.get(2)?,
-        usn: row.get(3)?,
         common,
         kind: kind.kind.ok_or_else(|| {
             AnkiError::db_error(
@@ -174,7 +173,6 @@ impl SqliteStorage {
         let count = stmt.execute(params![
             deck.name.as_native_str(),
             deck.mtime_secs,
-            deck.usn,
             common,
             kind,
             deck.id
@@ -202,7 +200,6 @@ impl SqliteStorage {
             deck.id,
             deck.name.as_native_str(),
             deck.mtime_secs,
-            deck.usn,
             common,
             kind
         ])?;
@@ -349,7 +346,6 @@ impl SqliteStorage {
     }
 
     pub(crate) fn upgrade_decks_to_schema15(&self) -> Result<()> {
-        let usn = self.usn()?;
         let decks = self
             .get_schema11_decks()
             .map_err(|e| AnkiError::JsonError {
@@ -360,7 +356,7 @@ impl SqliteStorage {
             let oldname = deck.name().to_string();
             let mut deck = Deck::from(deck);
             if deck.human_name() != oldname {
-                deck.set_modified(usn);
+                deck.set_modified();
             }
             loop {
                 let name = UniCase::new(deck.name.as_native_str().to_string());
@@ -369,7 +365,7 @@ impl SqliteStorage {
                     break;
                 }
                 deck.name.add_suffix("_");
-                deck.set_modified(usn);
+                deck.set_modified();
             }
             self.add_or_update_deck_with_existing_id(&deck)?;
         }

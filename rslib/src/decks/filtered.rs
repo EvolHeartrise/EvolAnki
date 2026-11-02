@@ -27,7 +27,6 @@ impl Deck {
             id: DeckId(0),
             name: NativeDeckName::from_native_str(""),
             mtime_secs: TimestampSecs(0),
-            usn: Usn(0),
             common: DeckCommon {
                 study_collapsed: true,
                 browser_collapsed: true,

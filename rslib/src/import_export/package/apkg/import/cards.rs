@@ -17,7 +17,6 @@ type CardAsNidAndOrd = (NoteId, u16);
 
 struct CardContext<'a> {
     target_col: &'a mut Collection,
-    usn: Usn,
 
     imported_notes: &'a HashMap<NoteId, NoteId>,
     notetype_map: &'a HashMap<NoteId, NotetypeId>,
@@ -36,7 +35,6 @@ struct CardContext<'a> {
 
 impl<'c> CardContext<'c> {
     fn new<'a: 'c>(
-        usn: Usn,
         days_elapsed: u32,
         target_col: &'a mut Collection,
         imported_notes: &'a HashMap<NoteId, NoteId>,
@@ -50,7 +48,6 @@ impl<'c> CardContext<'c> {
         let existing_card_ids = target_col.storage.get_all_card_ids()?;
         Ok(Self {
             target_col,
-            usn,
             imported_notes,
             notetype_map,
             remapped_templates,
@@ -80,7 +77,6 @@ impl Context<'_> {
         imported_decks: &HashMap<DeckId, DeckId>,
     ) -> Result<()> {
         let mut ctx = CardContext::new(
-            self.usn,
             self.data.days_elapsed,
             self.target_col,
             imported_notes,
@@ -111,7 +107,6 @@ impl CardContext<'_> {
         for mut entry in revlog {
             if let Some(cid) = self.imported_cards.get(&entry.cid) {
                 entry.cid = *cid;
-                entry.usn = self.usn;
                 self.target_col.add_revlog_entry_if_unique_undoable(entry)?;
             }
         }
@@ -133,7 +128,6 @@ impl CardContext<'_> {
     }
 
     fn add_card(&mut self, card: &mut Card) -> Result<()> {
-        card.usn = self.usn;
         self.remap_deck_ids(card);
         self.remap_template_index(card);
         card.shift_collection_relative_dates(self.collection_delta);

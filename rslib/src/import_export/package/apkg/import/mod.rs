@@ -45,7 +45,6 @@ struct Context<'a> {
     archive: ZipArchive<File>,
     meta: Meta,
     data: ExchangeData,
-    usn: Usn,
     progress: ThrottlingProgressHandler<ImportProgress>,
 }
 
@@ -88,7 +87,6 @@ impl<'a> Context<'a> {
             options.with_scheduling,
             options.with_deck_configs,
         )?;
-        let usn = target_col.usn()?;
         Ok(Self {
             target_col,
             merge_notetypes: options.merge_notetypes,
@@ -98,7 +96,6 @@ impl<'a> Context<'a> {
             archive,
             meta,
             data,
-            usn,
             progress,
         })
     }

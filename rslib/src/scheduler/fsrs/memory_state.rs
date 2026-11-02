@@ -85,7 +85,6 @@ impl Collection {
         entries: Vec<UpdateMemoryStateEntry>,
     ) -> Result<()> {
         let timing = self.timing_today()?;
-        let usn = self.usn()?;
         for UpdateMemoryStateEntry {
             req,
             search,
@@ -109,7 +108,6 @@ impl Collection {
                 // clear FSRS data if FSRS is disabled
                 self.clear_fsrs_data_for_cards(
                     items.into_iter().map(|(card_id, _)| card_id),
-                    usn,
                     on_updated_card,
                 )?;
                 continue;
@@ -150,7 +148,6 @@ impl Collection {
             self.update_memory_state_for_itemless_cards(
                 cards_without_items,
                 set_decay_and_desired_retention,
-                usn,
                 &mut on_updated_card,
             )?;
 
@@ -233,7 +230,7 @@ impl Collection {
                     }
                     *due = new_due;
                     // Add a rescheduled revlog entry
-                    collection.log_rescheduled_review(card, original_interval, usn)?;
+                    collection.log_rescheduled_review(card, original_interval)?;
 
                     Ok(())
                 };
@@ -243,7 +240,6 @@ impl Collection {
                 &fsrs,
                 set_decay_and_desired_retention,
                 reschedule,
-                usn,
                 on_updated_card,
             )?;
         }
@@ -263,14 +259,13 @@ impl Collection {
     fn clear_fsrs_data_for_cards(
         &mut self,
         cards: impl Iterator<Item = CardId>,
-        usn: Usn,
         mut on_updated_card: impl FnMut() -> Result<()>,
     ) -> Result<()> {
         for card_id in cards {
             let mut card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
             let original = card.clone();
             card.clear_fsrs_data();
-            self.update_card_inner(&mut card, original, usn)?;
+            self.update_card_inner(&mut card, original)?;
             on_updated_card()?
         }
         Ok(())
@@ -280,7 +275,6 @@ impl Collection {
         &mut self,
         cards: Vec<CardId>,
         mut set_decay_and_desired_retention: impl FnMut(&mut Card),
-        usn: Usn,
         mut on_updated_card: impl FnMut() -> Result<()>,
     ) -> Result<()> {
         for card_id in cards {
@@ -288,7 +282,7 @@ impl Collection {
             let original = card.clone();
             set_decay_and_desired_retention(&mut card);
             card.memory_state = None;
-            self.update_card_inner(&mut card, original, usn)?;
+            self.update_card_inner(&mut card, original)?;
             on_updated_card()?;
         }
         Ok(())
@@ -300,7 +294,6 @@ impl Collection {
         fsrs: &FSRS,
         mut set_decay_and_desired_retention: impl FnMut(&mut Card),
         mut maybe_reschedule_card: impl FnMut(&mut Card, &mut Self, &FSRS) -> Result<()>,
-        usn: Usn,
         mut on_updated_card: impl FnMut() -> Result<()>,
     ) -> Result<()> {
         const FSRS_BATCH_SIZE: usize = 1000;
@@ -336,7 +329,7 @@ impl Collection {
                 set_decay_and_desired_retention(&mut card);
                 card.memory_state = Some(memory_state.into());
                 maybe_reschedule_card(&mut card, self, fsrs)?;
-                self.update_card_inner(&mut card, original, usn)?;
+                self.update_card_inner(&mut card, original)?;
                 on_updated_card()?;
             }
         }
@@ -480,7 +473,6 @@ impl Collection {
 
         // Cards with no usable revlog are skipped above, so infer their state
         // from the card, as is done when answering them.
-        let usn = self.usn()?;
         for (config, deck) in &decks {
             let fsrs = FSRS::new(config.fsrs_params())?;
             let search = SearchBuilder::all([
@@ -500,7 +492,7 @@ impl Collection {
                 }
                 card.decay = Some(get_decay_from_params(config.fsrs_params()));
                 card.desired_retention = Some(config.inner.desired_retention);
-                self.update_card_inner(&mut card, original, usn)?;
+                self.update_card_inner(&mut card, original)?;
             }
         }
         Ok(())
@@ -841,12 +833,13 @@ mod tests {
         use super::*;
         use crate::tests::NoteAdder;
 
-        /// As importing a whole collection does: replaces all config, with the provided value for FSRS.
+        /// As importing a whole collection does: replaces all config, with the
+        /// provided value for FSRS.
         fn receive_fsrs_config_from_import(col: &mut Collection, value: bool) {
             let mut config = col.storage.get_all_config().unwrap();
             config.insert("fsrs".to_string(), Value::Bool(value));
             col.storage
-                .set_all_config(config, Usn(1), TimestampSecs::now())
+                .set_all_config(config, TimestampSecs::now())
                 .unwrap();
         }
 

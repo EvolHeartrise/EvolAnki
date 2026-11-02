@@ -354,7 +354,6 @@ fn validate_with_work_dir(
         "templates",
         "tags",
         "config",
-        "graves",
     ] {
         let sql = format!("select count() from {table}");
         let (a, b) = (scalar(snapshot, &sql)?, scalar(converted, &sql)?);
@@ -364,6 +363,12 @@ fn validate_with_work_dir(
         rows.push(vec![table.to_string(), a.to_string(), b.to_string()]);
     }
     out.table(&["table", "before", "after"], &rows);
+    if let Ok(graves) = scalar(snapshot, "select count() from graves") {
+        out.line(format!(
+            "The source's `graves` table, {graves} rows, and its `usn`, `scm`, `dty` and `ls` \
+             columns only tracked sync, so they aren't in the converted collection."
+        ));
+    }
     let orphans = "select count() from revlog where cid not in (select id from cards)";
     out.line(format!(
         "Revlog rows whose card no longer exists (its note was deleted, and desktop Anki keeps \
@@ -375,7 +380,7 @@ fn validate_with_work_dir(
     // notes and revlog
     out.head("Notes and revlog");
     let hash_notes = |db: &Connection| -> Result<BTreeMap<i64, Vec<Sql>>> {
-        let mut statement = db.prepare("select id, flds, tags, guid, mid, mod, usn from notes")?;
+        let mut statement = db.prepare("select id, flds, tags, guid, mid, mod from notes")?;
         let rows = statement.query_map([], |row| {
             let mut hasher = Sha256::new();
             hasher.update(row.get::<_, String>(1)?.as_bytes());
@@ -388,7 +393,6 @@ fn validate_with_work_dir(
                     row.get::<_, Sql>(3)?,
                     row.get::<_, Sql>(4)?,
                     row.get::<_, Sql>(5)?,
-                    row.get::<_, Sql>(6)?,
                 ],
             ))
         })?;
@@ -397,32 +401,30 @@ fn validate_with_work_dir(
     let note_result = compare(
         &hash_notes(snapshot)?,
         &hash_notes(converted)?,
-        &["fields and tags hash", "guid", "notetype", "mod", "usn"],
+        &["fields and tags hash", "guid", "notetype", "mod"],
     );
     out.line(format!(
-        "- Per-note SHA-256 of fields and tags, plus guid, notetype, mod and usn: {}",
+        "- Per-note SHA-256 of fields and tags, plus guid, notetype and mod: {}",
         describe_comparison(&note_result)
     ));
-    let revlog_sql = "select id, cid, usn, ease, ivl, lastIvl, factor, time, type from revlog";
+    let revlog_sql = "select id, cid, ease, ivl, lastIvl, factor, time, type from revlog";
     let revlog_result = compare(
         &rows_by_id(snapshot, revlog_sql)?,
         &rows_by_id(converted, revlog_sql)?,
-        &[
-            "cid", "usn", "ease", "ivl", "lastIvl", "factor", "time", "type",
-        ],
+        &["cid", "ease", "ivl", "lastIvl", "factor", "time", "type"],
     );
     out.line(format!(
-        "- Revlog, every column of every row: {}",
+        "- Revlog, every column but `usn` of every row: {}",
         describe_comparison(&revlog_result)
     ));
 
     // scheduling
     out.head("Scheduling");
     let card_sql = "select id, due, ivl, queue, type, reps, lapses, factor, left, odue, odid, \
-                    flags, did, ord, nid, mod, usn, data from cards";
+                    flags, did, ord, nid, mod, data from cards";
     let card_columns = [
         "due", "ivl", "queue", "type", "reps", "lapses", "factor", "left", "odue", "odid", "flags",
-        "did", "ord", "nid", "mod", "usn", "data",
+        "did", "ord", "nid", "mod", "data",
     ];
     // opening a collection returns buried cards to normal, which isn't a loss
     let cards_before = rows_by_id(
@@ -1368,7 +1370,7 @@ fn settings_section(
         ("creationOffset", "Used, with crt, for day numbers."),
         (
             "localOffset",
-            "Ignored outside a sync server: day boundaries use this machine's time zone.",
+            "Ignored: day boundaries use this machine's time zone.",
         ),
         (
             "schedVer",
@@ -1433,19 +1435,14 @@ fn settings_section(
     ));
     out.line("");
     let col = |db: &Connection| -> Result<String> {
-        Ok(
-            db.query_row("select ver, scm, crt, mod, usn, ls from col", [], |row| {
-                Ok(format!(
-                    "ver {} scm {} crt {} mod {} usn {} ls {}",
-                    row.get::<_, i64>(0)?,
-                    row.get::<_, i64>(1)?,
-                    row.get::<_, i64>(2)?,
-                    row.get::<_, i64>(3)?,
-                    row.get::<_, i64>(4)?,
-                    row.get::<_, i64>(5)?,
-                ))
-            })?,
-        )
+        Ok(db.query_row("select ver, crt, mod from col", [], |row| {
+            Ok(format!(
+                "ver {} crt {} mod {}",
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        })?)
     };
     out.line(format!(
         "The `col` row, before: {}; after: {}.",

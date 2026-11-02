@@ -36,7 +36,6 @@ use crate::scheduler::queue::NewCard;
 use crate::scheduler::timing::SchedTimingToday;
 use crate::timestamp::TimestampMillis;
 use crate::timestamp::TimestampSecs;
-use crate::types::Usn;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct CardFixStats {
@@ -66,24 +65,23 @@ impl FromSql for CardQueue {
 }
 
 fn row_to_card(row: &Row) -> result::Result<Card, rusqlite::Error> {
-    let data: CardData = row.get(16)?;
+    let data: CardData = row.get(15)?;
     Ok(Card {
         id: row.get(0)?,
         note_id: row.get(1)?,
         deck_id: row.get(2)?,
         template_idx: row.get(3)?,
         mtime: row.get(4)?,
-        usn: row.get(5)?,
-        ctype: row.get(6)?,
-        queue: row.get(7)?,
-        due: row.get(8).ok().unwrap_or_default(),
-        interval: row.get(9)?,
-        ease_factor: row.get(10)?,
-        reps: row.get(11)?,
-        lapses: row.get(12)?,
-        remaining_steps: row.get(13)?,
-        original_due: row.get(14).ok().unwrap_or_default(),
-        original_deck_id: row.get(15)?,
+        ctype: row.get(5)?,
+        queue: row.get(6)?,
+        due: row.get(7).ok().unwrap_or_default(),
+        interval: row.get(8)?,
+        ease_factor: row.get(9)?,
+        reps: row.get(10)?,
+        lapses: row.get(11)?,
+        remaining_steps: row.get(12)?,
+        original_due: row.get(13).ok().unwrap_or_default(),
+        original_deck_id: row.get(14)?,
         original_position: data.original_position,
         memory_state: data.memory_state(),
         desired_retention: data.fsrs_desired_retention,
@@ -120,7 +118,6 @@ impl super::SqliteStorage {
             card.deck_id,
             card.template_idx,
             card.mtime,
-            card.usn,
             card.ctype as u8,
             card.queue as i8,
             card.due,
@@ -146,7 +143,6 @@ impl super::SqliteStorage {
             card.deck_id,
             card.template_idx,
             card.mtime,
-            card.usn,
             card.ctype as u8,
             card.queue as i8,
             card.due,
@@ -173,7 +169,6 @@ impl super::SqliteStorage {
                 card.deck_id,
                 card.template_idx,
                 card.mtime,
-                card.usn,
                 card.ctype as u8,
                 card.queue as i8,
                 card.due,
@@ -199,7 +194,6 @@ impl super::SqliteStorage {
             card.deck_id,
             card.template_idx,
             card.mtime,
-            card.usn,
             card.ctype as u8,
             card.queue as i8,
             card.due,
@@ -343,25 +337,24 @@ impl super::SqliteStorage {
         &self,
         today: u32,
         mtime: TimestampSecs,
-        usn: Usn,
         v1_sched: bool,
     ) -> Result<CardFixStats> {
         let new_cnt = self
             .db
             .prepare(include_str!("fix_due_new.sql"))?
-            .execute(params![mtime, usn])?;
+            .execute(params![mtime])?;
         let mut other_cnt = self
             .db
             .prepare(include_str!("fix_due_other.sql"))?
-            .execute(params![today, mtime, usn])?;
+            .execute(params![today, mtime])?;
         other_cnt += self
             .db
             .prepare(include_str!("fix_odue.sql"))?
-            .execute(params![mtime, usn, v1_sched])?;
+            .execute(params![mtime, v1_sched])?;
         other_cnt += self
             .db
             .prepare(include_str!("fix_ivl.sql"))?
-            .execute(params![mtime, usn])?;
+            .execute(params![mtime])?;
         other_cnt += self
             .db
             .prepare(include_str!("fix_mod.sql"))?
@@ -369,7 +362,7 @@ impl super::SqliteStorage {
         other_cnt += self
             .db
             .prepare(include_str!("fix_ordinal.sql"))?
-            .execute(params![mtime, usn])?;
+            .execute(params![mtime])?;
         let mut last_review_time_cnt = 0;
         let revlog = self.get_all_revlog_entries_in_card_order()?;
         let last_revlog_info = get_last_revlog_info(&revlog);
@@ -652,7 +645,7 @@ impl super::SqliteStorage {
         ids_to_string(&mut ids, &affected_decks);
         let sql = include_str!("fix_low_ease.sql").replace("DECK_IDS", &ids);
 
-        self.db.prepare(&sql)?.execute(params![self.usn()?])?;
+        self.db.prepare(&sql)?.execute([])?;
 
         Ok(())
     }
@@ -840,7 +833,6 @@ mod test {
     use crate::revlog::RevlogReviewKind;
     use crate::storage::SqliteStorage;
     use crate::timestamp::TimestampSecs;
-    use crate::types::Usn;
 
     fn create_test_storage() -> SqliteStorage {
         let tr: I18n = I18n::template_only();
@@ -907,7 +899,6 @@ mod test {
         let revlog_entry = RevlogEntry {
             id: RevlogId(2000),
             cid: revlog_card.id,
-            usn: Usn(1),
             button_chosen: 2,
             interval: 1,
             last_interval: 0,
@@ -919,7 +910,7 @@ mod test {
 
         let stats = col
             .storage
-            .fix_card_properties(999, TimestampSecs(123), Usn(42), false)
+            .fix_card_properties(999, TimestampSecs(123), false)
             .unwrap();
 
         assert_eq!(stats.new_cards_fixed, 1);
@@ -930,7 +921,6 @@ mod test {
         assert_eq!(new_card.due, 1000001);
         assert_eq!(new_card.template_idx, 30000);
         assert_eq!(new_card.mtime, TimestampSecs(123));
-        assert_eq!(new_card.usn, Usn(42));
 
         let review_card = col.storage.get_card(review_card.id).unwrap().unwrap();
         let review_odue: i32 = col
@@ -946,7 +936,6 @@ mod test {
         assert_eq!(review_odue, 0);
         assert_eq!(review_card.interval, 2);
         assert_eq!(review_card.mtime, TimestampSecs(123));
-        assert_eq!(review_card.usn, Usn(42));
 
         let mod_card = col.storage.get_card(mod_card.id).unwrap().unwrap();
         assert_eq!(mod_card.mtime, TimestampSecs(1));

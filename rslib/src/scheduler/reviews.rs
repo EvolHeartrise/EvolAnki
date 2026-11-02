@@ -132,7 +132,6 @@ impl Collection {
         context: Option<StringKey>,
     ) -> Result<OpOutput<()>> {
         let spec = parse_due_date_str(days)?;
-        let usn = self.usn()?;
         let today = self.timing_today()?.days_elapsed;
         let next_day_start = self.timing_today()?.next_day_at.0;
         let mut rng = rand::rng();
@@ -167,8 +166,8 @@ impl Collection {
                     spec.force_reset,
                     fsrs_enabled,
                 );
-                col.log_manually_scheduled_review(&card, original.interval, usn)?;
-                col.update_card_inner(&mut card, original, usn)?;
+                col.log_manually_scheduled_review(&card, original.interval)?;
+                col.update_card_inner(&mut card, original)?;
             }
             if let Some(key) = context {
                 col.set_config_string_inner(key, days)?;

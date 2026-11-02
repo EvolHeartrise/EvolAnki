@@ -27,8 +27,6 @@ impl Collection {
             "replacement name must not be empty",
         );
 
-        let usn = self.usn()?;
-
         // ensure normalized+matching parent case, but not case of existing tag.
         // The matching of parent case is mainly to be consistent with the way
         // decks are handled.
@@ -58,13 +56,13 @@ impl Collection {
         for mut note in matched_notes {
             let original = note.clone();
             note.tags = re.replace(&note.tags, &new_prefix);
-            note.set_modified(usn);
+            note.set_modified();
             self.update_note_tags_undoable(&note, original)?;
         }
 
         // update tag list
         for tag in re.into_new_tags() {
-            self.register_tag_string(tag, usn)?;
+            self.register_tag_string(tag)?;
         }
 
         Ok(match_count)

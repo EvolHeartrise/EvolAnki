@@ -6,8 +6,7 @@ SET due = (
       ELSE min(max(round(due), -2147483648), 2147483647)
     END
   ),
-  mod = ?2,
-  usn = ?3
+  mod = ?2
 WHERE due != (
     CASE
       WHEN queue = 2

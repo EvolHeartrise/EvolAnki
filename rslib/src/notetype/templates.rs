@@ -10,7 +10,6 @@ use crate::template::ParsedTemplate;
 pub struct CardTemplate {
     pub ord: Option<u32>,
     pub mtime_secs: TimestampSecs,
-    pub usn: Usn,
     pub name: String,
     pub config: CardTemplateConfig,
 }
@@ -61,7 +60,6 @@ impl From<CardTemplate> for CardTemplateProto {
         CardTemplateProto {
             ord: t.ord.map(Into::into),
             mtime_secs: t.mtime_secs.0,
-            usn: t.usn.0,
             name: t.name,
             config: Some(t.config),
         }
@@ -73,7 +71,6 @@ impl From<CardTemplateProto> for CardTemplate {
         CardTemplate {
             ord: t.ord.map(|n| n.val),
             mtime_secs: t.mtime_secs.into(),
-            usn: t.usn.into(),
             name: t.name,
             config: t.config.unwrap_or_default(),
         }
@@ -91,7 +88,6 @@ impl CardTemplate {
             ord: None,
             name: name.into(),
             mtime_secs: TimestampSecs(0),
-            usn: Usn(0),
             config: CardTemplateConfig {
                 id: Some(rand::random()),
                 q_format: qfmt.into(),

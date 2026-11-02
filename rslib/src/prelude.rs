@@ -36,4 +36,3 @@ pub(crate) use crate::tests::*;
 pub use crate::timestamp::TimestampMillis;
 pub use crate::timestamp::TimestampSecs;
 pub(crate) use crate::types::IntoNewtypeVec;
-pub use crate::types::Usn;

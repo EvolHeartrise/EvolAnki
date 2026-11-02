@@ -36,10 +36,8 @@ impl crate::services::SchedulerService for Collection {
     fn extend_limits(&mut self, input: scheduler::ExtendLimitsRequest) -> Result<()> {
         self.transact_no_undo(|col| {
             let today = col.current_due_day(0)?;
-            let usn = col.usn()?;
             col.extend_limits(
                 today,
-                usn,
                 input.deck_id.into(),
                 input.new_delta,
                 input.review_delta,
@@ -394,11 +392,9 @@ mod tests {
         let mut col = Collection::new();
 
         // Pretend 5 new / 5 review cards were already studied today.
-        let usn = col.usn().unwrap();
         let today = col.timing_today().unwrap().days_elapsed;
         col.update_deck_stats(
             today,
-            usn,
             anki_proto::scheduler::UpdateStatsRequest {
                 deck_id: 1,
                 new_delta: 5,

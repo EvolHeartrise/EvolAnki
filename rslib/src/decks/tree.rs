@@ -246,7 +246,7 @@ impl Collection {
                     DeckCollapseScope::Reviewer => c.study_collapsed = collapsed,
                     DeckCollapseScope::Browser => c.browser_collapsed = collapsed,
                 };
-                col.update_deck_inner(&mut deck, original, col.usn()?)?;
+                col.update_deck_inner(&mut deck, original)?;
             }
             Ok(())
         })

@@ -19,6 +19,7 @@ use std::time::Instant;
 use anki::backend::Backend;
 use anki::deckconfig::settings_repair_needed;
 use anki::storage::copy_database;
+use anki::storage::schema_upgrade_needed;
 use anki::storage::verify_copied_collection;
 use anyhow::Context;
 use anyhow::Result;
@@ -26,6 +27,12 @@ use chrono::Local;
 use chrono::NaiveDateTime;
 use rusqlite::Connection;
 use rusqlite::OpenFlags;
+
+/// Whether opening this closed collection would change it for good, or whether
+/// that can't be told. Reads it without changing it.
+pub fn opening_would_change(collection: &Path) -> bool {
+    schema_upgrade_needed(collection) || settings_repair_needed(collection).unwrap_or(true)
+}
 
 /// How many of the latest backups to keep, whatever their age.
 const KEEP_RECENT: usize = 48;
@@ -66,12 +73,12 @@ impl Backups {
         self.report(self.write_of_closed_file(collection));
     }
 
-    /// Opening a collection may change it for good, if it's from before decks
-    /// had their own settings: see `settings_repair_needed`. This makes sure
-    /// a copy from before that exists, and is the one kind of change that
-    /// doesn't go ahead without one.
+    /// Opening a collection may change it for good, if it has an older schema,
+    /// or is from before decks had their own settings. This makes sure a copy
+    /// from before that exists, and these are the changes that don't go ahead
+    /// without one.
     pub fn take_before_opening(&self, collection: &Path) -> Result<()> {
-        if settings_repair_needed(collection).unwrap_or(true) {
+        if opening_would_change(collection) {
             let path = self
                 .write_of_closed_file(collection)
                 .context("not opening this, as it would change and the backup failed")?;

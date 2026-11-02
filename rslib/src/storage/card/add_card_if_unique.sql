@@ -5,7 +5,6 @@ INSERT
     did,
     ord,
     mod,
-    usn,
     type,
     queue,
     due,
@@ -20,7 +19,6 @@ INSERT
     data
   )
 VALUES (
-    ?,
     ?,
     ?,
     ?,

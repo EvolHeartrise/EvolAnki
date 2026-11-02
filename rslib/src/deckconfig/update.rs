@@ -160,12 +160,10 @@ impl Collection {
             self.add_or_update_deck_config(conf)?;
             configs_after_update.insert(conf.id, conf.clone());
         }
-
-        let usn = self.usn()?;
         let today = self.timing_today()?.days_elapsed;
         let mut updated_target = target.clone();
         update_deck_limits(updated_target.normal_mut()?, &req.limits, today);
-        self.update_deck_inner(&mut updated_target, target, usn)?;
+        self.update_deck_inner(&mut updated_target, target)?;
 
         // anything that follows from settings changing, in any deck that changed
         let mut decks_needing_memory_recompute = vec![];
@@ -188,7 +186,7 @@ impl Collection {
                 .map(|c| c.inner.new_card_insert_order())
                 .unwrap_or_default();
             if previous_order != current_order {
-                self.sort_deck(deck.id, current_order, usn)?;
+                self.sort_deck(deck.id, current_order)?;
             }
 
             // if params differ, memory state needs to be recomputed
@@ -203,7 +201,7 @@ impl Collection {
             {
                 decks_needing_memory_recompute.push((deck.id, config_id));
             }
-            self.adjust_remaining_steps_in_deck(deck.id, previous, current, usn)?;
+            self.adjust_remaining_steps_in_deck(deck.id, previous, current)?;
         }
 
         if !decks_needing_memory_recompute.is_empty() {
@@ -250,7 +248,6 @@ impl Collection {
         deck: DeckId,
         previous_config: Option<&DeckConfig>,
         current_config: Option<&DeckConfig>,
-        usn: Usn,
     ) -> Result<()> {
         if let (Some(old), Some(new)) = (previous_config, current_config) {
             for (search, old_steps, new_steps) in [
@@ -270,7 +267,7 @@ impl Collection {
                 }
                 let search = search.clone().and(SearchNode::from_deck_id(deck, false));
                 for mut card in self.all_cards_for_search(search)? {
-                    self.adjust_remaining_steps(&mut card, old_steps, new_steps, usn)?;
+                    self.adjust_remaining_steps(&mut card, old_steps, new_steps)?;
                 }
             }
         }

@@ -42,23 +42,23 @@ impl Collection {
         match input.value.or_invalid("missing oneof value")? {
             CustomStudyValue::NewLimitDelta(delta) => {
                 let today = self.current_due_day(0)?;
-                self.extend_limits(today, self.usn()?, deck.id, delta, 0)?;
+                self.extend_limits(today, deck.id, delta, 0)?;
                 if delta > 0 {
                     deck = self.storage.get_deck(deck.id)?.or_not_found(deck.id)?;
                     let original = deck.clone();
                     deck.normal_mut()?.extend_new = delta as u32;
-                    self.update_deck_inner(&mut deck, original, self.usn()?)?;
+                    self.update_deck_inner(&mut deck, original)?;
                 }
                 Ok(())
             }
             CustomStudyValue::ReviewLimitDelta(delta) => {
                 let today = self.current_due_day(0)?;
-                self.extend_limits(today, self.usn()?, deck.id, 0, delta)?;
+                self.extend_limits(today, deck.id, 0, delta)?;
                 if delta > 0 {
                     deck = self.storage.get_deck(deck.id)?.or_not_found(deck.id)?;
                     let original = deck.clone();
                     deck.normal_mut()?.extend_review = delta as u32;
-                    self.update_deck_inner(&mut deck, original, self.usn()?)?;
+                    self.update_deck_inner(&mut deck, original)?;
                 }
                 Ok(())
             }

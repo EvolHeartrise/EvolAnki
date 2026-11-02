@@ -20,10 +20,8 @@ impl Collection {
 
 impl Collection {
     pub(crate) fn add_tags_to_notes_inner(&mut self, nids: &[NoteId], tags: &str) -> Result<usize> {
-        let usn = self.usn()?;
-
         // will update tag list for any new tags, and match case
-        let tags_to_add = self.canonified_tags_as_vec(tags, usn)?;
+        let tags_to_add = self.canonified_tags_as_vec(tags)?;
 
         // modify notes
         let mut match_count = 0;
@@ -35,7 +33,7 @@ impl Collection {
                     tags: updated_tags,
                     ..original
                 };
-                note.set_modified(usn);
+                note.set_modified();
                 self.update_note_tags_undoable(&note, original)?;
             }
         }

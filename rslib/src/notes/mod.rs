@@ -34,7 +34,6 @@ pub struct Note {
     pub guid: String,
     pub notetype_id: NotetypeId,
     pub mtime: TimestampSecs,
-    pub usn: Usn,
     pub tags: Vec<String>,
     fields: Vec<String>,
     pub(crate) sort_field: Option<String>,
@@ -94,8 +93,7 @@ impl Collection {
 
     /// Remove provided notes, and any cards that use them.
     pub fn remove_notes(&mut self, nids: &[NoteId]) -> Result<OpOutput<usize>> {
-        let usn = self.usn()?;
-        self.transact(Op::RemoveNote, |col| col.remove_notes_inner(nids, usn))
+        self.transact(Op::RemoveNote, |col| col.remove_notes_inner(nids))
     }
 }
 
@@ -105,14 +103,12 @@ impl Collection {
 pub(crate) struct NoteTags {
     pub id: NoteId,
     pub mtime: TimestampSecs,
-    pub usn: Usn,
     pub tags: String,
 }
 
 impl NoteTags {
-    pub(crate) fn set_modified(&mut self, usn: Usn) {
+    pub(crate) fn set_modified(&mut self) {
         self.mtime = TimestampSecs::now();
-        self.usn = usn;
     }
 }
 
@@ -123,7 +119,6 @@ impl Note {
             guid: base91_u64(),
             notetype_id: notetype.id,
             mtime: TimestampSecs(0),
-            usn: Usn(0),
             tags: vec![],
             fields: vec!["".to_string(); notetype.fields.len()],
             sort_field: None,
@@ -137,7 +132,6 @@ impl Note {
         guid: String,
         notetype_id: NotetypeId,
         mtime: TimestampSecs,
-        usn: Usn,
         tags: Vec<String>,
         fields: Vec<String>,
         sort_field: Option<String>,
@@ -148,7 +142,6 @@ impl Note {
             guid,
             notetype_id,
             mtime,
-            usn,
             tags,
             fields,
             sort_field,
@@ -199,13 +192,12 @@ impl Note {
     }
 
     #[inline]
-    pub(crate) fn set_modified_with_mtime(&mut self, usn: Usn, mtime: TimestampSecs) {
+    pub(crate) fn set_modified_with_mtime(&mut self, mtime: TimestampSecs) {
         self.mtime = mtime;
-        self.usn = usn;
     }
 
-    pub(crate) fn set_modified(&mut self, usn: Usn) {
-        self.set_modified_with_mtime(usn, TimestampSecs::now())
+    pub(crate) fn set_modified(&mut self) {
+        self.set_modified_with_mtime(TimestampSecs::now())
     }
 
     pub(crate) fn nonempty_fields<'a>(&self, fields: &'a [NoteField]) -> HashSet<&'a str> {
@@ -270,7 +262,6 @@ impl From<Note> for anki_proto::notes::Note {
             guid: n.guid,
             notetype_id: n.notetype_id.0,
             mtime_secs: n.mtime.0 as u32,
-            usn: n.usn.0,
             tags: n.tags,
             fields: n.fields,
         }
@@ -284,7 +275,6 @@ impl From<anki_proto::notes::Note> for Note {
             guid: n.guid,
             notetype_id: NotetypeId(n.notetype_id),
             mtime: TimestampSecs(n.mtime_secs as i64),
-            usn: Usn(n.usn),
             tags: n.tags,
             fields: n.fields,
             sort_field: None,
@@ -335,7 +325,6 @@ pub(crate) struct UpdateNoteInnerWithoutCardsArgs<'a> {
     pub(crate) note: &'a mut Note,
     pub(crate) original: &'a Note,
     pub(crate) notetype: &'a Notetype,
-    pub(crate) usn: Usn,
     pub(crate) mark_note_modified: bool,
     pub(crate) normalize_text: bool,
     pub(crate) update_tags: bool,
@@ -343,10 +332,10 @@ pub(crate) struct UpdateNoteInnerWithoutCardsArgs<'a> {
 }
 
 impl Collection {
-    pub(crate) fn canonify_note_tags(&mut self, note: &mut Note, usn: Usn) -> Result<()> {
+    pub(crate) fn canonify_note_tags(&mut self, note: &mut Note) -> Result<()> {
         if !note.tags.is_empty() {
             let tags = std::mem::take(&mut note.tags);
-            note.tags = self.canonify_tags(tags, usn)?.0;
+            note.tags = self.canonify_tags(tags)?.0;
         }
         Ok(())
     }
@@ -356,11 +345,11 @@ impl Collection {
             .get_notetype(note.notetype_id)?
             .or_invalid("missing note type")?;
         let last_deck = self.get_last_deck_added_to_for_notetype(note.notetype_id);
-        let ctx = CardGenContext::new(nt.as_ref(), last_deck, self.usn()?);
+        let ctx = CardGenContext::new(nt.as_ref(), last_deck);
         let normalize_text = self.get_config_bool(BoolKey::NormalizeNoteText);
-        self.canonify_note_tags(note, ctx.usn)?;
+        self.canonify_note_tags(note)?;
         note.prepare_for_update(ctx.notetype, normalize_text)?;
-        note.set_modified(ctx.usn);
+        note.set_modified();
         self.add_note_only_undoable(note)?;
         let count = self.generate_cards_for_new_note(&ctx, note, did)?;
         self.set_last_deck_for_notetype(note.notetype_id, did)?;
@@ -417,7 +406,7 @@ impl Collection {
             .get_notetype(note.notetype_id)?
             .or_invalid("missing note type")?;
         let last_deck = self.get_last_deck_added_to_for_notetype(note.notetype_id);
-        let ctx = CardGenContext::new(nt.as_ref(), last_deck, self.usn()?);
+        let ctx = CardGenContext::new(nt.as_ref(), last_deck);
         let norm = self.get_config_bool(BoolKey::NormalizeNoteText);
         self.update_note_inner_generating_cards(
             &ctx,
@@ -446,7 +435,6 @@ impl Collection {
             note,
             original,
             notetype: ctx.notetype,
-            usn: ctx.usn,
             mark_note_modified,
             normalize_text,
             update_tags,
@@ -462,7 +450,6 @@ impl Collection {
             note,
             original,
             notetype,
-            usn,
             mark_note_modified,
             normalize_text,
             update_tags,
@@ -470,20 +457,20 @@ impl Collection {
         }: UpdateNoteInnerWithoutCardsArgs,
     ) -> Result<()> {
         if update_tags {
-            self.canonify_note_tags(note, usn)?;
+            self.canonify_note_tags(note)?;
         }
         note.prepare_for_update(notetype, normalize_text)?;
         if mark_note_modified {
             if let Some(mtime) = mtime {
-                note.set_modified_with_mtime(usn, mtime);
+                note.set_modified_with_mtime(mtime);
             } else {
-                note.set_modified(usn);
+                note.set_modified();
             }
         }
         self.update_note_undoable(note, original)
     }
 
-    pub(crate) fn remove_notes_inner(&mut self, nids: &[NoteId], usn: Usn) -> Result<usize> {
+    pub(crate) fn remove_notes_inner(&mut self, nids: &[NoteId]) -> Result<usize> {
         let mut card_count = 0;
         for nid in nids {
             let nid = *nid;

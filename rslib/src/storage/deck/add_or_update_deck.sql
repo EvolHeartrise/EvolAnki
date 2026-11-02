@@ -1,3 +1,3 @@
 INSERT
-  OR REPLACE INTO decks (id, name, mtime_secs, usn, common, kind)
-VALUES (?, ?, ?, ?, ?, ?)
+  OR REPLACE INTO decks (id, name, mtime_secs, common, kind)
+VALUES (?, ?, ?, ?, ?)

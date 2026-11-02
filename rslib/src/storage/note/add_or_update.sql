@@ -4,7 +4,6 @@ INSERT
     guid,
     mid,
     mod,
-    usn,
     tags,
     flds,
     sfld,
@@ -13,7 +12,6 @@ INSERT
     data
   )
 VALUES (
-    ?,
     ?,
     ?,
     ?,

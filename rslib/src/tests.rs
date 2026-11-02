@@ -96,11 +96,11 @@ impl Collection {
 
         modifier(&mut new_config.inner);
 
-        self.update_deck_config_inner(&mut new_config, config.clone(), None)
+        self.update_deck_config_inner(&mut new_config, config.clone(), false)
             .unwrap();
-        self.sort_deck(DeckId(1), config.inner.new_card_insert_order(), Usn(0))
+        self.sort_deck(DeckId(1), config.inner.new_card_insert_order())
             .unwrap();
-        self.adjust_remaining_steps_in_deck(DeckId(1), Some(&config), Some(&new_config), Usn(0))
+        self.adjust_remaining_steps_in_deck(DeckId(1), Some(&config), Some(&new_config))
             .unwrap();
     }
 

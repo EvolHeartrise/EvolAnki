@@ -50,7 +50,6 @@ pub struct Deck {
     pub id: DeckId,
     pub name: NativeDeckName,
     pub mtime_secs: TimestampSecs,
-    pub usn: Usn,
     pub common: DeckCommon,
     pub kind: DeckKind,
 }
@@ -61,7 +60,6 @@ impl Deck {
             id: DeckId(0),
             name: NativeDeckName::from_native_str(""),
             mtime_secs: TimestampSecs(0),
-            usn: Usn(0),
             common: DeckCommon {
                 study_collapsed: true,
                 browser_collapsed: true,
@@ -128,9 +126,8 @@ impl Deck {
         }
     }
 
-    pub(crate) fn set_modified(&mut self, usn: Usn) {
+    pub(crate) fn set_modified(&mut self) {
         self.mtime_secs = TimestampSecs::now();
-        self.usn = usn;
     }
 }
 

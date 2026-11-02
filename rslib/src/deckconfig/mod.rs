@@ -35,7 +35,6 @@ pub struct DeckConfig {
     pub id: DeckConfigId,
     pub name: String,
     pub mtime_secs: TimestampSecs,
-    pub usn: Usn,
     pub inner: DeckConfigInner,
 }
 
@@ -88,7 +87,6 @@ impl Default for DeckConfig {
             id: DeckConfigId(0),
             name: "".to_string(),
             mtime_secs: Default::default(),
-            usn: Default::default(),
             inner: DeckConfigInner {
                 learn_steps: vec![1.0, 10.0],
                 relearn_steps: vec![10.0],
@@ -110,14 +108,12 @@ impl DeckConfig {
             id: DeckConfigId(deck.0),
             name: deck.to_string(),
             mtime_secs: Default::default(),
-            usn: Default::default(),
             inner,
         }
     }
 
-    pub(crate) fn set_modified(&mut self, usn: Usn) {
+    pub(crate) fn set_modified(&mut self) {
         self.mtime_secs = TimestampSecs::now();
-        self.usn = usn;
     }
 
     /// Retrieve the FSRS 6.0 params, falling back on 5.0 or 4.x ones.
@@ -160,29 +156,28 @@ impl Collection {
 impl Collection {
     /// Save the settings of a deck, which `config.id` names.
     pub(crate) fn add_or_update_deck_config(&mut self, config: &mut DeckConfig) -> Result<()> {
-        let usn = Some(self.usn()?);
         match self.storage.get_deck_config(config.id)? {
-            Some(original) => self.update_deck_config_inner(config, original, usn),
+            Some(original) => self.update_deck_config_inner(config, original, true),
             None => {
-                config.set_modified(self.usn()?);
+                config.set_modified();
                 self.add_deck_config_if_unique_undoable(config)
             }
         }
     }
 
-    /// Update an existing deck config. If usn is provided, modification time
-    /// and usn will be updated.
+    /// Update an existing deck config, optionally bumping its modification
+    /// time.
     pub(crate) fn update_deck_config_inner(
         &mut self,
         config: &mut DeckConfig,
         original: DeckConfig,
-        usn: Option<Usn>,
+        update_mtime: bool,
     ) -> Result<()> {
         if config == &original {
             return Ok(());
         }
-        if let Some(usn) = usn {
-            config.set_modified(usn);
+        if update_mtime {
+            config.set_modified();
         }
         self.update_deck_config_undoable(config, original)
     }
@@ -335,15 +330,14 @@ mod tests {
     }
 
     #[test]
-    fn update_deck_config_inner_uses_usn() -> Result<()> {
+    fn update_deck_config_inner_updates_mtime() -> Result<()> {
         let mut col = Collection::new();
         let original = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         let mtime = original.mtime_secs;
         let mut config = original.clone();
         config.inner.new_per_day = 1;
-        col.update_deck_config_inner(&mut config, original, Some(Usn(1)))?;
+        col.update_deck_config_inner(&mut config, original, true)?;
         let returned_config = col.get_deck_config(config.id, false)?;
-        assert_eq!(config.usn, Usn(1));
         assert_ne!(config.mtime_secs, mtime);
         assert_eq!(returned_config, Some(config));
 
@@ -351,14 +345,13 @@ mod tests {
     }
 
     #[test]
-    fn update_deck_config_inner_ignores_usn_if_identical() -> Result<()> {
+    fn update_deck_config_inner_leaves_mtime_if_identical() -> Result<()> {
         let mut col = Collection::new();
         let original = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         let mtime = original.mtime_secs;
         let mut config = original.clone();
-        col.update_deck_config_inner(&mut config, original, Some(Usn(1)))?;
+        col.update_deck_config_inner(&mut config, original, true)?;
         let returned_config = col.get_deck_config(config.id, false)?;
-        assert_ne!(config.usn, Usn(1));
         assert_eq!(config.mtime_secs, mtime);
         assert_eq!(returned_config, Some(config));
 

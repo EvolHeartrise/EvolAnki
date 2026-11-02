@@ -36,7 +36,6 @@ impl From<TimestampMillis> for RevlogId {
 pub struct RevlogEntry {
     pub id: RevlogId,
     pub cid: CardId,
-    pub usn: Usn,
     /// - In the V1 scheduler, 3 represents easy in the learning case.
     /// - 0 represents manual rescheduling.
     #[serde(rename = "ease")]
@@ -137,9 +136,8 @@ impl Collection {
         &mut self,
         card: &Card,
         original_interval: u32,
-        usn: Usn,
     ) -> Result<()> {
-        self.log_scheduled_review(card, original_interval, usn, RevlogReviewKind::Manual)
+        self.log_scheduled_review(card, original_interval, RevlogReviewKind::Manual)
     }
 
     // reschedule cards on change
@@ -147,16 +145,14 @@ impl Collection {
         &mut self,
         card: &Card,
         original_interval: u32,
-        usn: Usn,
     ) -> Result<()> {
-        self.log_scheduled_review(card, original_interval, usn, RevlogReviewKind::Rescheduled)
+        self.log_scheduled_review(card, original_interval, RevlogReviewKind::Rescheduled)
     }
 
     fn log_scheduled_review(
         &mut self,
         card: &Card,
         original_interval: u32,
-        usn: Usn,
         review_kind: RevlogReviewKind,
     ) -> Result<()> {
         let ease_factor = u32::from(
@@ -167,7 +163,6 @@ impl Collection {
         let entry = RevlogEntry {
             id: RevlogId::new(),
             cid: card.id,
-            usn,
             button_chosen: 0,
             interval: i32::try_from(card.interval).unwrap_or(i32::MAX),
             last_interval: i32::try_from(original_interval).unwrap_or(i32::MAX),

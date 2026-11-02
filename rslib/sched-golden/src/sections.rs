@@ -725,12 +725,23 @@ fn tools(harness: &mut Harness, source: &Path, _: &Config) -> Result<Map<String,
     Ok(output)
 }
 
-/// The rows that differ from the original in each table, as none should.
+/// The rows that differ from the original in each table, as none should. The
+/// original may be from before the usn column was removed.
 fn rows_changed(original: &Path, after: &Path) -> Result<Value> {
+    let without_usn = |mut rows: Value| {
+        if let Some(rows) = rows.as_object_mut() {
+            for row in rows.values_mut() {
+                if let Some(row) = row.as_object_mut() {
+                    row.remove("usn");
+                }
+            }
+        }
+        rows
+    };
     let mut out = Map::new();
     for table in ["cards", "revlog", "deck_config"] {
-        let left = raw_rows(original, table, "")?;
-        let right = raw_rows(after, table, "")?;
+        let left = without_usn(raw_rows(original, table, "")?);
+        let right = without_usn(raw_rows(after, table, "")?);
         let (left, right) = (
             left.as_object().cloned().unwrap_or_default(),
             right.as_object().cloned().unwrap_or_default(),

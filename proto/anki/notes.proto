@@ -38,7 +38,6 @@ message Note {
   string guid = 2;
   int64 notetype_id = 3;
   uint32 mtime_secs = 4;
-  int32 usn = 5;
   repeated string tags = 6;
   repeated string fields = 7;
 }

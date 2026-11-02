@@ -10,20 +10,16 @@ mod rename;
 mod service;
 pub(crate) mod undo;
 
-use crate::prelude::*;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tag {
     pub name: String,
-    pub usn: Usn,
     pub expanded: bool,
 }
 
 impl Tag {
-    pub fn new(name: String, usn: Usn) -> Self {
+    pub fn new(name: String) -> Self {
         Tag {
             name,
-            usn,
             expanded: false,
         }
     }

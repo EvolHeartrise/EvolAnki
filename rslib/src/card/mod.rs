@@ -29,7 +29,6 @@ use crate::scheduler::fsrs::params::ignore_revlogs_before_ms_from_config;
 use crate::scheduler::timing::SchedTimingToday;
 use crate::search::Negated;
 use crate::timestamp::TimestampSecs;
-use crate::types::Usn;
 
 define_newtype!(CardId, i64);
 
@@ -72,7 +71,6 @@ pub struct Card {
     pub(crate) deck_id: DeckId,
     pub(crate) template_idx: u16,
     pub(crate) mtime: TimestampSecs,
-    pub(crate) usn: Usn,
     pub(crate) ctype: CardType,
     pub(crate) queue: CardQueue,
     pub(crate) due: i32,
@@ -171,7 +169,6 @@ impl Default for Card {
             deck_id: DeckId(0),
             template_idx: 0,
             mtime: TimestampSecs(0),
-            usn: Usn(0),
             ctype: CardType::New,
             queue: CardQueue::New,
             due: 0,
@@ -193,9 +190,8 @@ impl Default for Card {
 }
 
 impl Card {
-    pub fn set_modified(&mut self, usn: Usn) {
+    pub fn set_modified(&mut self) {
         self.mtime = TimestampSecs::now();
-        self.usn = usn;
     }
 
     pub fn clear_fsrs_data(&mut self) {
@@ -284,32 +280,25 @@ impl Collection {
         let orig = self.storage.get_card(cid)?.or_invalid("no such card")?;
         let mut card = orig.clone();
         func(&mut card)?;
-        self.update_card_inner(&mut card, orig, self.usn()?)?;
+        self.update_card_inner(&mut card, orig)?;
         Ok(card)
     }
 
     /// Marks the card as modified, then saves it.
-    pub(crate) fn update_card_inner(
-        &mut self,
-        card: &mut Card,
-        original: Card,
-        usn: Usn,
-    ) -> Result<()> {
-        card.set_modified(usn);
+    pub(crate) fn update_card_inner(&mut self, card: &mut Card, original: Card) -> Result<()> {
+        card.set_modified();
         self.update_card_undoable(card, original)
     }
 
     pub(crate) fn add_card(&mut self, card: &mut Card) -> Result<()> {
         require!(card.id.0 == 0, "card id already set");
         card.mtime = TimestampSecs::now();
-        card.usn = self.usn()?;
         self.add_card_undoable(card)
     }
 
     /// Remove cards and any resulting orphaned notes.
     /// Expects a transaction.
     pub(crate) fn remove_cards_and_orphaned_notes(&mut self, cids: &[CardId]) -> Result<usize> {
-        let usn = self.usn()?;
         let mut nids = HashSet::new();
         let mut card_count = 0;
         for cid in cids {
@@ -340,7 +329,6 @@ impl Collection {
         let config = self.get_deck_config(config_id, true)?.unwrap();
         let fsrs_enabled = self.fsrs_enabled();
         let mut steps_adjuster = RemainingStepsAdjuster::new(&config);
-        let usn = self.usn()?;
         self.transact(Op::SetCardDeck, |col| {
             let mut count = 0;
             for mut card in col.all_cards_for_ids(cards, false)? {
@@ -351,7 +339,7 @@ impl Collection {
                 let original = card.clone();
                 steps_adjuster.adjust_remaining_steps(col, &mut card)?;
                 card.set_deck(deck_id);
-                col.update_card_inner(&mut card, original, usn)?;
+                col.update_card_inner(&mut card, original)?;
             }
             // Only recompute when at least one card actually moved. Besides
             // avoiding wasted work on a no-op, this prevents a set_deck call on
@@ -399,12 +387,11 @@ impl Collection {
         card: &mut Card,
         old_steps: &[f32],
         new_steps: &[f32],
-        usn: Usn,
     ) -> Result<()> {
         if let Some(new_remaining) = card.new_remaining_steps(new_steps, old_steps) {
             let original = card.clone();
             card.remaining_steps = new_remaining;
-            self.update_card_inner(card, original, usn)
+            self.update_card_inner(card, original)
         } else {
             Ok(())
         }
@@ -648,7 +635,10 @@ mod test {
         assert!(moved.memory_state.is_some());
         assert_eq!(moved.deck_id, target.id);
 
-        assert_eq!(col.storage.get_card(target_card_id)?.unwrap(), target_before);
+        assert_eq!(
+            col.storage.get_card(target_card_id)?.unwrap(),
+            target_before
+        );
         Ok(())
     }
 

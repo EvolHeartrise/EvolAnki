@@ -108,7 +108,7 @@ impl Collection {
             let existing_deck = col.storage.get_deck(did)?.or_not_found(did)?;
             let mut deck = existing_deck.clone();
             deck.name = NativeDeckName::from_human_name(new_human_name);
-            col.update_deck_inner(&mut deck, existing_deck, col.usn()?)
+            col.update_deck_inner(&mut deck, existing_deck)
         })
     }
 
@@ -116,20 +116,19 @@ impl Collection {
         &mut self,
         old: &Deck,
         new_name: &NativeDeckName,
-        usn: Usn,
     ) -> Result<()> {
         let children = self.storage.child_decks(old)?;
         for mut child in children {
             let original = child.clone();
             child.name.reparent(&old.name, new_name);
-            child.set_modified(usn);
+            child.set_modified();
             self.update_single_deck_undoable(&mut child, original)?;
         }
 
         Ok(())
     }
 
-    pub(crate) fn ensure_deck_name_unique(&self, deck: &mut Deck, usn: Usn) -> Result<()> {
+    pub(crate) fn ensure_deck_name_unique(&self, deck: &mut Deck) -> Result<()> {
         loop {
             match self.storage.get_deck_id(deck.name.as_native_str())? {
                 Some(did) if did == deck.id => break,
@@ -137,7 +136,7 @@ impl Collection {
                 _ => (),
             }
             deck.name.add_suffix("+");
-            deck.set_modified(usn);
+            deck.set_modified();
         }
 
         Ok(())

@@ -6,8 +6,7 @@ SET due = (
       ELSE due
     END
   ),
-  mod = ?1,
-  usn = ?2
+  mod = ?1
 WHERE due != (
     CASE
       WHEN type = 0

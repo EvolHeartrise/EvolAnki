@@ -128,7 +128,6 @@ message Deck {
   int64 id = 1;
   string name = 2;
   int64 mtime_secs = 3;
-  int32 usn = 4;
   Common common = 5;
   // the specifics are inlined here when sending data to clients,
   // as otherwise an extra level of indirection would be required

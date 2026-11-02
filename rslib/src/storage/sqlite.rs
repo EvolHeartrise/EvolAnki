@@ -471,11 +471,7 @@ fn trace(event: TraceEvent) {
 }
 
 impl SqliteStorage {
-    pub(crate) fn open_or_create(
-        path: &Path,
-        tr: &I18n,
-        check_integrity: bool,
-    ) -> Result<Self> {
+    pub(crate) fn open_or_create(path: &Path, tr: &I18n, check_integrity: bool) -> Result<Self> {
         let db = open_or_create_collection_db(path)?;
         let (create, ver) = schema_version(&db)?;
 
@@ -534,7 +530,7 @@ impl SqliteStorage {
             storage.commit_trx()?;
         }
 
-        // Like the old day rollover, this leaves mod and usn alone.
+        // Like the old day rollover, this leaves mod alone.
         storage.db.execute(
             &format!("UPDATE cards SET queue = {QUEUE_ONCE_OPENED_SQL} WHERE queue IN (-2, -3)"),
             [],
@@ -626,6 +622,18 @@ impl Display for SqlSortOrder {
             }
         )
     }
+}
+
+/// The schema version of a collection nothing has open, without changing it.
+pub fn stored_schema_version(path: &Path) -> Result<u8> {
+    let db = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    Ok(db.query_row("select ver from col", [], |row| row.get(0))?)
+}
+
+/// Whether opening a collection nothing has open would upgrade its schema,
+/// which can't be undone, or whether that can't be told.
+pub fn schema_upgrade_needed(path: &Path) -> bool {
+    stored_schema_version(path).map_or(true, |ver| ver < SCHEMA_MAX_VERSION)
 }
 
 /// Copy a database with SQLite's online backup, so a live one stays consistent:
@@ -730,7 +738,7 @@ mod test {
                 col.storage
                     .db
                     .execute(
-                        "update cards set queue = ?, type = ?, due = ?, mod = 5, usn = 6 \
+                        "update cards set queue = ?, type = ?, due = ?, mod = 5 \
                          where id = ?",
                         params![queue, ctype, due, cid],
                     )
@@ -745,24 +753,16 @@ mod test {
             .build()
             .unwrap();
         for (((_, ctype, due), queue), cid) in cases.into_iter().zip(cids) {
-            let raw: (i8, i8, i32, i64, i32) = col
+            let raw: (i8, i8, i32, i64) = col
                 .storage
                 .db
                 .query_row(
-                    "select queue, type, due, mod, usn from cards where id = ?",
+                    "select queue, type, due, mod from cards where id = ?",
                     [cid],
-                    |row| {
-                        Ok((
-                            row.get(0)?,
-                            row.get(1)?,
-                            row.get(2)?,
-                            row.get(3)?,
-                            row.get(4)?,
-                        ))
-                    },
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
                 )
                 .unwrap();
-            assert_eq!(raw, (queue, ctype, due, 5, 6));
+            assert_eq!(raw, (queue, ctype, due, 5));
             // and it's what the backend would do itself
             let mut card = col.storage.get_card(cid).unwrap().unwrap();
             if queue != -1 {
@@ -794,8 +794,7 @@ mod test {
                 .unwrap();
             col.close().unwrap();
         }
-        let err =
-            SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
+        let err = SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
         match err {
             AnkiError::DbError {
                 source: DbError { kind, .. },
@@ -806,11 +805,8 @@ mod test {
 
     /// Reads the persisted schema version with a raw connection, so no upgrade
     /// is triggered.
-    fn stored_schema_version(path: &Path) -> u8 {
-        Connection::open(path)
-            .unwrap()
-            .query_row("select ver from col", [], |r| r.get(0))
-            .unwrap()
+    fn stored_version(path: &Path) -> u8 {
+        stored_schema_version(path).unwrap()
     }
 
     #[test]
@@ -865,7 +861,7 @@ mod test {
 
             SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
 
-            assert_eq!(stored_schema_version(tempfile.path()), ver, "schema {ver}");
+            assert_eq!(stored_version(tempfile.path()), ver, "schema {ver}");
             // A rejected open must be side-effect free, so the modification time
             // is left untouched (read before restoring the version below).
             let mod_after: i64 = Connection::open(tempfile.path())

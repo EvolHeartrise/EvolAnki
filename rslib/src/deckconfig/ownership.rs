@@ -83,7 +83,6 @@ fn settings_for_deck(deck: &Deck, rows: &HashMap<DeckConfigId, DeckConfig>) -> D
     );
     if let Some(source) = source {
         settings.mtime_secs = source.mtime_secs;
-        settings.usn = source.usn;
     }
     if let Ok(normal) = deck.normal() {
         if let Some(limit) = normal.review_limit {
@@ -146,7 +145,7 @@ impl Collection {
     pub(crate) fn add_settings_if_missing(&mut self, deck: &Deck) -> Result<()> {
         if deck.is_normal() {
             let mut config = DeckConfig::new_for_deck(deck.id);
-            config.set_modified(self.usn()?);
+            config.set_modified();
             self.add_deck_config_if_unique_undoable(&config)?;
         }
         Ok(())
@@ -178,7 +177,6 @@ mod test {
             id: DeckConfigId(id),
             name: name.into(),
             mtime_secs: TimestampSecs(1000 + id),
-            usn: Usn(5),
             ..Default::default()
         };
         modify(&mut row.inner);
@@ -286,9 +284,9 @@ mod test {
     fn study_data(col: &Collection) -> Vec<String> {
         let mut out = vec![];
         for (table, columns) in [
-            ("cards", "id,nid,did,ord,mod,usn,type,queue,due,ivl,factor,reps,lapses,left,odue,odid,flags,data"),
-            ("notes", "id,guid,mid,mod,usn,tags,flds,sfld,csum,flags,data"),
-            ("revlog", "id,cid,usn,ease,ivl,lastIvl,factor,time,type"),
+            ("cards", "id,nid,did,ord,mod,type,queue,due,ivl,factor,reps,lapses,left,odue,odid,flags,data"),
+            ("notes", "id,guid,mid,mod,tags,flds,sfld,csum,flags,data"),
+            ("revlog", "id,cid,ease,ivl,lastIvl,factor,time,type"),
         ] {
             let db = col.storage.db();
             let sql = format!("select {columns} from {table} order by id");

@@ -11,7 +11,6 @@ use crate::prelude::*;
 
 struct DeckContext<'d> {
     target_col: &'d mut Collection,
-    usn: Usn,
     renamed_parents: Vec<(String, String)>,
     imported_decks: HashMap<DeckId, DeckId>,
     /// By the id of the deck they came with, if settings are being imported.
@@ -21,10 +20,9 @@ struct DeckContext<'d> {
 }
 
 impl<'d> DeckContext<'d> {
-    fn new<'a: 'd>(target_col: &'a mut Collection, usn: Usn, source_col_today: u32) -> Self {
+    fn new<'a: 'd>(target_col: &'a mut Collection, source_col_today: u32) -> Self {
         Self {
             target_col,
-            usn,
             renamed_parents: Vec::new(),
             imported_decks: HashMap::new(),
             configs: HashMap::new(),
@@ -36,7 +34,7 @@ impl<'d> DeckContext<'d> {
 
 impl Context<'_> {
     pub(super) fn import_decks_and_configs(&mut self) -> Result<HashMap<DeckId, DeckId>> {
-        let mut ctx = DeckContext::new(self.target_col, self.usn, self.data.days_elapsed);
+        let mut ctx = DeckContext::new(self.target_col, self.data.days_elapsed);
         ctx.configs = mem::take(&mut self.data.deck_configs)
             .into_iter()
             .map(|config| (config.id, config))
@@ -136,7 +134,7 @@ impl DeckContext<'_> {
 
     fn add_deck(&mut self, deck: &mut Deck) -> Result<()> {
         let old_id = mem::take(&mut deck.id);
-        self.target_col.add_deck_inner(deck, self.usn)?;
+        self.target_col.add_deck_inner(deck)?;
         self.imported_decks.insert(old_id, deck.id);
         Ok(())
     }
@@ -152,8 +150,7 @@ impl DeckContext<'_> {
             invalid_input!("decks have different kinds");
         }
         self.imported_decks.insert(deck.id, new_deck.id);
-        self.target_col
-            .update_deck_inner(&mut new_deck, original, self.usn)
+        self.target_col.update_deck_inner(&mut new_deck, original)
     }
 
     fn ensure_valid_first_existing_parent(&mut self, deck: &mut Deck) -> Result<()> {
@@ -173,7 +170,7 @@ impl DeckContext<'_> {
         let mut deck = Deck::new_normal();
         deck.name = NativeDeckName::from_native_str(name);
         self.uniquify_name(&mut deck);
-        self.target_col.add_deck_inner(&mut deck, self.usn)
+        self.target_col.add_deck_inner(&mut deck)
     }
 }
 
@@ -214,7 +211,7 @@ mod test {
         DeckAdder::new("filtered").filtered(true).add(&mut col);
         DeckAdder::new("PARENT").add(&mut col);
 
-        let mut ctx = DeckContext::new(&mut col, Usn(1), 0);
+        let mut ctx = DeckContext::new(&mut col, 0);
         ctx.unique_suffix = "★".to_string();
 
         let imports = vec![
@@ -264,7 +261,7 @@ mod test {
             today: exporting_col_today - 100,
         });
 
-        let mut ctx = DeckContext::new(&mut col, Usn(1), exporting_col_today);
+        let mut ctx = DeckContext::new(&mut col, exporting_col_today);
         ctx.import_decks(vec![exported_deck]).unwrap();
 
         let imported_deck_id = ctx.target_col.get_deck_id(deck_name).unwrap().unwrap();

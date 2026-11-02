@@ -12,7 +12,6 @@ use crate::error::AnkiError;
 use crate::error::OrInvalid;
 use crate::error::OrNotFound;
 use crate::prelude::TimestampSecs;
-use crate::prelude::Usn;
 use crate::scheduler::filtered::FilteredDeckForUpdate;
 
 impl crate::services::DecksService for Collection {
@@ -162,7 +161,6 @@ impl From<Deck> for anki_proto::decks::Deck {
             id: d.id.0,
             name: d.name.human_name(),
             mtime_secs: d.mtime_secs.0,
-            usn: d.usn.0,
             common: Some(d.common),
             kind: Some(kind_from_inline(d.kind)),
         }
@@ -177,7 +175,6 @@ impl TryFrom<anki_proto::decks::Deck> for Deck {
             id: DeckId(d.id),
             name: NativeDeckName::from_human_name(&d.name),
             mtime_secs: TimestampSecs(d.mtime_secs),
-            usn: Usn(d.usn),
             common: d.common.unwrap_or_default(),
             kind: kind_to_inline(d.kind.or_invalid("missing kind")?),
         })
@@ -243,7 +240,6 @@ mod tests {
             expected.id = DeckId(123);
             expected.name = NativeDeckName::from_human_name(name);
             expected.mtime_secs = TimestampSecs(456);
-            expected.usn = Usn(789);
             expected.common.study_collapsed = false;
             expected.common.last_day_studied = 10;
             expected.common.new_studied = 11;

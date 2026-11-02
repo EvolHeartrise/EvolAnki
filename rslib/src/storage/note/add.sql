@@ -3,7 +3,6 @@ INSERT INTO notes (
     guid,
     mid,
     mod,
-    usn,
     tags,
     flds,
     sfld,
@@ -24,7 +23,6 @@ VALUES (
         ELSE ?1
       END
     ),
-    ?,
     ?,
     ?,
     ?,

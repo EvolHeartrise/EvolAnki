@@ -28,7 +28,6 @@ pub struct FilteredDeckForUpdate {
 pub(crate) struct DeckFilterContext<'a> {
     pub target_deck: DeckId,
     pub config: &'a FilteredDeck,
-    pub usn: Usn,
     pub timing: SchedTimingToday,
 }
 
@@ -73,7 +72,7 @@ impl Collection {
     pub fn rebuild_filtered_deck(&mut self, did: DeckId) -> Result<OpOutput<usize>> {
         self.transact(Op::RebuildFilteredDeck, |col| {
             let deck = col.get_deck(did)?.or_not_found(did)?;
-            col.rebuild_filtered_deck_inner(&deck, col.usn()?)
+            col.rebuild_filtered_deck_inner(&deck)
         })
     }
 }
@@ -89,12 +88,11 @@ impl Collection {
 
     // Unlike the old Python code, this also marks the cards as modified.
     fn return_cards_to_home_deck(&mut self, cids: &[CardId]) -> Result<()> {
-        let usn = self.usn()?;
         for cid in cids {
             if let Some(mut card) = self.storage.get_card(*cid)? {
                 let original = card.clone();
                 card.remove_from_filtered_deck_restoring_queue();
-                self.update_card_inner(&mut card, original, usn)?;
+                self.update_card_inner(&mut card, original)?;
             }
         }
         Ok(())
@@ -133,7 +131,7 @@ impl Collection {
         for mut card in self.all_cards_for_search_in_order(&search, SortMode::Custom(order))? {
             let original = card.clone();
             card.move_into_filtered_deck(ctx, position);
-            self.update_card_inner(&mut card, original, ctx.usn)?;
+            self.update_card_inner(&mut card, original)?;
             position += 1;
         }
 
@@ -151,7 +149,6 @@ impl Collection {
         &mut self,
         mut update: FilteredDeckForUpdate,
     ) -> Result<DeckId> {
-        let usn = self.usn()?;
         let allow_empty = update.allow_empty;
 
         // check the searches are valid, and normalize them
@@ -164,16 +161,16 @@ impl Collection {
         if update.id.0 == 0 {
             deck = Deck::new_filtered();
             apply_update_to_filtered_deck(&mut deck, update);
-            self.add_deck_inner(&mut deck, usn)?;
+            self.add_deck_inner(&mut deck)?;
         } else {
             let original = self.storage.get_deck(update.id)?.or_not_found(update.id)?;
             deck = original.clone();
             apply_update_to_filtered_deck(&mut deck, update);
-            self.update_deck_inner(&mut deck, original, usn)?;
+            self.update_deck_inner(&mut deck, original)?;
         }
 
         // rebuild it
-        let count = self.rebuild_filtered_deck_inner(&deck, usn)?;
+        let count = self.rebuild_filtered_deck_inner(&deck)?;
 
         // if it failed to match any cards, we revert the changes
         if count == 0 && !allow_empty {
@@ -185,7 +182,7 @@ impl Collection {
         }
     }
 
-    fn rebuild_filtered_deck_inner(&mut self, deck: &Deck, usn: Usn) -> Result<usize> {
+    fn rebuild_filtered_deck_inner(&mut self, deck: &Deck) -> Result<usize> {
         if self.scheduler_version() == SchedulerVersion::V1 {
             return Err(AnkiError::SchedulerUpgradeRequired);
         }
@@ -195,7 +192,6 @@ impl Collection {
         let ctx = DeckFilterContext {
             target_deck: deck.id,
             config,
-            usn,
             timing,
         };
 

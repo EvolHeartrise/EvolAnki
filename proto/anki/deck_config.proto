@@ -187,7 +187,6 @@ message DeckConfig {
   // rows apart.
   string name = 2;
   int64 mtime_secs = 3;
-  int32 usn = 4;
   Config config = 5;
 }
 

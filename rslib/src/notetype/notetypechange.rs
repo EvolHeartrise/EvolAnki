@@ -163,7 +163,6 @@ impl Collection {
         &mut self,
         input: ChangeNotetypeInput,
     ) -> Result<()> {
-        let usn = self.usn()?;
         if let Some(new_templates) = input.new_templates {
             let old_notetype = self
                 .get_notetype(input.old_notetype_id)?
@@ -172,20 +171,14 @@ impl Collection {
                 &input.note_ids,
                 old_notetype.templates.len(),
                 new_templates,
-                usn,
             )?;
         } else {
-            self.maybe_remove_cards_with_missing_template(
-                &input.note_ids,
-                input.new_notetype_id,
-                usn,
-            )?;
+            self.maybe_remove_cards_with_missing_template(&input.note_ids, input.new_notetype_id)?;
         }
         self.update_notes_for_new_notetype_and_generate_cards(
             &input.note_ids,
             &input.new_fields,
             input.new_notetype_id,
-            usn,
         )?;
 
         Ok(())
@@ -201,13 +194,12 @@ impl Collection {
         note_ids: &[NoteId],
         new_fields: &[Option<usize>],
         new_notetype_id: NotetypeId,
-        usn: Usn,
     ) -> Result<()> {
         let notetype = self
             .get_notetype(new_notetype_id)?
             .or_not_found(new_notetype_id)?;
         let last_deck = self.get_last_deck_added_to_for_notetype(notetype.id);
-        let ctx = CardGenContext::new(notetype.as_ref(), last_deck, usn);
+        let ctx = CardGenContext::new(notetype.as_ref(), last_deck);
 
         for nid in note_ids {
             let mut note = self.storage.get_note(*nid)?.or_not_found(nid)?;
@@ -227,22 +219,16 @@ impl Collection {
         note_ids: &[NoteId],
         old_template_count: usize,
         new_templates: Vec<Option<usize>>,
-        usn: Usn,
     ) -> Result<()> {
         let nids: Node = SearchNode::NoteIds(comma_separated_ids(note_ids)).into();
         let map = TemplateMap::new(new_templates, old_template_count);
-        self.remove_unmapped_cards(&map, nids.clone(), usn)?;
-        self.rewrite_remapped_cards(&map, nids, usn)?;
+        self.remove_unmapped_cards(&map, nids.clone())?;
+        self.rewrite_remapped_cards(&map, nids)?;
 
         Ok(())
     }
 
-    fn remove_unmapped_cards(
-        &mut self,
-        map: &TemplateMap,
-        nids: Node,
-        usn: Usn,
-    ) -> Result<(), AnkiError> {
+    fn remove_unmapped_cards(&mut self, map: &TemplateMap, nids: Node) -> Result<(), AnkiError> {
         if !map.removed.is_empty() {
             let ords =
                 SearchBuilder::any(map.removed.iter().map(|o| TemplateKind::Ordinal(*o as u16)));
@@ -254,12 +240,7 @@ impl Collection {
         Ok(())
     }
 
-    fn rewrite_remapped_cards(
-        &mut self,
-        map: &TemplateMap,
-        nids: Node,
-        usn: Usn,
-    ) -> Result<(), AnkiError> {
+    fn rewrite_remapped_cards(&mut self, map: &TemplateMap, nids: Node) -> Result<(), AnkiError> {
         if !map.remapped.is_empty() {
             let ords = SearchBuilder::any(
                 map.remapped
@@ -270,7 +251,7 @@ impl Collection {
                 let original = card.clone();
                 card.template_idx =
                     *map.remapped.get(&(card.template_idx as usize)).unwrap() as u16;
-                self.update_card_inner(&mut card, original, usn)?;
+                self.update_card_inner(&mut card, original)?;
             }
         }
 
@@ -285,7 +266,6 @@ impl Collection {
         &mut self,
         note_ids: &[NoteId],
         notetype_id: NotetypeId,
-        usn: Usn,
     ) -> Result<()> {
         let notetype = self.get_notetype(notetype_id)?.or_not_found(notetype_id)?;
 

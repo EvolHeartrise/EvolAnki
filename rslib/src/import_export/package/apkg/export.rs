@@ -37,7 +37,8 @@ impl Collection {
             .to_str()
             .or_invalid("non-unicode filename")?;
         let meta = Meta::new();
-        let data = self.export_into_collection_file(temp_col_path, options, search, &mut progress)?;
+        let data =
+            self.export_into_collection_file(temp_col_path, options, search, &mut progress)?;
 
         progress.set(ExportProgress::File)?;
         let media = if let Some(media_fn) = media_fn {

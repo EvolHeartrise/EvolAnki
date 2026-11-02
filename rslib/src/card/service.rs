@@ -13,7 +13,6 @@ use crate::error::OrInvalid;
 use crate::error::OrNotFound;
 use crate::notes::NoteId;
 use crate::prelude::TimestampSecs;
-use crate::prelude::Usn;
 use crate::undo::Op;
 
 impl crate::services::CardsService for Collection {
@@ -67,7 +66,6 @@ impl TryFrom<anki_proto::cards::Card> for Card {
             deck_id: DeckId(c.deck_id),
             template_idx: c.template_idx as u16,
             mtime: TimestampSecs(c.mtime_secs),
-            usn: Usn(c.usn),
             ctype,
             queue,
             due: c.due,
@@ -96,7 +94,6 @@ impl From<Card> for anki_proto::cards::Card {
             deck_id: c.deck_id.0,
             template_idx: c.template_idx as u32,
             mtime_secs: c.mtime.0,
-            usn: c.usn.0,
             ctype: c.ctype as u32,
             queue: c.queue as i32,
             due: c.due,

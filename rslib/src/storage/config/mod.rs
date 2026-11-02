@@ -11,13 +11,12 @@ use super::SqliteStorage;
 use crate::config::ConfigEntry;
 use crate::error::Result;
 use crate::timestamp::TimestampSecs;
-use crate::types::Usn;
 
 impl SqliteStorage {
     pub(crate) fn set_config_entry(&self, entry: &ConfigEntry) -> Result<()> {
         self.db
             .prepare_cached(include_str!("add.sql"))?
-            .execute(params![&entry.key, entry.usn, entry.mtime, &entry.value])?;
+            .execute(params![&entry.key, entry.mtime, &entry.value])?;
         Ok(())
     }
 
@@ -44,12 +43,7 @@ impl SqliteStorage {
         self.db
             .prepare_cached(include_str!("get_entry.sql"))?
             .query_and_then([key], |row| {
-                Ok(ConfigEntry::boxed(
-                    key,
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                ))
+                Ok(ConfigEntry::boxed(key, row.get(0)?, row.get(1)?))
             })?
             .next()
             .transpose()
@@ -80,17 +74,11 @@ impl SqliteStorage {
     pub(crate) fn set_all_config(
         &self,
         conf: HashMap<String, Value>,
-        usn: Usn,
         mtime: TimestampSecs,
     ) -> Result<()> {
         self.db.execute("delete from config", [])?;
         for (key, val) in conf.iter() {
-            self.set_config_entry(&ConfigEntry::boxed(
-                key,
-                serde_json::to_vec(&val)?,
-                usn,
-                mtime,
-            ))?;
+            self.set_config_entry(&ConfigEntry::boxed(key, serde_json::to_vec(&val)?, mtime))?;
         }
         Ok(())
     }
@@ -105,7 +93,7 @@ impl SqliteStorage {
                     serde_json::from_str(row.get_ref_unwrap(0).as_str()?).map_err(Into::into);
                 conf
             })?;
-        self.set_all_config(conf, Usn(0), TimestampSecs(0))?;
+        self.set_all_config(conf, TimestampSecs(0))?;
         self.db.execute_batch("update col set conf=''")?;
 
         Ok(())

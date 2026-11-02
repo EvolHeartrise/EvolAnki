@@ -18,9 +18,9 @@ use super::DeckConfigId;
 use super::DeckConfigInner;
 use super::NewCardInsertOrder;
 use super::INITIAL_EASE_FACTOR_THOUSANDS;
+use crate::notetype::schema11::other_to_bytes_without_usn;
 use crate::serde::default_on_invalid;
 use crate::timestamp::TimestampSecs;
-use crate::types::Usn;
 
 fn wait_for_audio_default() -> bool {
     true
@@ -34,7 +34,6 @@ pub struct DeckConfSchema11 {
     #[serde(rename = "mod", deserialize_with = "deserialize_number_from_string")]
     pub(crate) mtime: TimestampSecs,
     pub(crate) name: String,
-    pub(crate) usn: Usn,
     max_taken: i32,
     autoplay: bool,
     #[serde(deserialize_with = "default_on_invalid")]
@@ -258,7 +257,6 @@ impl Default for DeckConfSchema11 {
             id: DeckConfigId(0),
             mtime: TimestampSecs(0),
             name: "Default".to_string(),
-            usn: Usn(0),
             max_taken: 60,
             autoplay: true,
             timer: 0,
@@ -312,17 +310,12 @@ impl From<DeckConfSchema11> for DeckConfig {
                 c.other.insert("lapse".into(), val);
             }
         }
-        let other_bytes = if c.other.is_empty() {
-            vec![]
-        } else {
-            serde_json::to_vec(&c.other).unwrap_or_default()
-        };
+        let other_bytes = other_to_bytes_without_usn(c.other);
 
         DeckConfig {
             id: c.id,
             name: c.name,
             mtime_secs: c.mtime,
-            usn: c.usn,
             inner: DeckConfigInner {
                 learn_steps: c.new.delays,
                 relearn_steps: c.lapse.delays,

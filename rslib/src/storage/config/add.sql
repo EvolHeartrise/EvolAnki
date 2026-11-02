@@ -1,3 +1,3 @@
 INSERT
-  OR REPLACE INTO config (KEY, usn, mtime_secs, val)
-VALUES (?, ?, ?, ?)
+  OR REPLACE INTO config (KEY, mtime_secs, val)
+VALUES (?, ?, ?)

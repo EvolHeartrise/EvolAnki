@@ -34,7 +34,6 @@ impl RevlogEntryPartial {
 
     pub(super) fn into_revlog_entry(
         self,
-        usn: Usn,
         cid: CardId,
         button_chosen: u8,
         answered_at: TimestampMillis,
@@ -43,7 +42,6 @@ impl RevlogEntryPartial {
         RevlogEntry {
             id: answered_at.into(),
             cid,
-            usn,
             button_chosen,
             interval: self.interval.as_revlog_interval(),
             last_interval: self.last_interval.as_revlog_interval(),

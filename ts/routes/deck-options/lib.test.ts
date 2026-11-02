@@ -17,7 +17,6 @@ const exampleData = {
         id: 123n,
         name: "123",
         mtimeSecs: 1618570764n,
-        usn: -1,
         config: {
             learnSteps: [1, 10],
             relearnSteps: [10],

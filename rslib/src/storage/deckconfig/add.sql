@@ -1,4 +1,4 @@
-INSERT INTO deck_config (id, name, mtime_secs, usn, config)
+INSERT INTO deck_config (id, name, mtime_secs, config)
 VALUES (
     (
       CASE
@@ -12,7 +12,6 @@ VALUES (
         ELSE ?1
       END
     ),
-    ?,
     ?,
     ?,
     ?

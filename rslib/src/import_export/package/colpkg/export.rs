@@ -37,11 +37,7 @@ use crate::progress::ThrottlingProgressHandler;
 const MULTITHREAD_MIN_BYTES: usize = 10 * 1024 * 1024;
 
 impl Collection {
-    pub fn export_colpkg(
-        self,
-        out_path: impl AsRef<Path>,
-        include_media: bool,
-    ) -> Result<()> {
+    pub fn export_colpkg(self, out_path: impl AsRef<Path>, include_media: bool) -> Result<()> {
         let mut progress = self.new_progress_handler();
         let colpkg_name = out_path.as_ref();
         let temp_colpkg = new_tempfile_in_parent_of(colpkg_name)?;

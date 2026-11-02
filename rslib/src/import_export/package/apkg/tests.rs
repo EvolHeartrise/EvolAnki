@@ -430,3 +430,100 @@ fn fsrs_params_stripped_on_export_without_scheduling() {
     assert!(conf.inner.fsrs_params_5.is_empty());
     assert!(conf.inner.fsrs_params_6.is_empty());
 }
+
+/// A package in the format of stock Anki's "support older versions" export: no
+/// meta, schema 11.
+#[test]
+fn a_package_with_schema_11_imports() {
+    let (mut target_col, target_tempdir) = open_fs_test_collection("target");
+    let apkg_path = target_tempdir.path().join("old.apkg");
+    let mut writer = zip::ZipWriter::new(File::create(&apkg_path).unwrap());
+    let options = zip::write::SimpleFileOptions::default();
+    writer.start_file("collection.anki2", options).unwrap();
+    writer
+        .write_all(include_bytes!("../../../../tests/support/mediacheck.anki2"))
+        .unwrap();
+    writer.start_file("media", options).unwrap();
+    writer.write_all(b"{}").unwrap();
+    writer.finish().unwrap();
+    let notes_before = target_col.search_notes_unordered("").unwrap().len();
+
+    target_col
+        .import_apkg(
+            &apkg_path,
+            ImportAnkiPackageOptions {
+                with_scheduling: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        target_col.search_notes_unordered("").unwrap().len(),
+        notes_before + 3
+    );
+    assert_eq!(target_col.storage.get_all_cards().len(), 3);
+}
+
+/// A package holding schema 18, as this and stock Anki used to write.
+#[test]
+fn a_package_with_schema_18_imports() {
+    let (mut src_col, src_tempdir) = open_fs_test_collection("src");
+    let (mut target_col, _target_tempdir) = open_fs_test_collection("target");
+    let exported = src_tempdir.path().join("exported.apkg");
+    let apkg_path = src_tempdir.path().join("test.apkg");
+    let note = NoteAdder::basic(&mut src_col)
+        .fields(&["in old package", ""])
+        .add(&mut src_col)
+        .id;
+    src_col
+        .export_apkg(
+            &exported,
+            ExportAnkiPackageOptions {
+                with_scheduling: true,
+                with_deck_configs: true,
+                with_media: false,
+            },
+            "",
+            None,
+        )
+        .unwrap();
+
+    let mut archive = zip::ZipArchive::new(File::open(&exported).unwrap()).unwrap();
+    let mut writer = zip::ZipWriter::new(File::create(&apkg_path).unwrap());
+    for index in 0..archive.len() {
+        let mut entry = archive.by_index(index).unwrap();
+        let name = entry.name().unwrap().to_string();
+        let mut bytes = vec![];
+        std::io::copy(&mut entry, &mut bytes).unwrap();
+        if name == "collection.anki21b" {
+            let db_path = src_tempdir.path().join("package.db");
+            std::fs::write(&db_path, zstd::decode_all(bytes.as_slice()).unwrap()).unwrap();
+            let db = rusqlite::Connection::open(&db_path).unwrap();
+            crate::storage::turn_into_schema_18(&db);
+            db.close().unwrap();
+            bytes = zstd::encode_all(std::fs::read(&db_path).unwrap().as_slice(), 0).unwrap();
+        }
+        writer
+            .start_file(
+                name,
+                zip::write::SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Stored),
+            )
+            .unwrap();
+        writer.write_all(&bytes).unwrap();
+    }
+    writer.finish().unwrap();
+
+    target_col
+        .import_apkg(
+            &apkg_path,
+            ImportAnkiPackageOptions {
+                with_scheduling: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert!(target_col.storage.get_note(note).unwrap().is_some());
+}

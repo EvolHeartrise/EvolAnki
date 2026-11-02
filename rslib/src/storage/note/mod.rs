@@ -46,7 +46,6 @@ impl super::SqliteStorage {
             note.guid,
             note.notetype_id,
             note.mtime,
-            note.usn,
             join_tags(&note.tags),
             join_fields(note.fields()),
             note.sort_field.as_ref().unwrap(),
@@ -64,7 +63,6 @@ impl super::SqliteStorage {
             note.guid,
             note.notetype_id,
             note.mtime,
-            note.usn,
             join_tags(&note.tags),
             join_fields(note.fields()),
             note.sort_field.as_ref().unwrap(),
@@ -82,7 +80,6 @@ impl super::SqliteStorage {
                 note.guid,
                 note.notetype_id,
                 note.mtime,
-                note.usn,
                 join_tags(&note.tags),
                 join_fields(note.fields()),
                 note.sort_field.as_ref().unwrap(),
@@ -101,7 +98,6 @@ impl super::SqliteStorage {
             note.guid,
             note.notetype_id,
             note.mtime,
-            note.usn,
             join_tags(&note.tags),
             join_fields(note.fields()),
             note.sort_field.as_ref().unwrap(),
@@ -237,7 +233,7 @@ impl super::SqliteStorage {
         let mut rows = query_stmt.query([])?;
         let mut output = vec![];
         while let Some(row) = rows.next()? {
-            let tags = row.get_ref_unwrap(3).as_str()?;
+            let tags = row.get_ref_unwrap(2).as_str()?;
             if want(tags) {
                 output.push(row_to_note_tags(row)?)
             }
@@ -248,7 +244,7 @@ impl super::SqliteStorage {
     pub(crate) fn update_note_tags(&mut self, note: &NoteTags) -> Result<()> {
         self.db
             .prepare_cached(include_str!("update_tags.sql"))?
-            .execute(params![note.mtime, note.usn, note.tags, note.id])?;
+            .execute(params![note.mtime, note.tags, note.id])?;
         Ok(())
     }
 
@@ -319,13 +315,12 @@ fn row_to_note(row: &Row) -> Result<Note> {
         row.get(1)?,
         row.get(2)?,
         row.get(3)?,
-        row.get(4)?,
-        split_tags(row.get_ref_unwrap(5).as_str()?)
+        split_tags(row.get_ref_unwrap(4).as_str()?)
             .map(Into::into)
             .collect(),
-        split_fields(row.get_ref_unwrap(6).as_str()?),
-        Some(row.get(7)?),
-        Some(row.get(8).unwrap_or_default()),
+        split_fields(row.get_ref_unwrap(5).as_str()?),
+        Some(row.get(6)?),
+        Some(row.get(7).unwrap_or_default()),
     ))
 }
 
@@ -333,8 +328,7 @@ fn row_to_note_tags(row: &Row) -> Result<NoteTags> {
     Ok(NoteTags {
         id: row.get(0)?,
         mtime: row.get(1)?,
-        usn: row.get(2)?,
-        tags: row.get(3)?,
+        tags: row.get(2)?,
     })
 }
 

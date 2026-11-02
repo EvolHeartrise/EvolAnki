@@ -86,7 +86,6 @@ impl From<anki_proto::notetypes::Notetype> for Notetype {
             id: n.id.into(),
             name: n.name,
             mtime_secs: n.mtime_secs.into(),
-            usn: n.usn.into(),
             fields: n.fields.into_iter().map(Into::into).collect(),
             templates: n.templates.into_iter().map(Into::into).collect(),
             config: n.config.unwrap_or_default(),

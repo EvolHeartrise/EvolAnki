@@ -58,10 +58,6 @@ pub fn utf8(path: &Path) -> Result<String> {
 
 /// Waits for any running operation to release the collection.
 pub fn close_collection(backend: &Backend) -> Result<()> {
-    let _: generic::Empty = call_typed(
-        backend,
-        "closeCollection",
-        &CloseCollectionRequest {},
-    )?;
+    let _: generic::Empty = call_typed(backend, "closeCollection", &CloseCollectionRequest {})?;
     Ok(())
 }
