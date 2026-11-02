@@ -104,7 +104,7 @@ statistics-counts-separate-suspended-cards = Separate suspended cards
 
 statistics-true-retention-title = Retention
 statistics-true-retention-subtitle = Pass rate of cards with an interval ≥ 1 day.
-statistics-true-retention-tooltip = If you are using FSRS, your retention is expected to be close to your desired retention. Please keep in mind that data for a single day is noisy, so it's better to look at monthly data.
+statistics-true-retention-tooltip = Your retention is expected to be close to your desired retention. Please keep in mind that data for a single day is noisy, so it's better to look at monthly data.
 statistics-true-retention-pass = Pass
 statistics-true-retention-fail = Fail
 # This will usually be the same as statistics-counts-total-cards

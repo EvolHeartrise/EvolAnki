@@ -198,23 +198,24 @@ impl Collection {
         if !decks_needing_memory_recompute.is_empty() {
             let input: Vec<UpdateMemoryStateEntry> = decks_needing_memory_recompute
                 .into_iter()
-                .map(|(deck_id, config_id)| {
-                    let config = configs_after_update.get(&config_id);
-                    let params = config.map(|c| UpdateMemoryStateRequest {
-                        params: c.fsrs_params().clone(),
-                        desired_retention: c.inner.desired_retention,
-                        max_interval: c.inner.maximum_review_interval,
-                        reschedule: req.fsrs_reschedule,
-                        historical_retention: c.inner.historical_retention,
-                    });
+                .filter_map(|(deck_id, config_id)| {
+                    configs_after_update
+                        .get(&config_id)
+                        .map(|config| (deck_id, config))
+                })
+                .map(|(deck_id, c)| {
                     Ok(UpdateMemoryStateEntry {
-                        req: params,
+                        req: UpdateMemoryStateRequest {
+                            params: c.fsrs_params().clone(),
+                            desired_retention: c.inner.desired_retention,
+                            max_interval: c.inner.maximum_review_interval,
+                            reschedule: req.fsrs_reschedule,
+                            historical_retention: c.inner.historical_retention,
+                        },
                         search: Node::Search(SearchNode::DeckIdsWithoutChildren(
                             deck_id.to_string(),
                         )),
-                        ignore_before: config
-                            .map(ignore_revlogs_before_ms_from_config)
-                            .unwrap_or(Ok(0.into()))?,
+                        ignore_before: ignore_revlogs_before_ms_from_config(c)?,
                     })
                 })
                 .collect::<Result<_>>()?;

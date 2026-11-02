@@ -87,7 +87,7 @@ fn create_review_priority_fn(
     }
 
     match review_order {
-        // Ease-based ordering
+        // These orders keep their old names, and mean difficulty
         EaseAscending => wrap!(|c: &fsrs::Card| -(c.difficulty * 100.0) as i32),
         EaseDescending => wrap!(|c: &fsrs::Card| (c.difficulty * 100.0) as i32),
 

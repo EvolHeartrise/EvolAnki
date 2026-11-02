@@ -279,7 +279,7 @@ test("a deck can be studied to the end, and the database reflects it", async ({ 
     for (const entry of revlog) {
         expect(entry.ease).toBe(4);
         expect(entry.type).toBe(0);
-        // FSRS stores difficulty here: 100 to 1100, and never the SM-2 default of 2500
+        // FSRS stores difficulty here: 100 to 1100, and never the 2500 a card's factor starts at
         expect(entry.factor).toBeGreaterThanOrEqual(100);
         expect(entry.factor).toBeLessThanOrEqual(1100);
     }

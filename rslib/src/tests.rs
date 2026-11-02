@@ -61,7 +61,7 @@ impl Collection {
         self.storage.get_all_notes()
     }
 
-    /// Leaves cards as if they were reviewed with SM-2.
+    /// Leaves cards with no memory state, as if reviewed before FSRS.
     pub(crate) fn clear_memory_states(&mut self) {
         for mut card in self.storage.get_all_cards() {
             card.clear_fsrs_data();

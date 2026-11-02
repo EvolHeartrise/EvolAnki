@@ -46,9 +46,9 @@ pub struct RevlogEntry {
     /// Positive values are in days, negative values in seconds.
     #[serde(rename = "lastIvl", deserialize_with = "deserialize_int_from_number")]
     pub last_interval: i32,
-    /// Card's ease after answering, stored as 10x the %, eg 2500 represents
-    /// 250%. When FSRS is active, difficulty is normalized to 100-1100 range,
-    /// so a 0 difficulty can be distinguished from SM-2 learning.
+    /// The card's difficulty after answering, normalized to a range of 100-1100
+    /// so that a 0 difficulty can be told apart from no value. Rows from before
+    /// FSRS can hold an ease instead, stored as 10x the %, eg 2500 for 250%.
     #[serde(rename = "factor", deserialize_with = "deserialize_int_from_number")]
     pub ease_factor: u32,
     /// Amount of milliseconds taken to answer the card.

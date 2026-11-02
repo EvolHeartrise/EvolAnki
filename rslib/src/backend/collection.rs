@@ -81,7 +81,7 @@ mod test {
     use crate::tests::NoteAdder;
 
     #[test]
-    fn opening_migrates_sm2_collection_but_building_a_temporary_one_does_not() -> Result<()> {
+    fn opening_adds_missing_memory_states_but_building_a_temporary_one_does_not() -> Result<()> {
         let dir = tempdir()?;
         let path = dir.path().join("col.anki2");
         let mut col = CollectionBuilder::new(&path).build()?;

@@ -57,7 +57,7 @@ pub(crate) struct UpdateMemoryStateRequest {
 }
 
 pub(crate) struct UpdateMemoryStateEntry {
-    pub req: Option<UpdateMemoryStateRequest>,
+    pub req: UpdateMemoryStateRequest,
     pub search: Node,
     pub ignore_before: TimestampMillis,
 }
@@ -78,8 +78,6 @@ impl Collection {
     /// For each provided set of params, locate cards with the provided search,
     /// and update their memory state.
     /// Should be called inside a transaction.
-    /// If Params are None, it means the user disabled FSRS, and the existing
-    /// memory state should be removed.
     pub(crate) fn update_memory_state(
         &mut self,
         entries: Vec<UpdateMemoryStateEntry>,
@@ -93,25 +91,6 @@ impl Collection {
         {
             let search = SearchBuilder::all([search, SearchNode::State(StateKind::New).negated()]);
             let revlog = self.revlog_for_srs(search)?;
-
-            let Some(req) = &req else {
-                let items = fsrs_items_for_memory_states(
-                    &FSRS::new(&[])?,
-                    revlog,
-                    timing.next_day_at,
-                    0.9,
-                    ignore_before,
-                )?;
-
-                let on_updated_card = self.create_progress_closure(items.len())?;
-
-                // clear FSRS data if FSRS is disabled
-                self.clear_fsrs_data_for_cards(
-                    items.into_iter().map(|(card_id, _)| card_id),
-                    on_updated_card,
-                )?;
-                continue;
-            };
 
             let fsrs = FSRS::new(&req.params[..])?;
             let last_revlog_info = req.reschedule.then(|| get_last_revlog_info(&revlog));
@@ -254,21 +233,6 @@ impl Collection {
         })?;
         let on_updated_card = move || progress.update(true, |p| p.current_cards += 1);
         Ok(on_updated_card)
-    }
-
-    fn clear_fsrs_data_for_cards(
-        &mut self,
-        cards: impl Iterator<Item = CardId>,
-        mut on_updated_card: impl FnMut() -> Result<()>,
-    ) -> Result<()> {
-        for card_id in cards {
-            let mut card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
-            let original = card.clone();
-            card.clear_fsrs_data();
-            self.update_card_inner(&mut card, original)?;
-            on_updated_card()?
-        }
-        Ok(())
     }
 
     fn update_memory_state_for_itemless_cards(
@@ -463,13 +427,13 @@ impl Collection {
             .iter()
             .map(|(config, deck)| {
                 Ok(UpdateMemoryStateEntry {
-                    req: Some(UpdateMemoryStateRequest {
+                    req: UpdateMemoryStateRequest {
                         params: config.fsrs_params().clone(),
                         desired_retention: config.inner.desired_retention,
                         historical_retention: config.inner.historical_retention,
                         max_interval: config.inner.maximum_review_interval,
                         reschedule: false,
-                    }),
+                    },
                     search: without_state(*deck)?,
                     ignore_before: ignore_revlogs_before_ms_from_config(config)?,
                 })
@@ -776,60 +740,6 @@ mod tests {
             ),
         );
         Ok(())
-    }
-
-    mod update_memory_state {
-        use super::*;
-
-        #[test]
-        fn no_req_clears_fsrs_data() -> Result<()> {
-            let mut col = Collection::new();
-            let nt = col.get_notetype_by_name("Basic")?.unwrap();
-            let mut note1 = nt.new_note();
-            col.add_note(&mut note1, DeckId(1))?;
-            let mut card = col
-                .storage
-                .all_cards_of_note(note1.id)?
-                .into_iter()
-                .next()
-                .unwrap();
-            let card_id = card.id;
-            // Make the card not new
-            card.ctype = CardType::Review;
-            card.interval = 1;
-            // Set FSRS parameters
-            card.memory_state = Some(FsrsMemoryState {
-                stability: 1.0,
-                difficulty: 1.0,
-            });
-            card.desired_retention = Some(0.123);
-            card.decay = Some(0.456);
-
-            col.storage.update_card(&card)?;
-
-            // Add a revlog entry so the card is found within update_memory_state
-            let mut rev = revlog(RevlogReviewKind::Review, 1);
-            rev.cid = card_id;
-            col.storage.add_revlog_entry(&rev, false)?;
-
-            let entry = UpdateMemoryStateEntry {
-                req: None,
-                search: Node::Search(SearchNode::WholeCollection),
-                ignore_before: TimestampMillis(0),
-            };
-            col.transact(Op::UpdateDeckConfig, |col| {
-                col.update_memory_state(vec![entry]).unwrap();
-                Ok(())
-            })
-            .unwrap();
-
-            let card = col.storage.get_card(card_id)?.unwrap();
-            assert_eq!(card.memory_state, None);
-            assert_eq!(card.desired_retention, None);
-            assert_eq!(card.decay, None);
-
-            Ok(())
-        }
     }
 
     mod always_on {

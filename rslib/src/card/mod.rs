@@ -358,13 +358,13 @@ impl Collection {
                 use crate::search::SearchNode::*;
 
                 col.update_memory_state(vec![UpdateMemoryStateEntry {
-                    req: Some(UpdateMemoryStateRequest {
+                    req: UpdateMemoryStateRequest {
                         params: config.fsrs_params().clone(),
                         desired_retention: config.inner.desired_retention,
                         historical_retention: config.inner.historical_retention,
                         max_interval: config.inner.maximum_review_interval,
                         reschedule: false,
-                    }),
+                    },
                     search: SearchBuilder::all(vec![
                         DeckIdsWithoutChildren(deck_id.to_string()).into(),
                         HasMemoryState.negated(),

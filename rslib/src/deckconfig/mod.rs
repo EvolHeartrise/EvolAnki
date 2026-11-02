@@ -306,9 +306,10 @@ mod tests {
         Ok(())
     }
 
-    /// Real settings can hold values a stock client saved for SM-2: of a real
-    /// deck, 1.31, 0.5 and 1.91. They mustn't get in the way or do anything.
-    fn stored_row_with_sm2_fields(col: &Collection, dcid: DeckConfigId, retention: f32) {
+    /// Real settings can hold values a stock client saved for its old
+    /// scheduler: of a real deck, 1.31, 0.5 and 1.91. They mustn't get in
+    /// the way or do anything.
+    fn stored_row_with_old_fields(col: &Collection, dcid: DeckConfigId, retention: f32) {
         use prost::Message;
 
         let mut inner = DeckConfig::default().inner;
@@ -333,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    fn stored_sm2_values_are_dropped_and_change_nothing() -> Result<()> {
+    fn stored_old_scheduler_values_are_dropped_and_change_nothing() -> Result<()> {
         use crate::scheduler::states::CardState;
         use crate::scheduler::states::NormalState;
 
@@ -360,7 +361,7 @@ mod tests {
         let expected = answer(&mut plain)?;
 
         let mut col = Collection::new();
-        stored_row_with_sm2_fields(&col, DeckConfigId(1), 0.9);
+        stored_row_with_old_fields(&col, DeckConfigId(1), 0.9);
         let config = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         assert_eq!(config.inner, DeckConfig::default().inner);
         assert_eq!(answer(&mut col)?, expected);
@@ -387,7 +388,7 @@ mod tests {
     #[test]
     fn missing_historical_retention_is_repaired_on_reading() -> Result<()> {
         let col = Collection::new();
-        stored_row_with_sm2_fields(&col, DeckConfigId(1), 0.0);
+        stored_row_with_old_fields(&col, DeckConfigId(1), 0.0);
         let unchecked = &col.storage.all_deck_config_unchecked()?[0];
         assert_eq!(unchecked.inner.historical_retention, 0.0);
         let config = col.get_deck_config(DeckConfigId(1), false)?.unwrap();

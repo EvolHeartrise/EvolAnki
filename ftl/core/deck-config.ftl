@@ -282,13 +282,13 @@ deck-config-evaluate-button = Evaluate
 deck-config-desired-retention = Desired retention
 deck-config-historical-retention = Historical retention
 deck-config-smaller-is-better = Smaller numbers indicate a better fit to your review history.
-deck-config-steps-too-large-for-fsrs = When FSRS is enabled, steps of 1 day or more are not recommended.
+deck-config-steps-too-large-for-fsrs = Steps of 1 day or more are not recommended.
 deck-config-iterations = Iteration: { $count }...
 deck-config-reschedule-cards-on-change = Reschedule cards on change
 deck-config-fsrs-tooltip =
     Affects the entire collection.
     
-    The Free Spaced Repetition Scheduler (FSRS) is an alternative to Anki's legacy SuperMemo 2 (SM-2) algorithm.
+    The Free Spaced Repetition Scheduler (FSRS) decides when you see each card.
     By more accurately determining how likely you are to forget a card, it can help you remember
     more material in the same amount of time.
 deck-config-desired-retention-tooltip =
@@ -318,13 +318,13 @@ deck-config-weights-tooltip2 =
 deck-config-reschedule-cards-on-change-tooltip =
     Affects the entire collection, and is not saved.
     
-    This option controls whether the due dates of cards will be changed when you enable FSRS, or optimize
+    This option controls whether the due dates of cards will be changed when you optimize
     the parameters. The default is not to reschedule cards: future reviews will use the new scheduling, but
     there will be no immediate change to your workload. If rescheduling is enabled, the due dates of cards
     will be changed.
 deck-config-reschedule-cards-warning =
     Depending on your desired retention, this can result in a large number of cards becoming
-    due, so is not recommended when first switching from SM-2.
+    due.
     
     Use this option sparingly, as it will add a review entry to each of your cards, and
     increase the size of your collection.

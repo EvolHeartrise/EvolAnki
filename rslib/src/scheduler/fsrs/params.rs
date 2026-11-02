@@ -334,7 +334,7 @@ pub(crate) struct ReviewsForFsrs {
     /// FSRS items derived from the filtered revlogs.
     pub fsrs_items: Vec<(RevlogId, FSRSItem)>,
     /// True if there is enough history to derive memory state from history
-    /// alone. If false, memory state will be derived from SM2.
+    /// alone. If false, memory state will be derived from the row's old ease.
     pub revlogs_complete: bool,
 }
 
@@ -402,7 +402,8 @@ pub(crate) fn reviews_for_fsrs(
         }
     } else {
         // While reviewing, if the first learning step is before the ignore date,
-        // we ignore it, and will fall back on SM2 info and the last user grade below.
+        // we ignore it, and will fall back on the old ease and the last user grade
+        // below.
         if let Some(idx) = first_of_last_learn_entries {
             if entries[idx].id.0 < ignore_revlogs_before.0 && idx < entries.len() - 1 {
                 revlogs_complete = false;

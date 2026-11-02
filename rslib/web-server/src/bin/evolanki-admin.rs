@@ -177,12 +177,12 @@ fn run_directly(collection: &Path, request: &Request) -> Result<Value> {
         );
     }
     let backups = Arc::new(Backups::new(collection)?);
-    // opening an SM-2 collection migrates it, as does one with an older schema or
-    // settings shared between decks, which is worth having a copy from before,
-    // as the server does
+    // opening a collection not yet given memory states migrates it, as does one
+    // with an older schema or settings shared between decks, which is worth having
+    // a copy from before, as the server does
     if opening_would_change(collection) {
         backups.take_before_opening(collection)?;
-    } else if !fsrs_is_on(collection) {
+    } else if !memory_states_marked(collection) {
         backups.take_of_closed_file(collection);
     }
     let backend = rpc::new_backend()?;
@@ -199,7 +199,7 @@ fn run_directly(collection: &Path, request: &Request) -> Result<Value> {
     Ok(response)
 }
 
-fn fsrs_is_on(collection: &Path) -> bool {
+fn memory_states_marked(collection: &Path) -> bool {
     let read = || -> rusqlite::Result<Vec<u8>> {
         let db = Connection::open_with_flags(collection, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
         db.query_row("select val from config where key = 'fsrs'", [], |row| {
