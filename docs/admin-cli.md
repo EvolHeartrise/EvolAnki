@@ -43,8 +43,9 @@ collection, `collection.admin.sock`, and the tool sends the command there. With 
 the tool opens the collection, runs the command, and closes it. You needn't care which,
 except that:
 
-- Opening a collection with no server can change it for good, if it's from a version where
-  decks shared settings. A backup comes first, and if that fails, nothing runs.
+- Opening a collection with no server can change it for good, if it has an older schema or is
+  from a version where decks shared settings. A backup comes first, and if that fails,
+  nothing runs.
 
 - **Undo only spans a running server's life.** `undo` undoes the last operation of any
   kind in that server's memory, including a review the owner just did. Check `undo.status`
@@ -158,7 +159,9 @@ called `Custom Study Session`, replacing what it held.
 
 ## Importing
 
-One way, into this collection. `import` takes `.apkg` or `.colpkg` by extension.
+One way, into this collection. `import` takes `.apkg` or `.colpkg` by extension, and
+`import.text` takes text files. Files from older versions, down to schema 11, are upgraded on
+the way in.
 
 - `.apkg`: adds to the collection. By default it brings notes and cards as new, without
   scheduling or deck options, and keeps your notes if theirs aren't newer. `with_scheduling`
@@ -173,12 +176,40 @@ One way, into this collection. `import` takes `.apkg` or `.colpkg` by extension.
   Pages get an error while that runs, for a few seconds, and work again afterwards. If the
   owner has been reviewing, those reviews are only in the backup that it takes first.
 
+### Text files
+
+`import.text` makes one note per line, with what Anki's importer does, and a backup first.
+Say what you know, and the rest comes from the file's own `#` headers, such as
+`#separator:tab`, `#notetype:Basic`, `#deck:Name`, `#tags:a b` and `#tags column:3`, or is
+worked out from the file. What you pass replaces what the file says.
+
+```
+$ evolanki-admin run import.text '{"path":"words.csv","notetype":"Basic","deck":"Spanish","delimiter":"comma","fields":{"Front":1,"Back":2},"tags_column":3,"tags":["from-file"],"duplicates":"keep"}'
+{"backup":"...","command":"import.text","ok":true,"result":{"conflicting":0,"duplicate":0,"empty_first_field":0,"first_field_match":0,"found_notes":12,"missing_deck":0,"missing_notetype":0,"new":12,"updated":0},"via":"direct"}
+```
+
+- `fields` maps a field to a column, counted from 1, and needs `notetype`. Without it, the
+  file's columns go to the fields in order.
+- `delimiter`: `tab`, `pipe`, `semicolon`, `colon`, `comma` or `space`.
+- `html`: whether fields hold HTML. Without it, this looks for tags in the file.
+- `tags` go on every note. `tags_column` is a column holding space-separated tags of its row.
+  `updated_tags` go only on notes a row changed.
+- `duplicates` is for a row whose first field is already in a note, of the same notetype, and
+  also the same deck if `match_scope` is `notetype_and_deck`. `update` overwrites that note,
+  `keep` leaves it and skips the row, and `add` makes another note. The default is what the
+  collection's `csvDuplicateResolution` says, and `update` if nothing does, so **say `keep`
+  if you don't mean to change existing notes.**
+- The result says what happened to each row: `new`, `updated`, `duplicate` for one identical
+  to a note, `first_field_match` for one `keep` skipped, and `conflicting`, `missing_notetype`,
+  `missing_deck` and `empty_first_field` for those it couldn't use.
+- A running server can undo it, as one operation. New notes have new cards, with no reviews.
+
 ## Backups
 
 Taken automatically, and reported as `backup`, for:
 
 - destructive commands, always: `note.delete`, `deck.delete`, `tag.rename`, `media.replace`,
-  `notetype.add-field`, `notetype.edit-template`, `check.database`, `import`, and
+  `notetype.add-field`, `notetype.edit-template`, `check.database`, `import`, `import.text`, and
   `cards.empty` when it applies;
 - bulk ones: any command that changes things using `search`, or more than 20 ids.
 

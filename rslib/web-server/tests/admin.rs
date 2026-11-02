@@ -1398,3 +1398,198 @@ fn a_failed_backup_stops_a_destructive_command() {
         1
     );
 }
+
+/// Fields of the notes a search finds, sorted, with their tags.
+fn notes_found(fx: &Fixture, query: &str) -> Vec<(Vec<String>, Vec<String>)> {
+    let ids = fx.ok("search.notes", json!({"query":query}))["ids"].clone();
+    let mut notes: Vec<(Vec<String>, Vec<String>)> = ids
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|id| {
+            let note = fx.ok("note.show", json!({"id":id}));
+            let fields = note["fields"].as_object().unwrap();
+            let strings = |value: &Value| -> Vec<String> {
+                value
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|text| text.as_str().unwrap().to_string())
+                    .collect()
+            };
+            (
+                ["Front", "Back"]
+                    .iter()
+                    .map(|name| fields[*name].as_str().unwrap().to_string())
+                    .collect(),
+                strings(&note["tags"]),
+            )
+        })
+        .collect();
+    notes.sort();
+    notes
+}
+
+fn basic_text_import(extra: Value, path: &Path) -> Value {
+    let mut args = json!({
+        "path": path,
+        "notetype": "Basic",
+        "deck": "Default",
+        "delimiter": "comma",
+    });
+    for (key, value) in extra.as_object().unwrap() {
+        args[key] = value.clone();
+    }
+    args
+}
+
+#[test]
+fn text_import_adds_notes_and_tags_with_a_backup_first() {
+    let fx = Fixture::new();
+    let path = fx.write_file("words.csv", b"one,uno,first\ntwo,dos,second\n");
+    let backups = fx.backups();
+
+    let response = fx.raw(
+        "import.text",
+        &basic_text_import(json!({"tags":["everywhere"],"tags_column":3}), &path),
+    );
+
+    assert_eq!(response["ok"], true, "{response}");
+    assert_eq!(response["via"], "direct");
+    assert!(response["backup"].is_string(), "{response}");
+    assert!(fx.backups() > backups);
+    assert_eq!(response["result"]["new"], 2);
+    assert_eq!(response["result"]["found_notes"], 2);
+    assert_eq!(
+        notes_found(&fx, "tag:everywhere"),
+        [
+            (
+                vec!["one".to_string(), "uno".to_string()],
+                vec!["everywhere".to_string(), "first".to_string()]
+            ),
+            (
+                vec!["two".to_string(), "dos".to_string()],
+                vec!["everywhere".to_string(), "second".to_string()]
+            ),
+        ]
+    );
+}
+
+#[test]
+fn text_import_goes_through_a_running_server() {
+    let fx = Fixture::new();
+    let path = fx.write_file("words.csv", b"through server,yes\n");
+    let server = fx.start(&[]);
+
+    let response = fx.raw("import.text", &basic_text_import(json!({}), &path));
+
+    assert_eq!(response["ok"], true, "{response}");
+    assert_eq!(response["via"], "server");
+    assert_eq!(response["result"]["new"], 1);
+    // and it can be undone there, as it's one operation
+    assert_eq!(fx.ok("search.notes", json!({"query":"through"}))["count"], 1);
+    fx.ok("undo", json!({}));
+    assert_eq!(fx.ok("search.notes", json!({"query":"through"}))["count"], 0);
+    drop(server);
+}
+
+#[test]
+fn text_import_handles_duplicates_as_asked() {
+    let fx = Fixture::new();
+    let first = fx.write_file("first.csv", b"same,original\n");
+    fx.ok(
+        "import.text",
+        basic_text_import(json!({"duplicates":"keep"}), &first),
+    );
+    let second = fx.write_file("second.csv", b"same,changed\n");
+
+    // keep: nothing changes
+    let kept = fx.ok(
+        "import.text",
+        basic_text_import(json!({"duplicates":"keep","updated_tags":["touched"]}), &second),
+    );
+    assert_eq!(kept["new"], 0);
+    assert_eq!(kept["first_field_match"], 1);
+    let original = vec!["same".to_string(), "original".to_string()];
+    assert_eq!(notes_found(&fx, "front:same"), [(original.clone(), vec![])]);
+
+    // update: the note changes, and gets the tags for that
+    let updated = fx.ok(
+        "import.text",
+        basic_text_import(
+            json!({"duplicates":"update","updated_tags":["touched"]}),
+            &second,
+        ),
+    );
+    assert_eq!(updated["updated"], 1);
+    let changed = vec!["same".to_string(), "changed".to_string()];
+    assert_eq!(
+        notes_found(&fx, "front:same"),
+        [(changed.clone(), vec!["touched".to_string()])]
+    );
+
+    // add: a second note
+    let third = fx.write_file("third.csv", b"same,another\n");
+    let added = fx.ok(
+        "import.text",
+        basic_text_import(json!({"duplicates":"add"}), &third),
+    );
+    assert_eq!(added["new"], 1);
+    assert_eq!(notes_found(&fx, "front:same").len(), 2);
+}
+
+#[test]
+fn text_import_uses_the_file_header_and_explicit_columns() {
+    let fx = Fixture::new();
+    let header = fx.write_file(
+        "header.txt",
+        b"#separator:tab\n#notetype:Basic\n#deck:From header\n#tags:head\nq\ta\n",
+    );
+    let imported = fx.ok("import.text", json!({"path":header}));
+    assert_eq!(imported["new"], 1);
+    assert_eq!(fx.ok("search.notes", json!({"query":"deck:\"From header\" tag:head"}))["count"], 1);
+
+    let swapped = fx.write_file("swapped.csv", b"back text,front text\n");
+    fx.ok(
+        "import.text",
+        basic_text_import(json!({"fields":{"Front":2,"Back":1}}), &swapped),
+    );
+    assert_eq!(
+        notes_found(&fx, "front:\"front text\""),
+        [(
+            vec!["front text".to_string(), "back text".to_string()],
+            vec![]
+        )]
+    );
+}
+
+#[test]
+fn text_import_refuses_what_it_cant_do() {
+    let fx = Fixture::new();
+    let path = fx.write_file("words.csv", b"a,b\n");
+    assert!(fx
+        .error("import.text", json!({"path":fx.dir.path().join("missing.csv")}))
+        .contains("isn't a file"));
+    assert!(fx
+        .error(
+            "import.text",
+            basic_text_import(json!({"duplicates":"sometimes"}), &path)
+        )
+        .contains("duplicates"));
+    assert!(fx
+        .error(
+            "import.text",
+            basic_text_import(json!({"fields":{"Nope":1}}), &path)
+        )
+        .contains("no field"));
+    assert!(fx
+        .error(
+            "import.text",
+            json!({"path":path,"fields":{"Front":1}})
+        )
+        .contains("needs notetype"));
+    // and an empty file is an error, not nothing
+    let empty = fx.write_file("empty.csv", b"");
+    let response = fx.raw("import.text", &json!({"path":empty}));
+    assert_ne!(response["ok"], true, "{response}");
+}

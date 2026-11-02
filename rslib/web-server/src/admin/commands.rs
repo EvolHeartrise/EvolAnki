@@ -36,10 +36,14 @@ use anki_proto::decks::DeckTreeRequest;
 use anki_proto::decks::FilteredDeckForUpdate;
 use anki_proto::decks::RenameDeckRequest;
 use anki_proto::generic;
+use anki_proto::import_export::csv_metadata;
+use anki_proto::import_export::CsvMetadata;
+use anki_proto::import_export::CsvMetadataRequest;
 use anki_proto::import_export::ImportAnkiPackageOptions;
 use anki_proto::import_export::ImportAnkiPackageRequest;
 use anki_proto::import_export::ImportAnkiPackageUpdateCondition;
 use anki_proto::import_export::ImportCollectionPackageRequest;
+use anki_proto::import_export::ImportCsvRequest;
 use anki_proto::import_export::ImportResponse;
 use anki_proto::media::AddMediaFileRequest;
 use anki_proto::media::CheckMediaResponse;
@@ -151,6 +155,9 @@ pub const COMMANDS: &[Command] = &[
     command!("import", Destructive,
         r#"{"path":"x.apkg","with_scheduling":false?,"with_deck_configs":false?,"merge_notetypes":false?,"update_notes":"if_newer|always|never"?,"update_notetypes":"if_newer|always|never"?} or {"path":"x.colpkg","replace_collection":true}"#,
         "Import a package. A .colpkg replaces the whole collection, so requires replace_collection, and pages may see an error while it runs.", import),
+    command!("import.text", Destructive,
+        r#"{"path":"x.csv","notetype":"name or id"?,"deck":"name or id"?,"fields":{"Front":1,"Back":2}?,"delimiter":"tab|pipe|semicolon|colon|comma|space"?,"html":false?,"tags":["all rows"]?,"updated_tags":["rows that update a note"]?,"tags_column":3?,"duplicates":"update|keep|add"?,"match_scope":"notetype|notetype_and_deck"?}"#,
+        "Import notes from a text file, one per line. What isn't given comes from the file's own #headers, or is worked out. duplicates says what to do with a row whose first field is already in a note.", import_text),
     command!("backup.now", Read, "{}", "Take a backup now.", backup_now),
     command!("stats.summary", Read, "{}", "Counts of everything, what's due today, and FSRS coverage.", stats_summary),
     command!("undo.status", Read, "{}", "What undo would do next.", undo_status),
@@ -1071,7 +1078,7 @@ fn import(admin: &Admin, args: &Value) -> Result<Value> {
     match Path::new(path).extension().and_then(|e| e.to_str()) {
         Some("apkg") => import_apkg(admin, path, args),
         Some("colpkg") => import_colpkg(admin, path, args),
-        _ => bail!("only .apkg and .colpkg can be imported"),
+        _ => bail!("only .apkg and .colpkg can be imported here; import.text takes text files"),
     }
 }
 
@@ -1091,8 +1098,14 @@ fn import_apkg(admin: &Admin, path: &str, args: &Value) -> Result<Value> {
         },
     )?;
     let filled = fill_missing_memory_states(&admin.backend)?;
+    let mut result = import_log(imported);
+    result["memory_states_added"] = filled.into();
+    Ok(result)
+}
+
+fn import_log(imported: ImportResponse) -> Value {
     let log = imported.log.unwrap_or_default();
-    Ok(json!({
+    json!({
         "new": log.new.len(),
         "updated": log.updated.len(),
         "duplicate": log.duplicate.len(),
@@ -1102,8 +1115,131 @@ fn import_apkg(admin: &Admin, path: &str, args: &Value) -> Result<Value> {
         "missing_deck": log.missing_deck.len(),
         "empty_first_field": log.empty_first_field.len(),
         "found_notes": log.found_notes,
-        "memory_states_added": filled,
-    }))
+    })
+}
+
+fn csv_delimiter(name: &str) -> Result<csv_metadata::Delimiter> {
+    use csv_metadata::Delimiter::*;
+    Ok(match name {
+        "tab" => Tab,
+        "pipe" => Pipe,
+        "semicolon" => Semicolon,
+        "colon" => Colon,
+        "comma" => Comma,
+        "space" => Space,
+        other => bail!("delimiter: unknown value {other:?}"),
+    })
+}
+
+fn csv_dupe_resolution(name: &str) -> Result<csv_metadata::DupeResolution> {
+    use csv_metadata::DupeResolution::*;
+    Ok(match name {
+        "update" => Update,
+        "keep" => Preserve,
+        "add" => Duplicate,
+        other => bail!("duplicates: unknown value {other:?}"),
+    })
+}
+
+fn csv_match_scope(name: &str) -> Result<csv_metadata::MatchScope> {
+    Ok(match name {
+        "notetype" => csv_metadata::MatchScope::Notetype,
+        "notetype_and_deck" => csv_metadata::MatchScope::NotetypeAndDeck,
+        other => bail!("match_scope: unknown value {other:?}"),
+    })
+}
+
+/// Which column each of a notetype's fields comes from, one-based.
+fn csv_field_columns(nt: &Notetype, fields: &Value) -> Result<Vec<u32>> {
+    let fields = fields.as_object().context("fields must be an object")?;
+    let mut columns = vec![0; nt.fields.len()];
+    for (name, column) in fields {
+        let idx = nt
+            .fields
+            .iter()
+            .position(|field| field.name == *name)
+            .with_context(|| format!("{} has no field {name:?}", nt.name))?;
+        columns[idx] = column
+            .as_u64()
+            .filter(|column| *column > 0)
+            .with_context(|| format!("the column of {name} must be a number from 1"))?
+            as u32;
+    }
+    Ok(columns)
+}
+
+/// The backend works out what it can from the file, and what's given replaces that.
+fn import_text(admin: &Admin, args: &Value) -> Result<Value> {
+    let path = string(args, "path")?;
+    if !Path::new(path).is_file() {
+        bail!("{path} isn't a file");
+    }
+    let given = |key: &str| args.get(key).filter(|value| !value.is_null());
+    let notetype = if given("notetype").is_some() {
+        Some(notetype(admin, args)?)
+    } else {
+        None
+    };
+    let deck = if given("deck").is_some() {
+        Some(deck_id(admin, args, "deck")?)
+    } else {
+        None
+    };
+    let delimiter = if given("delimiter").is_some() {
+        Some(csv_delimiter(string(args, "delimiter")?)? as i32)
+    } else {
+        None
+    };
+    let mut metadata: CsvMetadata = call_typed(
+        &admin.backend,
+        "getCsvMetadata",
+        &CsvMetadataRequest {
+            path: path.to_string(),
+            delimiter,
+            notetype_id: notetype.as_ref().map(|nt| nt.id),
+            deck_id: deck,
+            is_html: if given("html").is_some() {
+                Some(flag(args, "html")?)
+            } else {
+                None
+            },
+        },
+    )?;
+    if let Some(fields) = given("fields") {
+        let Some(nt) = &notetype else {
+            bail!("fields needs notetype, to say which fields those are");
+        };
+        metadata.notetype = Some(csv_metadata::Notetype::GlobalNotetype(
+            csv_metadata::MappedNotetype {
+                id: nt.id,
+                field_columns: csv_field_columns(nt, fields)?,
+            },
+        ));
+    }
+    if given("tags").is_some() {
+        metadata.global_tags = string_list(args, "tags")?;
+    }
+    if given("updated_tags").is_some() {
+        metadata.updated_tags = string_list(args, "updated_tags")?;
+    }
+    if given("tags_column").is_some() {
+        metadata.tags_column = u32::try_from(int(args, "tags_column")?)?;
+    }
+    if given("duplicates").is_some() {
+        metadata.dupe_resolution = csv_dupe_resolution(string(args, "duplicates")?)? as i32;
+    }
+    if given("match_scope").is_some() {
+        metadata.match_scope = csv_match_scope(string(args, "match_scope")?)? as i32;
+    }
+    let imported: ImportResponse = call_typed(
+        &admin.backend,
+        "importCsv",
+        &ImportCsvRequest {
+            path: path.to_string(),
+            metadata: Some(metadata),
+        },
+    )?;
+    Ok(import_log(imported))
 }
 
 /// A package can bring reviewed cards that have no memory state. Returns how
