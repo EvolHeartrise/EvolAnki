@@ -124,7 +124,7 @@ export function prepareIntervalData(
     xMax = xMax! + 1;
 
     // do not show the zero interval for intervals
-    const increment = fsrs ? x => x : (x: number): number => x + 1;
+    const increment = stability ? x => x : (x: number): number => x + 1;
 
     const adjustTicks = (x: number, idx: number, ticks: number[]): number[] =>
         idx === ticks.length - 1 ? [x - (ticks[0] - 1), x + 1] : [x - (ticks[0] - 1)];
