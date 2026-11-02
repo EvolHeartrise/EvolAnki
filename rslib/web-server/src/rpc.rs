@@ -1,8 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-//! `POST /_anki/<camelCaseMethod>`: the equivalent of the post handlers in
-//! upstream Anki's qt/aqt/mediasrv.py.
+//! `POST /_anki/<camelCaseMethod>`: the pages' calls into the backend.
 //!
 //! The request body is the protobuf-encoded input and the response body the
 //! protobuf-encoded output, as ts/lib/generated/post.ts expects. Failures are a

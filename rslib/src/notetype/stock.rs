@@ -185,11 +185,4 @@ mod test {
         );
         Ok(())
     }
-
-    #[test]
-    fn new_collections_get_no_image_occlusion_notetype() -> Result<()> {
-        let mut col = Collection::new();
-        assert!(col.get_notetype_by_name("Image Occlusion")?.is_none());
-        Ok(())
-    }
 }

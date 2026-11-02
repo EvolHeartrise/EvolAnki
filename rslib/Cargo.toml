@@ -9,19 +9,6 @@ rust-version.workspace = true
 workspace = ".."
 description = "Anki's Rust library code"
 
-[features]
-bench = ["criterion"]
-
-[[bench]]
-name = "benchmark"
-harness = false
-required-features = ["bench"]
-
-[[bench]]
-name = "fsrs"
-harness = false
-required-features = ["bench"]
-
 [build-dependencies]
 anki_io.workspace = true
 anki_proto.workspace = true
@@ -35,8 +22,6 @@ prost-reflect.workspace = true
 syn.workspace = true
 
 [dependencies]
-criterion = { workspace = true, optional = true }
-
 ammonia.workspace = true
 anki_i18n.workspace = true
 anki_io.workspace = true

@@ -1,8 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-//! Static files: the built pages and assets, and collection media. Mirrors the
-//! file handling and security headers of upstream Anki's qt/aqt/mediasrv.py.
+//! Static files: the built pages and assets, and collection media.
 
 use std::io::ErrorKind;
 use std::path::Component;
@@ -26,8 +25,7 @@ use crate::frame;
 use crate::AppState;
 
 /// Collection media is untrusted: an SVG or HTML file must not run as an active
-/// document on our origin, where it could call the API. Same as
-/// UNTRUSTED_MEDIA_CSP in mediasrv.py, which explains each directive.
+/// document on our origin, where it could call the API.
 const UNTRUSTED_MEDIA_CSP: &str = "default-src 'none'; script-src 'none'; connect-src 'none'; \
      object-src 'none'; frame-src 'none'; child-src 'none'; base-uri 'none'; form-action 'none'; \
      style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; media-src 'self'; \

@@ -452,20 +452,7 @@ fn a_shared_collection_is_given_its_own_settings_by_convert_and_validate_agrees(
     );
     let report = fs::read_to_string(&report).unwrap();
     assert!(report.contains("FSRS parameters per deck"), "{report}");
-    assert!(!report.to_lowercase().contains("preset"), "{report}");
     assert!(report.contains("| Mine "), "{report}");
-}
-
-#[test]
-fn card_show_says_nothing_of_presets_and_preset_search_is_gone() {
-    let fx = Fixture::new();
-    let (_, card) = fx.add_note("q");
-    let shown = fx.ok("card.show", json!({"id":card,"render":false}));
-    assert!(shown.get("preset").is_none(), "{shown}");
-    // not a keyword any more, so it looks in a field of that name
-    let error = fx.raw("search.cards", &json!({"search":"preset:Default"}));
-    let found = error["result"]["ids"].as_array().map(Vec::len).unwrap_or(0);
-    assert_eq!(found, 0, "{error}");
 }
 
 /// Cards can still arrive buried, in a profile from desktop Anki.

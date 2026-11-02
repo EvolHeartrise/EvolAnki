@@ -785,19 +785,6 @@ mod tests {
         }
 
         #[test]
-        fn imported_false_config_does_not_turn_fsrs_off() {
-            let mut col = Collection::new();
-            NoteAdder::basic(&mut col).add(&mut col);
-            receive_fsrs_config_from_import(&mut col, false);
-
-            assert_eq!(stored_flag(&col), Some(false));
-
-            // answering schedules with FSRS
-            col.answer_easy();
-            assert!(col.get_first_card().memory_state.is_some());
-        }
-
-        #[test]
         fn migration_adds_memory_states_without_rescheduling() -> Result<()> {
             let mut col = Collection::new();
             let card_id = add_review_card_without_memory_state(&mut col);

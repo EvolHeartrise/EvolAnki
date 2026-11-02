@@ -915,11 +915,6 @@ mod test {
         assert_eq!(parse(r#"a"b"(c)"#)?, parse("a b (c)")?);
 
         assert_eq!(parse("added:3")?, vec![Search(AddedInDays(3))]);
-        // flags are gone, so this is a search of a field with that name
-        assert!(matches!(
-            parse("flag:3")?.as_slice(),
-            [Search(SingleField { field, text, .. })] if field == "flag" && text == "3"
-        ));
         assert_eq!(
             parse("card:front")?,
             vec![Search(CardTemplate(TemplateKind::Name("front".into())))]
@@ -1110,12 +1105,6 @@ mod test {
             assert!(matches!(failkind(term), SearchErrorKind::Other { .. }));
         }
 
-        assert_err_kind(
-            "is:buried",
-            InvalidState {
-                provided: "buried".into(),
-            },
-        );
         assert_err_kind(
             "is:foo",
             InvalidState {

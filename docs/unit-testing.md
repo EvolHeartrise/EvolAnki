@@ -368,8 +368,7 @@ just check      # required final formatting, build, lint, and test validation
 ```
 
 During development, run the relevant stack frequently. Before considering a code
-change complete, run `just check`. See [Testing and Coverage](testing-coverage.md)
-for coverage commands and [End-to-End Testing](e2e-testing.md) when the
+change complete, run `just check`. See [End-to-End Testing](e2e-testing.md) when the
 selected boundary requires Playwright.
 
 ## Review checklist

@@ -14,29 +14,17 @@ run *args:
 check:
     {{ ninja }} check
 
-# Run all tests (Rust, TypeScript). Pass --coverage to enforce coverage, and --html to include HTML reports.
-[arg("coverage", long="coverage", value="--coverage")]
-[arg("html", long="html", value="--html")]
-test coverage='' html='':
-    just {{ if coverage == "--coverage" { "coverage " + html } else { "_test" } }}
+# Run all tests (Rust, TypeScript)
+test:
+    {{ ninja }} check:rust_test check:vitest
 
-# Run coverage for all test stacks. Pass --html to also generate HTML reports.
-[arg("html", long="html", value="--html")]
-coverage html='':
-    just _coverage-rust {{ html }}
-    just _coverage-ts {{ html }}
+# Run Rust tests
+test-rust:
+    {{ ninja }} check:rust_test
 
-# Run Rust tests. Pass --coverage to enforce Rust coverage, and --html to include an HTML report.
-[arg("coverage", long="coverage", value="--coverage")]
-[arg("html", long="html", value="--html")]
-test-rust coverage='' html='':
-    just {{ if coverage == "--coverage" { "_coverage-rust " + html } else { "_test-rust" } }}
-
-# Run TypeScript/Svelte Vitest tests. Pass --coverage to enforce coverage, and --html to include an HTML report.
-[arg("coverage", long="coverage", value="--coverage")]
-[arg("html", long="html", value="--html")]
-test-ts coverage='' html='':
-    just {{ if coverage == "--coverage" { "_coverage-ts " + html } else { "_test-ts" } }}
+# Run TypeScript/Svelte Vitest tests
+test-ts:
+    {{ ninja }} check:vitest
 
 # Run Playwright end-to-end tests. Pass --ui to open the interactive UI.
 [arg("ui", long="ui", value="--ui")]
@@ -44,27 +32,6 @@ test-e2e ui='': _install-playwright-browsers
     {{ ninja }} web
     CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
     {{ playwright_env }} {{ yarn }} test:e2e {{ ui }}
-
-[private]
-_test:
-    {{ ninja }} check:rust_test check:vitest
-
-[private]
-_test-rust:
-    {{ ninja }} check:rust_test
-
-[private]
-_test-ts:
-    {{ ninja }} check:vitest
-
-[private]
-_coverage-rust html='':
-    tools/coverage/coverage-rust {{ html }}
-
-[private]
-_coverage-ts html='':
-    {{ ninja }} node_modules ts:generated
-    tools/coverage/coverage-ts {{ html }}
 
 [private]
 _install-playwright-browsers:
