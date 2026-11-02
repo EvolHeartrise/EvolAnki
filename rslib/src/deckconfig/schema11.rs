@@ -3,8 +3,6 @@
 
 use std::collections::HashMap;
 
-use phf::phf_set;
-use phf::Set;
 use serde::Deserialize as DeTrait;
 use serde::Deserialize;
 use serde::Deserializer;
@@ -373,179 +371,13 @@ impl From<DeckConfSchema11> for DeckConfig {
     }
 }
 
-// latest schema -> schema 11
-impl From<DeckConfig> for DeckConfSchema11 {
-    fn from(c: DeckConfig) -> DeckConfSchema11 {
-        // split extra json up
-        let mut top_other: HashMap<String, Value>;
-        let mut new_other = Default::default();
-        let mut rev_other = Default::default();
-        let mut lapse_other = Default::default();
-        if c.inner.other.is_empty() {
-            top_other = Default::default();
-        } else {
-            top_other = serde_json::from_slice(&c.inner.other).unwrap_or_default();
-            if let Some(new) = top_other.remove("new") {
-                let val: HashMap<String, Value> = serde_json::from_value(new).unwrap_or_default();
-                new_other = val;
-                new_other.retain(|k, _v| !RESERVED_DECKCONF_NEW_KEYS.contains(k))
-            }
-            if let Some(rev) = top_other.remove("rev") {
-                let val: HashMap<String, Value> = serde_json::from_value(rev).unwrap_or_default();
-                rev_other = val;
-                rev_other.retain(|k, _v| !RESERVED_DECKCONF_REV_KEYS.contains(k))
-            }
-            if let Some(lapse) = top_other.remove("lapse") {
-                let val: HashMap<String, Value> = serde_json::from_value(lapse).unwrap_or_default();
-                lapse_other = val;
-                lapse_other.retain(|k, _v| !RESERVED_DECKCONF_LAPSE_KEYS.contains(k))
-            }
-            top_other.retain(|k, _v| !RESERVED_DECKCONF_KEYS.contains(k));
-        }
-        let i = c.inner;
-        let new_order = i.new_card_insert_order();
-        DeckConfSchema11 {
-            id: c.id,
-            mtime: c.mtime_secs,
-            name: c.name,
-            usn: c.usn,
-            max_taken: i.cap_answer_time_to_secs as i32,
-            autoplay: !i.disable_autoplay,
-            timer: i.show_timer.into(),
-            stop_timer_on_answer: i.stop_timer_on_answer,
-            seconds_to_show_question: i.seconds_to_show_question,
-            seconds_to_show_answer: i.seconds_to_show_answer,
-            answer_action: match i.answer_action {
-                1 => AnswerAction::AnswerAgain,
-                2 => AnswerAction::AnswerGood,
-                3 => AnswerAction::AnswerHard,
-                _ => AnswerAction::ShowReminder,
-            },
-            question_action: match i.question_action {
-                1 => QuestionAction::ShowReminder,
-                _ => QuestionAction::ShowAnswer,
-            },
-            wait_for_audio: i.wait_for_audio,
-            replayq: !i.skip_question_when_replaying_answer,
-            dynamic: false,
-            new: NewConfSchema11 {
-                delays: i.learn_steps,
-                initial_factor: (i.initial_ease * 1000.0) as u16,
-                ints: NewCardIntervals {
-                    good: i.graduating_interval_good as u16,
-                    easy: i.graduating_interval_easy as u16,
-                    _unused: 0,
-                },
-                order: match new_order {
-                    NewCardInsertOrder::Random => NewCardOrderSchema11::Random,
-                    NewCardInsertOrder::Due => NewCardOrderSchema11::Due,
-                },
-                per_day: i.new_per_day,
-                other: new_other,
-            },
-            rev: RevConfSchema11 {
-                ease4: i.easy_multiplier,
-                ivl_fct: i.interval_multiplier,
-                max_ivl: i.maximum_review_interval,
-                per_day: i.reviews_per_day,
-                hard_factor: i.hard_multiplier,
-                other: rev_other,
-            },
-            lapse: LapseConfSchema11 {
-                delays: i.relearn_steps,
-                min_int: i.minimum_lapse_interval,
-                mult: i.lapse_multiplier,
-                other: lapse_other,
-            },
-            other: top_other,
-            new_mix: i.new_mix,
-            new_per_day_minimum: i.new_per_day_minimum,
-            interday_learning_mix: i.interday_learning_mix,
-            review_order: i.review_order,
-            new_sort_order: i.new_card_sort_order,
-            new_gather_priority: i.new_card_gather_priority,
-            fsrs_params_4: i.fsrs_params_4,
-            fsrs_params_5: i.fsrs_params_5,
-            fsrs_params_6: i.fsrs_params_6,
-            desired_retention: i.desired_retention,
-            sm2_retention: i.historical_retention,
-            param_search: i.param_search,
-            ignore_revlogs_before_date: i.ignore_revlogs_before_date,
-            easy_days_percentages: i.easy_days_percentages,
-        }
-    }
-}
-
-static RESERVED_DECKCONF_KEYS: Set<&'static str> = phf_set! {
-    "id",
-    "newSortOrder",
-    "replayq",
-    "newPerDayMinimum",
-    "usn",
-    "autoplay",
-    "dyn",
-    "maxTaken",
-    "reviewOrder",
-    "newMix",
-    "mod",
-    "timer",
-    "name",
-    "interdayLearningMix",
-    "newGatherPriority",
-    "fsrsWeights",
-    "fsrsParams5",
-    "fsrsParams6",
-    "desiredRetention",
-    "stopTimerOnAnswer",
-    "secondsToShowQuestion",
-    "secondsToShowAnswer",
-    "questionAction",
-    "answerAction",
-    "waitForAudio",
-    "sm2Retention",
-    "weightSearch",
-    "ignoreRevlogsBeforeDate",
-    "easyDaysPercentages",
-};
-
-static RESERVED_DECKCONF_NEW_KEYS: Set<&'static str> = phf_set! {
-    "order", "delays", "perDay", "initialFactor", "ints"
-};
-
-static RESERVED_DECKCONF_REV_KEYS: Set<&'static str> = phf_set! {
-    "maxIvl", "hardFactor", "ease4", "ivlFct", "perDay"
-};
-
-// The leech keys are unused, but can be in what's stored or imported.
-static RESERVED_DECKCONF_LAPSE_KEYS: Set<&'static str> = phf_set! {
-    "leechFails", "mult", "leechAction", "delays", "minInt"
-};
-
 #[cfg(test)]
 mod test {
-    use itertools::Itertools;
     use serde::de::IntoDeserializer;
     use serde_json::json;
     use serde_json::Value;
 
     use super::*;
-    use crate::prelude::*;
-
-    #[test]
-    fn all_reserved_fields_are_removed() -> Result<()> {
-        let key_source = DeckConfSchema11::default();
-        let mut config = DeckConfig::default();
-        let empty: &[&String] = &[];
-
-        config.inner.other = serde_json::to_vec(&key_source)?;
-        let s11 = DeckConfSchema11::from(config);
-        assert_eq!(&s11.other.keys().collect_vec(), empty);
-        assert_eq!(&s11.new.other.keys().collect_vec(), empty);
-        assert_eq!(&s11.rev.other.keys().collect_vec(), empty);
-        assert_eq!(&s11.lapse.other.keys().collect_vec(), empty);
-
-        Ok(())
-    }
 
     #[test]
     fn new_intervals() {

@@ -16,7 +16,7 @@ impl BackendImportExportService for Backend {
         let mut guard = self.lock_open_collection()?;
 
         let col_inner = guard.take().unwrap();
-        col_inner.export_colpkg(input.out_path, input.include_media, input.legacy)
+        col_inner.export_colpkg(input.out_path, input.include_media)
     }
 
     fn import_collection_package(

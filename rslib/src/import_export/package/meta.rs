@@ -13,11 +13,9 @@ use zstd::stream::copy_decode;
 
 use crate::import_export::ImportError;
 use crate::prelude::*;
-use crate::storage::SchemaVersion;
 
 pub(super) trait VersionExt {
     fn collection_filename(&self) -> &'static str;
-    fn schema_version(&self) -> SchemaVersion;
 }
 
 impl VersionExt for Version {
@@ -29,24 +27,14 @@ impl VersionExt for Version {
             Version::Latest => "collection.anki21b",
         }
     }
-
-    /// Latest schema version that is supported by all clients supporting
-    /// this package version.
-    fn schema_version(&self) -> SchemaVersion {
-        match self {
-            Version::Unknown => unreachable!(),
-            Version::Legacy1 | Version::Legacy2 => SchemaVersion::V11,
-            Version::Latest => SchemaVersion::V18,
-        }
-    }
 }
 
 pub(in crate::import_export) trait MetaExt: Sized {
     fn new() -> Self;
+    #[cfg(test)]
     fn new_legacy() -> Self;
     fn from_archive(archive: &mut ZipArchive<File>) -> Result<Self>;
     fn collection_filename(&self) -> &'static str;
-    fn schema_version(&self) -> SchemaVersion;
     fn zstd_compressed(&self) -> bool;
     fn media_list_is_hashmap(&self) -> bool;
     fn is_legacy(&self) -> bool;
@@ -60,6 +48,7 @@ impl MetaExt for Meta {
         }
     }
 
+    #[cfg(test)]
     fn new_legacy() -> Self {
         Self {
             version: Version::Legacy2 as i32,
@@ -96,12 +85,6 @@ impl MetaExt for Meta {
 
     fn collection_filename(&self) -> &'static str {
         self.version().collection_filename()
-    }
-
-    /// Latest schema version that is supported by all clients supporting
-    /// this package version.
-    fn schema_version(&self) -> SchemaVersion {
-        self.version().schema_version()
     }
 
     fn zstd_compressed(&self) -> bool {

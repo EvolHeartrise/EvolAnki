@@ -70,11 +70,6 @@ pub(crate) fn all_decks(db: &Connection) -> Result<Vec<Deck>> {
 }
 
 impl SqliteStorage {
-    pub(crate) fn get_all_decks_as_schema11(&self) -> Result<HashMap<DeckId, DeckSchema11>> {
-        self.get_all_decks()
-            .map(|r| r.into_iter().map(|d| (d.id, d.into())).collect())
-    }
-
     pub(crate) fn get_deck(&self, did: DeckId) -> Result<Option<Deck>> {
         self.db
             .prepare_cached(concat!(include_str!("get_deck.sql"), " where id = ?"))?
@@ -382,11 +377,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    pub(crate) fn downgrade_decks_from_schema15(&self) -> Result<()> {
-        let decks = self.get_all_decks_as_schema11()?;
-        self.set_schema11_decks(decks)
-    }
-
     fn get_schema11_decks(&self) -> Result<HashMap<DeckId, DeckSchema11>> {
         let mut stmt = self.db.prepare("select decks from col")?;
         let decks = stmt
@@ -398,11 +388,5 @@ impl SqliteStorage {
             .next()
             .ok_or_else(|| AnkiError::db_error("col table empty", DbErrorKind::MissingEntity))??;
         Ok(decks)
-    }
-
-    pub(crate) fn set_schema11_decks(&self, decks: HashMap<DeckId, DeckSchema11>) -> Result<()> {
-        let json = serde_json::to_string(&decks)?;
-        self.db.execute("update col set decks = ?", [json])?;
-        Ok(())
     }
 }

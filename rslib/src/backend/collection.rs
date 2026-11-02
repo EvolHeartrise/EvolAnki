@@ -10,7 +10,6 @@ use crate::collection::CollectionBuilder;
 use crate::prelude::*;
 use crate::progress::progress_to_proto;
 use crate::services::BackendCollectionService;
-use crate::storage::SchemaVersion;
 
 impl BackendCollectionService for Backend {
     fn open_collection(&self, input: anki_proto::collection::OpenCollectionRequest) -> Result<()> {
@@ -32,18 +31,12 @@ impl BackendCollectionService for Backend {
 
     fn close_collection(
         &self,
-        input: anki_proto::collection::CloseCollectionRequest,
+        _input: anki_proto::collection::CloseCollectionRequest,
     ) -> Result<()> {
-        let desired_version = if input.downgrade_to_schema11 {
-            Some(SchemaVersion::V11)
-        } else {
-            None
-        };
-
         let mut guard = self.lock_open_collection()?;
         let col_inner = guard.take().unwrap();
 
-        if let Err(e) = col_inner.close(desired_version) {
+        if let Err(e) = col_inner.close() {
             error!(" failed: {:?}", e);
         }
 
@@ -97,12 +90,12 @@ mod test {
         let mut card = col.get_first_card();
         card.clear_fsrs_data();
         col.storage.update_card(&card)?;
-        col.close(None)?;
+        col.close()?;
 
         // as done with temporary collections during import
         let col = CollectionBuilder::new(&path).build()?;
         assert!(col.get_first_card().memory_state.is_none());
-        col.close(None)?;
+        col.close()?;
 
         let backend = Backend::new(I18n::template_only());
         BackendCollectionService::open_collection(

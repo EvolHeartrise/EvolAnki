@@ -40,9 +40,7 @@ message OpenCollectionRequest {
   string media_db_path = 3;
 }
 
-message CloseCollectionRequest {
-  bool downgrade_to_schema11 = 1;
-}
+message CloseCollectionRequest {}
 
 message CheckDatabaseResponse {
   repeated string problems = 1;

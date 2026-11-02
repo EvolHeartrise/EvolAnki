@@ -10,11 +10,9 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anki_io::atomic_rename;
-use anki_io::new_tempfile;
 use anki_io::new_tempfile_in_parent_of;
 use anki_io::open_file;
 use prost::Message;
-use tempfile::NamedTempFile;
 use zip::write::FileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
@@ -23,19 +21,15 @@ use zstd::stream::zio;
 use zstd::Encoder;
 
 use super::super::meta::MetaExt;
-use super::super::meta::VersionExt;
 use super::super::MediaEntries;
 use super::super::MediaEntry;
 use super::super::Meta;
-use super::super::Version;
-use crate::collection::CollectionBuilder;
 use crate::import_export::package::media::new_media_entry;
 use crate::import_export::package::media::MediaCopier;
 use crate::import_export::package::media::MediaIter;
 use crate::import_export::ExportProgress;
 use crate::prelude::*;
 use crate::progress::ThrottlingProgressHandler;
-use crate::storage::SchemaVersion;
 
 /// Enable multithreaded compression if over this size. For smaller files,
 /// multithreading makes things slower, and in initial tests, the crossover
@@ -47,7 +41,6 @@ impl Collection {
         self,
         out_path: impl AsRef<Path>,
         include_media: bool,
-        legacy: bool,
     ) -> Result<()> {
         let mut progress = self.new_progress_handler();
         let colpkg_name = out_path.as_ref();
@@ -58,19 +51,12 @@ impl Collection {
         } else {
             None
         };
-        let tr = self.tr.clone();
-        self.close(Some(if legacy {
-            SchemaVersion::V11
-        } else {
-            SchemaVersion::V18
-        }))?;
+        self.close()?;
 
         export_collection_file(
             temp_colpkg.path(),
             &src_path,
             src_media_folder,
-            legacy,
-            &tr,
             &mut progress,
         )?;
         atomic_rename(temp_colpkg, colpkg_name, true)?;
@@ -83,15 +69,9 @@ fn export_collection_file(
     out_path: impl AsRef<Path>,
     col_path: impl AsRef<Path>,
     media_dir: Option<PathBuf>,
-    legacy: bool,
-    tr: &I18n,
     progress: &mut ThrottlingProgressHandler<ExportProgress>,
 ) -> Result<()> {
-    let meta = if legacy {
-        Meta::new_legacy()
-    } else {
-        Meta::new()
-    };
+    let meta = Meta::new();
     let mut col_file = open_file(col_path)?;
     let col_size = col_file.metadata()?.len() as usize;
     let media = if let Some(path) = media_dir {
@@ -100,7 +80,7 @@ fn export_collection_file(
         MediaIter::empty()
     };
 
-    export_collection(meta, out_path, &mut col_file, col_size, media, tr, progress)
+    export_collection(meta, out_path, &mut col_file, col_size, media, progress)
 }
 
 pub(crate) fn export_collection(
@@ -109,7 +89,6 @@ pub(crate) fn export_collection(
     col: &mut impl Read,
     col_size: usize,
     media: MediaIter,
-    tr: &I18n,
     progress: &mut ThrottlingProgressHandler<ExportProgress>,
 ) -> Result<()> {
     let out_file = File::create(&out_path)?;
@@ -120,7 +99,6 @@ pub(crate) fn export_collection(
     meta.encode(&mut meta_bytes)?;
     zip.write_all(&meta_bytes)?;
     write_collection(&meta, &mut zip, col, col_size)?;
-    write_dummy_collection(&mut zip, tr)?;
     write_media(&meta, &mut zip, media, progress)?;
     zip.finish()?;
 
@@ -149,40 +127,6 @@ fn write_collection(
         io::copy(col, zip)?;
     }
     Ok(())
-}
-
-fn write_dummy_collection(zip: &mut ZipWriter<File>, tr: &I18n) -> Result<()> {
-    let mut tempfile = create_dummy_collection_file(tr)?;
-    zip.start_file(
-        Version::Legacy1.collection_filename(),
-        file_options_stored(),
-    )?;
-    io::copy(&mut tempfile, zip)?;
-
-    Ok(())
-}
-
-fn create_dummy_collection_file(tr: &I18n) -> Result<NamedTempFile> {
-    let tempfile = new_tempfile()?;
-    let mut dummy_col = CollectionBuilder::new(tempfile.path()).build()?;
-    dummy_col.add_dummy_note(tr)?;
-    dummy_col
-        .storage
-        .db
-        .execute_batch("pragma page_size=512; pragma journal_mode=delete; vacuum;")?;
-    dummy_col.close(Some(SchemaVersion::V11))?;
-
-    Ok(tempfile)
-}
-
-impl Collection {
-    fn add_dummy_note(&mut self, tr: &I18n) -> Result<()> {
-        let notetype = self.get_notetype_by_name("basic")?.unwrap();
-        let mut note = notetype.new_note();
-        note.set_field(0, tr.exporting_colpkg_too_new())?;
-        self.add_note(&mut note, DeckId(1))?;
-        Ok(())
-    }
 }
 
 /// Copy contents of reader into writer, compressing as we copy.

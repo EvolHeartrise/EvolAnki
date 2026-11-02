@@ -36,13 +36,8 @@ impl Collection {
             .path()
             .to_str()
             .or_invalid("non-unicode filename")?;
-        let meta = if options.legacy {
-            Meta::new_legacy()
-        } else {
-            Meta::new()
-        };
-        let data =
-            self.export_into_collection_file(&meta, temp_col_path, options, search, &mut progress)?;
+        let meta = Meta::new();
+        let data = self.export_into_collection_file(temp_col_path, options, search, &mut progress)?;
 
         progress.set(ExportProgress::File)?;
         let media = if let Some(media_fn) = media_fn {
@@ -58,7 +53,6 @@ impl Collection {
             &mut temp_col,
             col_size,
             media,
-            &self.tr,
             &mut progress,
         )?;
         atomic_rename(temp_apkg, out_path.as_ref(), true)?;
@@ -67,7 +61,6 @@ impl Collection {
 
     fn export_into_collection_file(
         &mut self,
-        meta: &Meta,
         path: &str,
         options: ExportAnkiPackageOptions,
         search: impl TryIntoSearch,
@@ -90,7 +83,7 @@ impl Collection {
         temp_col.insert_data(&data)?;
         temp_col.set_creation_stamp(self.storage.creation_stamp()?)?;
         temp_col.set_creation_utc_offset(data.creation_utc_offset)?;
-        temp_col.close(Some(meta.schema_version()))?;
+        temp_col.close()?;
 
         Ok(data)
     }

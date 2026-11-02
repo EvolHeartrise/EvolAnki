@@ -255,21 +255,18 @@ fn build_fixtures(fixtures: &Path, now: i64) -> Result<()> {
 
     clock::set_ms(now * 1000);
     harness.open(&collection)?;
-    for (name, legacy) in [("synthetic.apkg", false), ("synthetic-legacy.apkg", true)] {
-        harness.must(
-            "ExportAnkiPackage",
-            json!({
-                "out_path": fixtures.join(name).to_str(),
-                "options": {
-                    "with_scheduling": true,
-                    "with_deck_configs": true,
-                    "with_media": false,
-                    "legacy": legacy,
-                },
-                "limit": { "whole_collection": {} },
-            }),
-        )?;
-    }
+    harness.must(
+        "ExportAnkiPackage",
+        json!({
+            "out_path": fixtures.join("synthetic.apkg").to_str(),
+            "options": {
+                "with_scheduling": true,
+                "with_deck_configs": true,
+                "with_media": false,
+            },
+            "limit": { "whole_collection": {} },
+        }),
+    )?;
     harness.close()?;
     fs::remove_dir_all(work)?;
     let media = collection.with_extension("media");
@@ -406,11 +403,15 @@ fn open_scenario(harness: &mut Harness, fixtures: &Path, start: &Start) -> Resul
 pub fn run(fixtures: &Path, out: &Path, now: i64) -> Result<()> {
     let out = prepare_output(out)?;
     let fixtures = prepare_output(fixtures)?;
-    // the last thing written, so a failed build isn't mistaken for a fixture
-    if !fixtures.join("synthetic-legacy.apkg").exists() {
+    // written last, so a failed build isn't mistaken for a fixture
+    if !fixtures.join("synthetic.apkg").exists() {
         let _ = fs::remove_file(fixtures.join("synthetic.anki2"));
         eprintln!("building fixtures");
         build_fixtures(&fixtures, now)?;
+    }
+    if !fixtures.join("synthetic-legacy.apkg").exists() {
+        // this version can't write a package in the old format, so it can't make this
+        anyhow::bail!("{} is missing a kept fixture", fixtures.display());
     }
     let work = fixtures.join("work");
     let _ = fs::remove_dir_all(&work);

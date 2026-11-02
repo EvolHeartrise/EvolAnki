@@ -133,16 +133,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    pub(super) fn downgrade_tags_from_schema14(&self) -> Result<()> {
-        let alltags = self.all_tags()?;
-        let tagsmap: HashMap<String, Usn> = alltags.into_iter().map(|t| (t.name, t.usn)).collect();
-        self.db.execute(
-            "update col set tags=?",
-            params![serde_json::to_string(&tagsmap)?],
-        )?;
-        Ok(())
-    }
-
     pub(super) fn upgrade_tags_to_schema17(&self) -> Result<()> {
         let tags = self
             .db

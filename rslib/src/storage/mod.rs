@@ -37,18 +37,6 @@ pub use sqlite::verify_copied_collection;
 pub(crate) use sqlite::ProcessTextFlags;
 pub(crate) use sqlite::SqliteStorage;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SchemaVersion {
-    V11,
-    V18,
-}
-
-impl SchemaVersion {
-    pub(super) fn has_journal_mode_delete(self) -> bool {
-        self == Self::V11
-    }
-}
-
 /// Write a list of IDs as '(x,y,...)' into the provided string.
 pub fn ids_to_string<D, I>(buf: &mut String, ids: I)
 where

@@ -51,7 +51,6 @@ fn cards_buried_in_a_package_import_as_normal() {
                 with_scheduling: true,
                 with_deck_configs: false,
                 with_media: false,
-                legacy: true,
             },
             "",
             None,
@@ -66,9 +65,9 @@ fn cards_buried_in_a_package_import_as_normal() {
         let name = entry.name().unwrap().to_string();
         let mut bytes = vec![];
         std::io::copy(&mut entry, &mut bytes).unwrap();
-        if name.starts_with("collection.anki2") {
+        if name == "collection.anki21b" {
             let db_path = src_tempdir.path().join("package.db");
-            std::fs::write(&db_path, &bytes).unwrap();
+            std::fs::write(&db_path, zstd::decode_all(bytes.as_slice()).unwrap()).unwrap();
             let db = rusqlite::Connection::open(&db_path).unwrap();
             db.execute("update cards set queue = -2 where nid = ?", [new.0])
                 .unwrap();
@@ -78,7 +77,7 @@ fn cards_buried_in_a_package_import_as_normal() {
             )
             .unwrap();
             db.close().unwrap();
-            bytes = std::fs::read(&db_path).unwrap();
+            bytes = zstd::encode_all(std::fs::read(&db_path).unwrap().as_slice(), 0).unwrap();
         }
         writer
             .start_file(
@@ -113,11 +112,6 @@ fn cards_buried_in_a_package_import_as_normal() {
 
 #[test]
 fn roundtrip() {
-    roundtrip_inner(true);
-    roundtrip_inner(false);
-}
-
-fn roundtrip_inner(legacy: bool) {
     let (mut src_col, src_tempdir) = open_fs_test_collection("src");
     let (mut target_col, _target_tempdir) = open_fs_test_collection("target");
     let apkg_path = src_tempdir.path().join("test.apkg");
@@ -135,7 +129,6 @@ fn roundtrip_inner(legacy: bool) {
                 with_scheduling: true,
                 with_deck_configs: true,
                 with_media: true,
-                legacy,
             },
             SearchNode::from_deck_name("parent::sample"),
             None,
@@ -286,7 +279,6 @@ fn export_and_reimport_with_fsrs_params(with_scheduling: bool) -> DeckConfig {
                 with_scheduling,
                 with_deck_configs: true,
                 with_media: false,
-                legacy: false,
             },
             SearchNode::WholeCollection,
             None,
@@ -335,7 +327,6 @@ fn package_with_shared_settings(path: &std::path::Path, src_col: &mut Collection
                 with_scheduling: true,
                 with_deck_configs: true,
                 with_media: false,
-                legacy: false,
             },
             SearchNode::WholeCollection,
             None,

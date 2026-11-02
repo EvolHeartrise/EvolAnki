@@ -287,17 +287,6 @@ impl SqliteStorage {
 
     // Upgrading/downgrading/legacy
 
-    pub(crate) fn get_all_notetypes_as_schema11(
-        &self,
-    ) -> Result<HashMap<NotetypeId, NotetypeSchema11>> {
-        let mut nts = HashMap::new();
-        for (ntid, _name) in self.get_all_notetype_names()? {
-            let full = self.get_notetype(ntid)?.unwrap();
-            nts.insert(ntid, full.into());
-        }
-        Ok(nts)
-    }
-
     pub(crate) fn upgrade_notetypes_to_schema15(&self) -> Result<()> {
         let nts = self
             .get_schema11_notetypes()
@@ -330,11 +319,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    pub(crate) fn downgrade_notetypes_from_schema15(&self) -> Result<()> {
-        let nts = self.get_all_notetypes_as_schema11()?;
-        self.set_schema11_notetypes(nts)
-    }
-
     fn get_schema11_notetypes(&self) -> Result<HashMap<NotetypeId, NotetypeSchema11>> {
         let mut stmt = self.db.prepare("select models from col")?;
         let notetypes = stmt
@@ -346,14 +330,5 @@ impl SqliteStorage {
             .next()
             .ok_or_else(|| AnkiError::db_error("col table empty", DbErrorKind::MissingEntity))??;
         Ok(notetypes)
-    }
-
-    pub(crate) fn set_schema11_notetypes(
-        &self,
-        notetypes: HashMap<NotetypeId, NotetypeSchema11>,
-    ) -> Result<()> {
-        let json = serde_json::to_string(&notetypes)?;
-        self.db.execute("update col set models = ?", [json])?;
-        Ok(())
     }
 }

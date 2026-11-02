@@ -1178,7 +1178,6 @@ fn export_packages(fx: &Fixture) -> (PathBuf, PathBuf) {
                 with_scheduling: true,
                 with_deck_configs: true,
                 with_media: true,
-                legacy: false,
             }),
             limit: Some(ExportLimit {
                 limit: Some(Limit::WholeCollection(Default::default())),
@@ -1194,7 +1193,6 @@ fn export_packages(fx: &Fixture) -> (PathBuf, PathBuf) {
         &ExportCollectionPackageRequest {
             out_path: colpkg.to_str().unwrap().to_string(),
             include_media: true,
-            legacy: false,
         },
     )
     .unwrap();

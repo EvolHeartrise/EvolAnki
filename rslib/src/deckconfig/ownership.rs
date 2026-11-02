@@ -698,13 +698,13 @@ mod test {
         add_row(&col, 42, "Shared", |_| ());
         let default = DeckId(1);
         point_deck_at(&mut col, default, 42, |_| ());
-        col.close(None).unwrap();
+        col.close().unwrap();
 
         assert!(settings_repair_needed(&path).unwrap());
 
         let mut col = CollectionBuilder::new(&path).build().unwrap();
         col.ensure_decks_own_settings().unwrap();
-        col.close(None).unwrap();
+        col.close().unwrap();
 
         assert!(!settings_repair_needed(&path).unwrap());
         drop(tempdir);

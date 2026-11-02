@@ -39,6 +39,7 @@ pub(crate) fn all_deck_config_unchecked(db: &Connection) -> Result<Vec<DeckConfi
 }
 
 impl SqliteStorage {
+    #[cfg(test)]
     pub(crate) fn all_deck_config(&self) -> Result<Vec<DeckConfig>> {
         self.db
             .prepare_cached(include_str!("get.sql"))?
@@ -217,18 +218,4 @@ impl SqliteStorage {
     }
 
     // schema 15->11
-
-    pub(super) fn downgrade_deck_conf_from_schema16(&self) -> Result<()> {
-        let allconf = self.all_deck_config()?;
-        let confmap: HashMap<DeckConfigId, DeckConfSchema11> = allconf
-            .into_iter()
-            .map(|c| -> DeckConfSchema11 { c.into() })
-            .map(|c| (c.id, c))
-            .collect();
-        self.db.execute(
-            "update col set dconf=?",
-            params![serde_json::to_string(&confmap)?],
-        )?;
-        Ok(())
-    }
 }

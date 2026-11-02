@@ -4,8 +4,6 @@
 use std::collections::HashMap;
 
 use anki_proto::decks::deck::normal::DayLimit;
-use phf::phf_set;
-use phf::Set;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -15,7 +13,6 @@ use super::DeckCommon;
 use super::FilteredDeck;
 use super::FilteredSearchTerm;
 use super::NormalDeck;
-use crate::notetype::schema11::parse_other_fields;
 use crate::prelude::*;
 use crate::serde::default_on_invalid;
 use crate::serde::deserialize_bool_from_anything;
@@ -350,144 +347,5 @@ impl From<FilteredSearchTermSchema11> for FilteredSearchTerm {
             limit: term.limit.max(0) as u32,
             order: term.order,
         }
-    }
-}
-
-// latest -> schema 11
-
-impl From<Deck> for DeckSchema11 {
-    fn from(deck: Deck) -> Self {
-        match deck.kind {
-            DeckKind::Normal(ref norm) => DeckSchema11::Normal(NormalDeckSchema11 {
-                conf: norm.config_id,
-                extend_new: norm.extend_new as i32,
-                extend_rev: norm.extend_review as i32,
-                review_limit: norm.review_limit,
-                new_limit: norm.new_limit,
-                review_limit_today: norm.review_limit_today,
-                new_limit_today: norm.new_limit_today,
-                desired_retention: norm.desired_retention.map(|v| (v * 100.0) as u32),
-                common: deck.into(),
-            }),
-            DeckKind::Filtered(ref filt) => DeckSchema11::Filtered(FilteredDeckSchema11 {
-                resched: filt.reschedule,
-                terms: filt.search_terms.iter().map(|v| v.clone().into()).collect(),
-                separate: true,
-                delays: if filt.delays.is_empty() {
-                    None
-                } else {
-                    Some(filt.delays.clone())
-                },
-                preview_delay: filt.preview_delay,
-                preview_again_secs: filt.preview_again_secs,
-                preview_hard_secs: filt.preview_hard_secs,
-                preview_good_secs: filt.preview_good_secs,
-                common: deck.into(),
-            }),
-        }
-    }
-}
-
-impl From<Deck> for DeckCommonSchema11 {
-    fn from(deck: Deck) -> Self {
-        DeckCommonSchema11 {
-            id: deck.id,
-            mtime: deck.mtime_secs,
-            name: deck.human_name(),
-            usn: deck.usn,
-            today: (&deck).into(),
-            study_collapsed: deck.common.study_collapsed,
-            browser_collapsed: deck.common.browser_collapsed,
-            dynamic: matches!(deck.kind, DeckKind::Filtered(_)).into(),
-            markdown_description: match &deck.kind {
-                DeckKind::Normal(n) => n.markdown_description,
-                DeckKind::Filtered(_) => false,
-            },
-            desc: match deck.kind {
-                DeckKind::Normal(n) => n.description,
-                DeckKind::Filtered(_) => String::new(),
-            },
-            other: parse_other_fields(&deck.common.other, &RESERVED_DECK_KEYS),
-        }
-    }
-}
-
-static RESERVED_DECK_KEYS: Set<&'static str> = phf_set! {
-    "usn",
-    "revToday",
-    "newLimit",
-    "dyn",
-    "reviewLimit",
-    "newToday",
-    "timeToday",
-    "reviewLimitToday",
-    "extendNew",
-    "mod",
-    "newLimitToday",
-    "desc",
-    "name",
-    "lrnToday",
-    "conf",
-    "browserCollapsed",
-    "extendRev",
-    "id",
-    "collapsed",
-    "desiredRetention",
-};
-
-impl From<&Deck> for DeckTodaySchema11 {
-    fn from(deck: &Deck) -> Self {
-        let day = deck.common.last_day_studied as i32;
-        let c = &deck.common;
-        DeckTodaySchema11 {
-            lrn: TodayAmountSchema11 {
-                day,
-                amount: c.learning_studied,
-            },
-            rev: TodayAmountSchema11 {
-                day,
-                amount: c.review_studied,
-            },
-            new: TodayAmountSchema11 {
-                day,
-                amount: c.new_studied,
-            },
-            time: TodayAmountSchema11 {
-                day,
-                amount: c.milliseconds_studied,
-            },
-        }
-    }
-}
-
-impl From<FilteredSearchTerm> for FilteredSearchTermSchema11 {
-    fn from(term: FilteredSearchTerm) -> Self {
-        FilteredSearchTermSchema11 {
-            search: term.search,
-            limit: term.limit as i32,
-            order: term.order,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use itertools::Itertools;
-
-    use super::*;
-
-    #[test]
-    fn all_reserved_fields_are_removed() -> Result<()> {
-        let key_source = DeckSchema11::default();
-        let mut deck = Deck::new_normal();
-        deck.common.other = serde_json::to_vec(&key_source)?;
-        let DeckSchema11::Normal(s11) = DeckSchema11::from(deck) else {
-            panic!()
-        };
-
-        let empty: &[&String] = &[];
-        assert_eq!(&s11.common.other.keys().collect_vec(), empty);
-
-        Ok(())
     }
 }

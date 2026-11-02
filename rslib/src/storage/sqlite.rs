@@ -23,7 +23,6 @@ use unicase::UniCase;
 use super::upgrades::SCHEMA_MAX_VERSION;
 use super::upgrades::SCHEMA_MIN_VERSION;
 use super::upgrades::SCHEMA_STARTING_VERSION;
-use super::SchemaVersion;
 use super::QUEUE_ONCE_OPENED_SQL;
 use crate::cloze::strip_clozes;
 use crate::config::schema11::schema11_config_as_string;
@@ -544,23 +543,8 @@ impl SqliteStorage {
         Ok(storage)
     }
 
-    pub(crate) fn close(self, desired_version: Option<SchemaVersion>) -> Result<()> {
-        if let Some(version) = desired_version {
-            self.downgrade_to(version)?;
-            if version.has_journal_mode_delete() {
-                self.db.pragma_update(None, "journal_mode", "delete")?;
-            }
-        }
-        Ok(())
-    }
-
     // Standard transaction start/stop
     //////////////////////////////////////
-
-    pub(crate) fn begin_trx(&self) -> Result<()> {
-        self.db.prepare_cached("begin exclusive")?.execute([])?;
-        Ok(())
-    }
 
     pub(crate) fn commit_trx(&self) -> Result<()> {
         if !self.db.is_autocommit() {
@@ -753,7 +737,7 @@ mod test {
                     .unwrap();
                 cids.push(cid);
             }
-            col.close(None).unwrap();
+            col.close().unwrap();
         }
 
         let mut col = CollectionBuilder::default()
@@ -808,7 +792,7 @@ mod test {
                 .db
                 .execute("update col set ver = ?", params![ver])
                 .unwrap();
-            col.close(None).unwrap();
+            col.close().unwrap();
         }
         let err =
             SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
@@ -877,7 +861,7 @@ mod test {
                 .unwrap();
             let collection_change = TimestampMillis(1_600_000_000_000);
             col.storage.set_modified_time(collection_change).unwrap();
-            col.close(None).unwrap();
+            col.close().unwrap();
 
             SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
 
@@ -919,32 +903,6 @@ mod test {
         let ver: u8 = col.storage.db_scalar("select ver from col").unwrap();
 
         assert_eq!(ver, SCHEMA_MAX_VERSION);
-    }
-
-    #[test]
-    fn close_downgrades_stored_schema_version_to_v11() {
-        let tempfile = new_tempfile().unwrap();
-        let col = CollectionBuilder::default()
-            .set_collection_path(tempfile.path())
-            .build()
-            .unwrap();
-
-        col.close(Some(SchemaVersion::V11)).unwrap();
-
-        assert_eq!(stored_schema_version(tempfile.path()), SCHEMA_MIN_VERSION);
-    }
-
-    #[test]
-    fn close_at_latest_version_leaves_schema_unchanged() {
-        let tempfile = new_tempfile().unwrap();
-        let col = CollectionBuilder::default()
-            .set_collection_path(tempfile.path())
-            .build()
-            .unwrap();
-
-        col.close(Some(SchemaVersion::V18)).unwrap();
-
-        assert_eq!(stored_schema_version(tempfile.path()), SCHEMA_MAX_VERSION);
     }
 
     #[test]

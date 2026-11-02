@@ -61,9 +61,7 @@ pub fn close_collection(backend: &Backend) -> Result<()> {
     let _: generic::Empty = call_typed(
         backend,
         "closeCollection",
-        &CloseCollectionRequest {
-            downgrade_to_schema11: false,
-        },
+        &CloseCollectionRequest {},
     )?;
     Ok(())
 }

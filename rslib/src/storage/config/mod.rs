@@ -66,6 +66,7 @@ impl SqliteStorage {
             .collect()
     }
 
+    #[cfg(test)]
     pub(crate) fn get_all_config(&self) -> Result<HashMap<String, Value>> {
         self.db
             .prepare("select key, val from config")?
@@ -107,13 +108,6 @@ impl SqliteStorage {
         self.set_all_config(conf, Usn(0), TimestampSecs(0))?;
         self.db.execute_batch("update col set conf=''")?;
 
-        Ok(())
-    }
-
-    pub(super) fn downgrade_config_from_schema14(&self) -> Result<()> {
-        let allconf = self.get_all_config()?;
-        self.db
-            .execute("update col set conf=?", [serde_json::to_string(&allconf)?])?;
         Ok(())
     }
 }

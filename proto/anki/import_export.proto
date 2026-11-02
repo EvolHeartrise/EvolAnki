@@ -38,7 +38,6 @@ message ImportCollectionPackageRequest {
 message ExportCollectionPackageRequest {
   string out_path = 1;
   bool include_media = 2;
-  bool legacy = 3;
 }
 
 enum ImportAnkiPackageUpdateCondition {
@@ -91,7 +90,6 @@ message ExportAnkiPackageOptions {
   bool with_scheduling = 1;
   bool with_deck_configs = 2;
   bool with_media = 3;
-  bool legacy = 4;
 }
 
 message PackageMetadata {

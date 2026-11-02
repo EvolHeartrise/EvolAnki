@@ -14,4 +14,3 @@ use anki_proto::import_export::MediaEntries;
 pub(crate) use apkg::NoteMeta;
 pub use colpkg::import::import_colpkg;
 use meta::Meta;
-use meta::Version;

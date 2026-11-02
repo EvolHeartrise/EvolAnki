@@ -25,7 +25,6 @@ use crate::notetype::NotetypeId;
 use crate::progress::ProgressState;
 use crate::scheduler::queue::CardQueues;
 use crate::scheduler::SchedulerInfo;
-use crate::storage::SchemaVersion;
 use crate::storage::SqliteStorage;
 use crate::types::Usn;
 use crate::undo::UndoManager;
@@ -139,8 +138,9 @@ impl Debug for Collection {
 }
 
 impl Collection {
-    pub fn close(self, desired_version: Option<SchemaVersion>) -> Result<()> {
-        self.storage.close(desired_version)
+    /// Closes the database, which happens when the connection is dropped.
+    pub fn close(self) -> Result<()> {
+        Ok(())
     }
 
     pub(crate) fn usn(&self) -> Result<Usn> {

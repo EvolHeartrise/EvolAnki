@@ -1,4 +1,3 @@
-exporting-colpkg-too-new = Please update to the latest Anki version, then import the .colpkg/.apkg file again.
 exporting-exporting-file = Exporting file...
 exporting-processed-media-files =
     { $count ->
