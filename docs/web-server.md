@@ -177,7 +177,22 @@ towards the same limits.
 4. Start the server. It takes a new backup of what you restored, and reviews carry on
    from there. `a_backup_can_be_restored` in `tests/http.rs` follows these steps.
 
-Backups are ordinary collections, so `sqlite3` or a desktop Anki can read them too.
+Backups are ordinary SQLite files, so `sqlite3` can read them too. Stock Anki can't open one
+taken at schema 19 or later.
+
+## Schema changes
+
+Opening a collection with an older schema upgrades it in one transaction, after a backup. If
+that backup fails, it isn't opened. Schema 19 removed what only sync used: `usn` everywhere,
+`graves`, and `scm`, `dty` and `ls` in `col`. All other data stays as it was. There is no way
+to downgrade.
+
+Going back: an older build refuses a collection at a newer schema, saying that it's too new,
+and leaves it as it is. So to go back, stop the server, install the older build, follow
+[Restoring](#restoring) with the backup taken just before the upgrade, and delete
+`collection.media.db2`, which that build rebuilds from the media folder. Anything done since
+that backup, such as reviews, is lost. Backups are pruned in time, so copy that one somewhere
+safe if you might want it.
 
 ## Settings
 

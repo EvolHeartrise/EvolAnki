@@ -86,7 +86,7 @@ impl SqliteStorage {
         Ok(())
     }
 
-    /// Used for syncing&undo; will keep provided ID. Shouldn't be used to add
+    /// Used for undo; will keep provided ID. Shouldn't be used to add
     /// new config normally, since it does not allocate an id.
     pub(crate) fn add_or_update_deck_config_with_existing_id(
         &self,

@@ -74,7 +74,7 @@ impl Collection {
         Ok(())
     }
 
-    /// Add/update a single deck when syncing/importing. Ensures name is unique
+    /// Add/update a single deck when importing. Ensures name is unique
     /// & normalized, but does not check parents/children or update mtime
     /// (unless the name was changed). Caller must set up transaction.
     pub(crate) fn add_or_update_single_deck_with_existing_id(

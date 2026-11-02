@@ -225,7 +225,7 @@ impl SqliteStorage {
         Ok(())
     }
 
-    /// Used for both regular updates, and for syncing/import.
+    /// Used for both regular updates, and for import.
     pub(crate) fn add_or_update_notetype_with_existing_id(&self, nt: &Notetype) -> Result<()> {
         self.update_notetype_core(nt)?;
         self.update_notetype_fields(nt.id, &nt.fields)?;

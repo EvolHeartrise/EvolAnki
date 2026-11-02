@@ -1168,7 +1168,8 @@ fn csv_field_columns(nt: &Notetype, fields: &Value) -> Result<Vec<u32>> {
     Ok(columns)
 }
 
-/// The backend works out what it can from the file, and what's given replaces that.
+/// The backend works out what it can from the file, and what's given replaces
+/// that.
 fn import_text(admin: &Admin, args: &Value) -> Result<Value> {
     let path = string(args, "path")?;
     if !Path::new(path).is_file() {

@@ -1487,9 +1487,15 @@ fn text_import_goes_through_a_running_server() {
     assert_eq!(response["via"], "server");
     assert_eq!(response["result"]["new"], 1);
     // and it can be undone there, as it's one operation
-    assert_eq!(fx.ok("search.notes", json!({"query":"through"}))["count"], 1);
+    assert_eq!(
+        fx.ok("search.notes", json!({"query":"through"}))["count"],
+        1
+    );
     fx.ok("undo", json!({}));
-    assert_eq!(fx.ok("search.notes", json!({"query":"through"}))["count"], 0);
+    assert_eq!(
+        fx.ok("search.notes", json!({"query":"through"}))["count"],
+        0
+    );
     drop(server);
 }
 
@@ -1506,7 +1512,10 @@ fn text_import_handles_duplicates_as_asked() {
     // keep: nothing changes
     let kept = fx.ok(
         "import.text",
-        basic_text_import(json!({"duplicates":"keep","updated_tags":["touched"]}), &second),
+        basic_text_import(
+            json!({"duplicates":"keep","updated_tags":["touched"]}),
+            &second,
+        ),
     );
     assert_eq!(kept["new"], 0);
     assert_eq!(kept["first_field_match"], 1);
@@ -1547,7 +1556,13 @@ fn text_import_uses_the_file_header_and_explicit_columns() {
     );
     let imported = fx.ok("import.text", json!({"path":header}));
     assert_eq!(imported["new"], 1);
-    assert_eq!(fx.ok("search.notes", json!({"query":"deck:\"From header\" tag:head"}))["count"], 1);
+    assert_eq!(
+        fx.ok(
+            "search.notes",
+            json!({"query":"deck:\"From header\" tag:head"})
+        )["count"],
+        1
+    );
 
     let swapped = fx.write_file("swapped.csv", b"back text,front text\n");
     fx.ok(
@@ -1568,7 +1583,10 @@ fn text_import_refuses_what_it_cant_do() {
     let fx = Fixture::new();
     let path = fx.write_file("words.csv", b"a,b\n");
     assert!(fx
-        .error("import.text", json!({"path":fx.dir.path().join("missing.csv")}))
+        .error(
+            "import.text",
+            json!({"path":fx.dir.path().join("missing.csv")})
+        )
         .contains("isn't a file"));
     assert!(fx
         .error(
@@ -1583,10 +1601,7 @@ fn text_import_refuses_what_it_cant_do() {
         )
         .contains("no field"));
     assert!(fx
-        .error(
-            "import.text",
-            json!({"path":path,"fields":{"Front":1}})
-        )
+        .error("import.text", json!({"path":path,"fields":{"Front":1}}))
         .contains("needs notetype"));
     // and an empty file is an error, not nothing
     let empty = fx.write_file("empty.csv", b"");

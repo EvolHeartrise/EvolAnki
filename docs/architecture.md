@@ -26,6 +26,8 @@ Rust and TypeScript from them, so pages call the backend in a type-safe way.
 
 ## Collections
 
-A collection is the same SQLite file as in Anki, and `.apkg` and `.colpkg` files are
-still read and written. So some columns, such as `usn` and the `graves` table, exist
-only because they're part of the format: nothing syncs them.
+A collection is a SQLite file that starts out as Anki's, without what only sync used: schema
+19 has no `usn` columns, `graves` table, or `scm`, `dty` and `ls` in `col`. `.apkg` and
+`.colpkg` files from Anki, and older collections down to schema 11, are upgraded when opened,
+and what this writes can't be read by stock Anki, which has no way back in. So an upgrade is
+one way: see [web-server.md](web-server.md#schema-changes).

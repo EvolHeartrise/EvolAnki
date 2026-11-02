@@ -39,8 +39,7 @@ impl Collection {
     }
 
     /// Remove a single tag from the tag list, saving an undo entry. Does not
-    /// alter notes. FIXME: caller will need to update usn when we make tags
-    /// incrementally syncable.
+    /// alter notes.
     pub(super) fn remove_single_tag_undoable(&mut self, tag: Tag) -> Result<()> {
         self.storage.remove_single_tag(&tag.name)?;
         self.save_undo(UndoableTagChange::Removed(Box::new(tag)));

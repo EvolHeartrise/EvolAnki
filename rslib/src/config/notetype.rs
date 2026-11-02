@@ -8,7 +8,7 @@ use crate::prelude::*;
 
 /// Notetype config packed into a collection config key. This may change
 /// frequently, and we want to avoid the potentially expensive notetype
-/// write/sync.
+/// write.
 #[derive(Debug, Clone, Copy, IntoStaticStr)]
 #[strum(serialize_all = "camelCase")]
 enum NotetypeConfigKey {

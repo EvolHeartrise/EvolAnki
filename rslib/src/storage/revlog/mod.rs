@@ -95,8 +95,7 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
-    /// Only intended to be used by the undo code, as Anki can not sync revlog
-    /// deletions.
+    /// Only intended to be used by the undo code.
     pub(crate) fn remove_revlog_entry(&self, id: RevlogId) -> Result<()> {
         self.db
             .prepare_cached("delete from revlog where id = ?")?

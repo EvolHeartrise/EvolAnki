@@ -89,8 +89,7 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
-    /// Add or update the provided note, preserving ID. Used by the syncing
-    /// code.
+    /// Add or update the provided note, preserving ID. Used for undoing.
     pub(crate) fn add_or_update_note(&self, note: &Note) -> Result<()> {
         let mut stmt = self.db.prepare_cached(include_str!("add_or_update.sql"))?;
         stmt.execute(params![

@@ -185,7 +185,7 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
-    /// Add or update card, using the provided ID. Used for syncing & undoing.
+    /// Add or update card, using the provided ID. Used for undoing.
     pub(crate) fn add_or_update_card(&self, card: &Card) -> Result<()> {
         let mut stmt = self.db.prepare_cached(include_str!("add_or_update.sql"))?;
         stmt.execute(params![
