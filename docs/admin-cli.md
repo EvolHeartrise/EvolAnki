@@ -199,9 +199,11 @@ $ evolanki-admin run import.text '{"path":"words.csv","notetype":"Basic","deck":
   `keep` leaves it and skips the row, and `add` makes another note. The default is what the
   collection's `csvDuplicateResolution` says, and `update` if nothing does, so **say `keep`
   if you don't mean to change existing notes.**
-- The result says what happened to each row: `new`, `updated`, `duplicate` for one identical
-  to a note, `first_field_match` for one `keep` skipped, and `conflicting`, `missing_notetype`,
-  `missing_deck` and `empty_first_field` for those it couldn't use.
+- The result says what happened to each row. `new` is a row with no match. `first_field_match`
+  is one that matched a note's first field, and got what `duplicates` says: skipped, overwrote
+  it, or made another note. `updated` is one whose `#guid column` matched. `duplicate` is one
+  identical to its note. `conflicting`, `missing_notetype`, `missing_deck` and
+  `empty_first_field` are those it couldn't use.
 - A running server can undo it, as one operation. New notes have new cards, with no reviews.
 
 ## Backups

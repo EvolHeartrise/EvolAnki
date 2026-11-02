@@ -1530,7 +1530,7 @@ fn text_import_handles_duplicates_as_asked() {
             &second,
         ),
     );
-    assert_eq!(updated["updated"], 1);
+    assert_eq!(updated["first_field_match"], 1);
     let changed = vec!["same".to_string(), "changed".to_string()];
     assert_eq!(
         notes_found(&fx, "front:same"),
@@ -1543,7 +1543,7 @@ fn text_import_handles_duplicates_as_asked() {
         "import.text",
         basic_text_import(json!({"duplicates":"add"}), &third),
     );
-    assert_eq!(added["new"], 1);
+    assert_eq!(added["first_field_match"], 1);
     assert_eq!(notes_found(&fx, "front:same").len(), 2);
 }
 
