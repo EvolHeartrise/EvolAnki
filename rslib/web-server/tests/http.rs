@@ -239,7 +239,6 @@ fn deck_options_save_persists_across_restart() {
             config: Some(config),
             mode: UpdateDeckConfigsMode::Normal as i32,
             limits: info.current_deck.as_ref().unwrap().limits,
-            fsrs: true,
             ..Default::default()
         },
     );
@@ -896,7 +895,6 @@ fn backups_taken_during_reviews_are_consistent() {
             config: Some(config),
             mode: UpdateDeckConfigsMode::Normal as i32,
             limits: info.current_deck.as_ref().unwrap().limits,
-            fsrs: true,
             ..Default::default()
         },
     );

@@ -656,7 +656,6 @@ fn recompute_case(harness: &mut Harness, source: &Path, reschedule: bool) -> Res
                 "config": config,
                 "mode": "UPDATE_DECK_CONFIGS_MODE_NORMAL",
                 "limits": settings["current_deck"]["limits"],
-                "fsrs": true,
                 "fsrs_reschedule": reschedule,
             }),
         )

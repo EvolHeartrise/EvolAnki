@@ -470,7 +470,6 @@ impl From<MemoryState> for FsrsMemoryState {
 
 #[cfg(test)]
 mod test {
-    use crate::config::BoolKey;
     use crate::prelude::*;
     use crate::tests::open_test_collection_with_learning_card;
     use crate::tests::open_test_collection_with_relearning_card;
@@ -622,8 +621,6 @@ mod test {
         let mut col = Collection::new();
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
 
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
-
         let target = DeckAdder::new("target").add(&mut col);
 
         let mut target_note = nt.new_note();
@@ -660,7 +657,6 @@ mod test {
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
         col.answer_easy();
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
 
         let before = col.get_first_card();
         let target = DeckAdder::new("target").add(&mut col);
@@ -683,7 +679,6 @@ mod test {
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
         col.answer_easy();
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
 
         let card_id = col.get_first_card().id;
         // Target deck with a desired retention distinct from the default (0.9).
@@ -704,7 +699,6 @@ mod test {
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?; // never answered -> still New
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
 
         let card_id = col.get_first_card().id;
         let target = DeckAdder::new("target").add(&mut col);

@@ -30,7 +30,6 @@ impl SqliteStorage {
             self.upgrade_deck_conf_to_schema15()?;
         }
         if ver < 16 {
-            self.upgrade_deck_conf_to_schema16()?;
             self.db.execute_batch("update col set ver = 16")?;
         }
         if ver < 17 {

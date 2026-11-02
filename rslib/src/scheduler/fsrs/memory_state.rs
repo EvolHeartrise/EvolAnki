@@ -388,35 +388,41 @@ impl Collection {
     }
 }
 
+/// In a stock client's file this key turned FSRS on or off. Here it's only true
+/// once a collection has been given memory states, and a file can still bring
+/// back false, so the name has to stay.
+const MEMORY_STATES_ADDED_KEY: &str = "fsrs";
+
 impl Collection {
-    /// FSRS is always on in this fork, so collections that have been using SM-2
-    /// need memory states for stats, search and retrievability sorting. To be
-    /// called when a real user collection is opened, not on the temporary ones
-    /// used for import. A failure is logged rather than preventing
-    /// the collection from opening: the transaction is rolled back, cards
-    /// still get their state when answered, and the next open tries again.
+    /// Collections that come from a stock client may have been using its old
+    /// scheduler, and need memory states for stats, search and retrievability
+    /// sorting. To be called when a real user collection is opened, not on
+    /// the temporary ones used for import. A failure is logged rather than
+    /// preventing the collection from opening: the transaction is rolled
+    /// back, cards still get their state when answered, and the next open
+    /// tries again.
     pub(crate) fn migrate_to_fsrs_if_needed(&mut self) {
         if let Err(err) = self.migrate_to_fsrs() {
             error!(?err, "unable to compute FSRS memory states");
         }
     }
 
-    /// The stored config value marks whether this is needed, as nothing else
-    /// reads it. It is set to true afterwards, so this runs again only if an
-    /// import brings back false, along with any cards from an SM-2 client.
+    /// [MEMORY_STATES_ADDED_KEY] marks whether this is needed. It is set to
+    /// true afterwards, so this runs again only if an import brings back
+    /// false, along with any cards scheduled by a stock client.
     fn migrate_to_fsrs(&mut self) -> Result<()> {
-        if self.get_config_optional::<bool, _>(BoolKey::Fsrs) == Some(true) {
+        if self.get_config_optional::<bool, _>(MEMORY_STATES_ADDED_KEY) == Some(true) {
             return Ok(());
         }
         self.transact_no_undo(|col| {
             col.add_missing_memory_states()?;
-            col.set_config_bool_inner(BoolKey::Fsrs, true)?;
+            col.set_config(MEMORY_STATES_ADDED_KEY, &true)?;
             Ok(())
         })
     }
 
-    /// For a collection whose flag is already on, yet may have cards with no
-    /// memory state, such as after importing scheduling from an SM-2 client.
+    /// For a collection already marked, yet may have cards with no memory
+    /// state, such as after importing scheduling from a stock client.
     /// Clears the undo queue, so check [Self::count_missing_memory_states]
     /// first.
     pub fn add_missing_fsrs_memory_states(&mut self) -> Result<()> {
@@ -844,11 +850,12 @@ mod tests {
         }
 
         fn stored_flag(col: &Collection) -> Option<bool> {
-            col.get_config_optional(BoolKey::Fsrs)
+            col.get_config_optional(MEMORY_STATES_ADDED_KEY)
         }
 
-        /// A review card with a real revlog, as left behind by SM-2.
-        fn add_sm2_review_card(col: &mut Collection) -> CardId {
+        /// A review card with a real revlog and no memory state, as left behind
+        /// by a stock client's old scheduler.
+        fn add_review_card_without_memory_state(col: &mut Collection) -> CardId {
             let note = NoteAdder::basic(col).add(col);
             let card_id = col.storage.card_ids_of_notes(&[note.id]).unwrap()[0];
             col.answer_easy();
@@ -862,8 +869,9 @@ mod tests {
         fn new_collection_is_fsrs_on() {
             let mut col = Collection::new();
             assert_eq!(stored_flag(&col), None);
-            assert!(col.get_config_bool(BoolKey::Fsrs));
-            assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
+            NoteAdder::basic(&mut col).add(&mut col);
+            col.answer_easy();
+            assert!(col.get_first_card().memory_state.is_some());
         }
 
         #[test]
@@ -873,8 +881,6 @@ mod tests {
             receive_fsrs_config_from_import(&mut col, false);
 
             assert_eq!(stored_flag(&col), Some(false));
-            assert!(col.get_config_bool(BoolKey::Fsrs));
-            assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
 
             // answering schedules with FSRS
             col.answer_easy();
@@ -884,7 +890,7 @@ mod tests {
         #[test]
         fn migration_adds_memory_states_without_rescheduling() -> Result<()> {
             let mut col = Collection::new();
-            let card_id = add_sm2_review_card(&mut col);
+            let card_id = add_review_card_without_memory_state(&mut col);
             receive_fsrs_config_from_import(&mut col, false);
             let before = col.storage.get_card(card_id)?.unwrap();
             let revlog_before = col.storage.get_all_revlog_entries(TimestampSecs(0))?;
@@ -914,7 +920,7 @@ mod tests {
         #[test]
         fn migration_infers_state_for_review_card_without_revlog() -> Result<()> {
             let mut col = Collection::new();
-            let card_id = add_sm2_review_card(&mut col);
+            let card_id = add_review_card_without_memory_state(&mut col);
             col.storage.db.execute_batch("delete from revlog")?;
             let before = col.storage.get_card(card_id)?.unwrap();
             let expected = FSRS::new(&[])?.memory_state_from_sm2(
@@ -937,7 +943,7 @@ mod tests {
         #[test]
         fn migration_uses_the_desired_retention_of_the_deck() -> Result<()> {
             let mut col = Collection::new();
-            let card_id = add_sm2_review_card(&mut col);
+            let card_id = add_review_card_without_memory_state(&mut col);
             let mut config = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
             config.inner.desired_retention = 0.85;
             col.add_or_update_deck_config(&mut config)?;
@@ -971,7 +977,7 @@ mod tests {
         #[test]
         fn migration_only_runs_once_until_import_stores_false_again() -> Result<()> {
             let mut col = Collection::new();
-            let card_id = add_sm2_review_card(&mut col);
+            let card_id = add_review_card_without_memory_state(&mut col);
             col.migrate_to_fsrs_if_needed();
             assert!(col
                 .storage
@@ -992,7 +998,7 @@ mod tests {
                 .memory_state
                 .is_none());
 
-            // an imported false means an SM-2 client may have been used
+            // an imported false means a stock client may have been used
             receive_fsrs_config_from_import(&mut col, false);
             col.migrate_to_fsrs_if_needed();
             assert!(col

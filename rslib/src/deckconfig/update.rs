@@ -35,7 +35,6 @@ pub struct UpdateDeckConfigsRequest {
     pub limits: Limits,
     pub new_cards_ignore_review_limit: bool,
     pub apply_all_parent_limits: bool,
-    pub fsrs: bool,
     pub fsrs_reschedule: bool,
     pub fsrs_health_check: bool,
 }
@@ -63,7 +62,6 @@ impl Collection {
             card_state_customizer: self.get_config_string(StringKey::CardStateCustomizer),
             new_cards_ignore_review_limit: self.get_config_bool(BoolKey::NewCardsIgnoreReviewLimit),
             apply_all_parent_limits: self.get_config_bool(BoolKey::ApplyAllParentLimits),
-            fsrs: self.get_config_bool(BoolKey::Fsrs),
             fsrs_health_check: self.get_config_bool(BoolKey::FsrsHealthCheck),
             fsrs_legacy_evaluate: self.get_config_bool(BoolKey::FsrsLegacyEvaluate),
             days_since_last_fsrs_optimize,
@@ -116,8 +114,6 @@ impl Collection {
     }
 
     fn update_deck_configs_inner(&mut self, mut req: UpdateDeckConfigsRequest) -> Result<()> {
-        // FSRS can't be turned off: a stale payload must not clear memory states.
-        req.fsrs = true;
         let target = self
             .storage
             .get_deck(req.target_deck_id)?
@@ -167,10 +163,6 @@ impl Collection {
 
         // anything that follows from settings changing, in any deck that changed
         let mut decks_needing_memory_recompute = vec![];
-        let fsrs_toggled = self.get_config_bool(BoolKey::Fsrs) != req.fsrs;
-        if fsrs_toggled {
-            self.set_config_bool_inner(BoolKey::Fsrs, req.fsrs)?;
-        }
         for deck in self.storage.get_all_decks()? {
             let Some(config_id) = deck.config_id() else {
                 continue;
@@ -194,8 +186,7 @@ impl Collection {
             let retention_of = |c: Option<&DeckConfig>| c.map(|c| c.inner.desired_retention);
             let easy_days_of =
                 |c: Option<&DeckConfig>| c.map(|c| c.inner.easy_days_percentages.clone());
-            if fsrs_toggled
-                || params_of(previous) != params_of(current)
+            if params_of(previous) != params_of(current)
                 || retention_of(previous) != retention_of(current)
                 || (req.fsrs_reschedule && easy_days_of(previous) != easy_days_of(current))
             {
@@ -278,8 +269,6 @@ impl Collection {
     /// that's possible, each from its own deck. A deck that can't be optimized,
     /// as it has too few reviews or fails, is returned with what it had.
     fn compute_all_params(&mut self, req: &UpdateDeckConfigsRequest) -> Result<Vec<DeckConfig>> {
-        require!(req.fsrs, "FSRS must be enabled");
-
         let mut decks: Vec<_> = self
             .storage
             .get_all_decks()?
@@ -384,7 +373,6 @@ mod test {
             limits: Limits::default(),
             new_cards_ignore_review_limit: false,
             apply_all_parent_limits: false,
-            fsrs: false,
             fsrs_reschedule: false,
             fsrs_health_check: true,
         }
@@ -442,26 +430,23 @@ mod test {
     }
 
     #[test]
-    fn saving_with_fsrs_false_keeps_memory_states_and_recomputes_with_fsrs() -> Result<()> {
+    fn saving_keeps_memory_states_and_recomputes_with_fsrs() -> Result<()> {
         let mut col = Collection::new();
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
         col.answer_easy();
-        col.set_config_bool_inner(BoolKey::Fsrs, true)?;
         let before = col.get_first_card();
         assert!(before.memory_state.is_some());
 
         let mut input = request_for(&mut col, DeckId(1));
 
-        // an otherwise unchanged save must not treat this as a toggle
+        // an unchanged save leaves it all alone
         col.update_deck_configs(input.clone())?;
         let card = col.get_first_card();
         assert_eq!(card.memory_state, before.memory_state);
         assert_eq!(card.desired_retention, before.desired_retention);
         assert_eq!(card.decay, before.decay);
-        let stored: Option<bool> = col.get_config_optional(BoolKey::Fsrs);
-        assert_eq!(stored, Some(true));
 
         // a change that triggers a recompute must keep FSRS data too
         input.config.inner.desired_retention = 0.8;
@@ -471,7 +456,6 @@ mod test {
         assert_eq!(card.desired_retention, Some(0.8));
         assert_eq!(card.due, before.due);
         assert_eq!(card.interval, before.interval);
-        assert!(col.get_config_bool(BoolKey::Fsrs));
         Ok(())
     }
 

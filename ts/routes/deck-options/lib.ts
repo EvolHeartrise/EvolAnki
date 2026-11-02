@@ -41,7 +41,6 @@ export class DeckOptionsState {
     readonly defaults: DeckConfig_Config;
     readonly newCardsIgnoreReviewLimit: Writable<boolean>;
     readonly applyAllParentLimits: Writable<boolean>;
-    readonly fsrs: Writable<boolean>;
     readonly fsrsReschedule: Writable<boolean> = writable(false);
     readonly fsrsHealthCheck: Writable<boolean>;
     readonly legacyEvaluate: boolean;
@@ -62,7 +61,6 @@ export class DeckOptionsState {
         this.deckLimits = writable(data.currentDeck?.limits ?? createLimits());
         this.newCardsIgnoreReviewLimit = writable(data.newCardsIgnoreReviewLimit);
         this.applyAllParentLimits = writable(data.applyAllParentLimits);
-        this.fsrs = writable(true);
         this.fsrsHealthCheck = writable(data.fsrsHealthCheck);
         this.legacyEvaluate = data.fsrsLegacyEvaluate;
         this.daysSinceLastOptimization = writable(data.daysSinceLastFsrsOptimize);
@@ -93,7 +91,6 @@ export class DeckOptionsState {
             limits: get(this.deckLimits),
             newCardsIgnoreReviewLimit: get(this.newCardsIgnoreReviewLimit),
             applyAllParentLimits: get(this.applyAllParentLimits),
-            fsrs: true,
             fsrsReschedule: get(this.fsrsReschedule),
             fsrsHealthCheck: get(this.fsrsHealthCheck),
         };

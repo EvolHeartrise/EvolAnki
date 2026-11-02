@@ -466,7 +466,6 @@ mod test {
     #[test]
     fn simulate_uses_dr() {
         let mut col = Collection::new();
-        col.set_config_bool(BoolKey::Fsrs, true, false).unwrap();
 
         let note = crate::tests::NoteAdder::basic(&mut col).add(&mut col);
         let cids = col.cards_of_note(note.id.into()).unwrap().cids;

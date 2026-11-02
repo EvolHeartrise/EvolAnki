@@ -17,16 +17,13 @@ use rusqlite::OptionalExtension;
 use rusqlite::Row;
 
 use self::data::CardData;
-use super::ids_to_string;
 use super::sqlite::SqlSortOrder;
 use crate::card::Card;
 use crate::card::CardId;
 use crate::card::CardQueue;
 use crate::card::CardType;
-use crate::deckconfig::DeckConfigId;
 use crate::deckconfig::ReviewCardOrder;
 use crate::decks::DeckId;
-use crate::decks::DeckKind;
 use crate::error::Result;
 use crate::notes::NoteId;
 use crate::scheduler::fsrs::memory_state::get_last_revlog_info;
@@ -620,32 +617,6 @@ impl super::SqliteStorage {
         for cid in cards {
             stmt.execute([cid])?;
         }
-        Ok(())
-    }
-
-    /// Fix cards with low eases due to schema 15 bug.
-    /// Deck configs were defaulting to 2.5% ease, which was capped to
-    /// 130% when the deck options were edited for the first time.
-    pub(crate) fn fix_low_card_eases_for_configs(&self, configs: &[DeckConfigId]) -> Result<()> {
-        let mut affected_decks = vec![];
-        for conf in configs {
-            for (deck_id, _name) in self.get_all_deck_names()? {
-                if let Some(deck) = self.get_deck(deck_id)? {
-                    if let DeckKind::Normal(normal) = &deck.kind {
-                        if normal.config_id == conf.0 {
-                            affected_decks.push(deck.id);
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut ids = String::new();
-        ids_to_string(&mut ids, &affected_decks);
-        let sql = include_str!("fix_low_ease.sql").replace("DECK_IDS", &ids);
-
-        self.db.prepare(&sql)?.execute([])?;
-
         Ok(())
     }
 

@@ -627,7 +627,6 @@ pub(crate) mod tests {
             limits: Default::default(),
             new_cards_ignore_review_limit: false,
             apply_all_parent_limits: false,
-            fsrs: true,
             fsrs_reschedule: false,
             fsrs_health_check: false,
         })?;

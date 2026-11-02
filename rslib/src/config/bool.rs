@@ -36,7 +36,6 @@ pub enum BoolKey {
     MergeNotetypes,
     WithScheduling,
     WithDeckConfigs,
-    Fsrs,
     FsrsHealthCheck,
     FsrsLegacyEvaluate,
     LoadBalancerEnabled,
@@ -50,10 +49,6 @@ pub enum BoolKey {
 impl Collection {
     pub fn get_config_bool(&self, key: BoolKey) -> bool {
         match key {
-            // FSRS is unconditionally on in this fork, whatever is stored. The stored
-            // value can still arrive as false through an import.
-            BoolKey::Fsrs => true,
-
             // some keys default to true
             BoolKey::InterruptAudioWhenAnswering
             | BoolKey::AddingDefaultsToCurrentDeck

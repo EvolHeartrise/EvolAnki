@@ -1087,7 +1087,6 @@ mod test {
     use super::*;
     use crate::collection::Collection;
     use crate::collection::CollectionBuilder;
-    use crate::config::BoolKey;
 
     // shortcut
     fn s(req: &mut Collection, search: &str) -> (String, Vec<String>) {
@@ -1407,7 +1406,6 @@ c.odue != 0 then c.odue else c.due end) != {days}) or (c.queue in (1,4) and
     fn has_memory_state_returns_only_reviewed_cards() -> Result<()> {
         let mut col = Collection::new();
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
 
         let mut reviewed_note = nt.new_note();
         col.add_note(&mut reviewed_note, DeckId(1))?;

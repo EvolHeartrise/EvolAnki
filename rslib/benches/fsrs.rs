@@ -6,7 +6,6 @@ use std::time::Instant;
 
 use anki::collection::CollectionBuilder;
 use anki::notes::AddNoteRequest;
-use anki::prelude::BoolKey;
 use anki::prelude::CardId;
 use anki::prelude::DeckId;
 use anki::search::SortMode;
@@ -25,7 +24,6 @@ struct TransferBenchState {
 
 fn setup_transfer_state() -> TransferBenchState {
     let mut col = CollectionBuilder::default().build().unwrap();
-    col.set_config_bool(BoolKey::Fsrs, true, false).unwrap();
 
     let source_deck = col.get_or_create_normal_deck("fsrs-source").unwrap();
     let target_deck = col.get_or_create_normal_deck("fsrs-target").unwrap();

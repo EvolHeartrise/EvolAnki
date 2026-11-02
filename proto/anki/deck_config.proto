@@ -134,17 +134,11 @@ message DeckConfig {
     // not currently used
     uint32 new_per_day_minimum = 35;
 
-    float initial_ease = 11;
-    float easy_multiplier = 12;
-    float hard_multiplier = 13;
-    float lapse_multiplier = 14;
-    float interval_multiplier = 15;
+    // Old rows can still hold the ease, multipliers, minimum lapse interval and
+    // graduating intervals, which FSRS has no use for. They're dropped when read.
+    reserved 11 to 15, 17 to 19;
 
     uint32 maximum_review_interval = 16;
-    uint32 minimum_lapse_interval = 17;
-
-    uint32 graduating_interval_good = 18;
-    uint32 graduating_interval_easy = 19;
 
     NewCardInsertOrder new_card_insert_order = 20;
     NewCardGatherPriority new_card_gather_priority = 34;
@@ -214,7 +208,7 @@ message DeckConfigsForUpdate {
   string card_state_customizer = 6;
   // only applies to v3 scheduler
   bool new_cards_ignore_review_limit = 7;
-  bool fsrs = 8;
+  reserved 8;
   bool fsrs_health_check = 11;
   bool fsrs_legacy_evaluate = 12;
   bool apply_all_parent_limits = 9;
@@ -234,7 +228,7 @@ message UpdateDeckConfigsRequest {
   string card_state_customizer = 5;
   DeckConfigsForUpdate.CurrentDeck.Limits limits = 6;
   bool new_cards_ignore_review_limit = 7;
-  bool fsrs = 8;
+  reserved 8;
   bool apply_all_parent_limits = 9;
   bool fsrs_reschedule = 10;
   bool fsrs_health_check = 11;

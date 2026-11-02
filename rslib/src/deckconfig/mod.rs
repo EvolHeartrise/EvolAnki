@@ -44,15 +44,7 @@ const DEFAULT_DECK_CONFIG_INNER: DeckConfigInner = DeckConfigInner {
     new_per_day: 20,
     reviews_per_day: 200,
     new_per_day_minimum: 0,
-    initial_ease: 2.5,
-    easy_multiplier: 1.3,
-    hard_multiplier: 1.2,
-    lapse_multiplier: 0.0,
-    interval_multiplier: 1.0,
     maximum_review_interval: 36_500,
-    minimum_lapse_interval: 1,
-    graduating_interval_good: 1,
-    graduating_interval_easy: 4,
     new_card_insert_order: NewCardInsertOrder::Due as i32,
     new_card_gather_priority: NewCardGatherPriority::Deck as i32,
     new_card_sort_order: NewCardSortOrder::Template as i32,
@@ -200,52 +192,9 @@ pub(crate) fn ensure_deck_config_values_valid(config: &mut DeckConfigInner) {
         0,
         9999,
     );
-    ensure_f32_valid(&mut config.initial_ease, default.initial_ease, 1.31, 5.0);
-    ensure_f32_valid(
-        &mut config.easy_multiplier,
-        default.easy_multiplier,
-        1.0,
-        5.0,
-    );
-    ensure_f32_valid(
-        &mut config.hard_multiplier,
-        default.hard_multiplier,
-        0.5,
-        1.3,
-    );
-    ensure_f32_valid(
-        &mut config.lapse_multiplier,
-        default.lapse_multiplier,
-        0.0,
-        1.0,
-    );
-    ensure_f32_valid(
-        &mut config.interval_multiplier,
-        default.interval_multiplier,
-        0.5,
-        2.0,
-    );
     ensure_u32_valid(
         &mut config.maximum_review_interval,
         default.maximum_review_interval,
-        1,
-        36_500,
-    );
-    ensure_u32_valid(
-        &mut config.minimum_lapse_interval,
-        default.minimum_lapse_interval,
-        1,
-        36_500,
-    );
-    ensure_u32_valid(
-        &mut config.graduating_interval_good,
-        default.graduating_interval_good,
-        1,
-        36_500,
-    );
-    ensure_u32_valid(
-        &mut config.graduating_interval_easy,
-        default.graduating_interval_easy,
         1,
         36_500,
     );
@@ -354,6 +303,95 @@ mod tests {
         assert_eq!(config.mtime_secs, mtime);
         assert_eq!(returned_config, Some(config));
 
+        Ok(())
+    }
+
+    /// Real settings can hold values a stock client saved for SM-2: of a real
+    /// deck, 1.31, 0.5 and 1.91. They mustn't get in the way or do anything.
+    fn stored_row_with_sm2_fields(col: &Collection, dcid: DeckConfigId, retention: f32) {
+        use prost::Message;
+
+        let mut inner = DeckConfig::default().inner;
+        inner.historical_retention = retention;
+        let mut blob = inner.encode_to_vec();
+        for (field, value) in [(11u8, 1.31f32), (14, 0.5), (15, 1.91), (13, 0.5), (12, 2.0)] {
+            // a float field's tag, with wire type 5
+            blob.push((field << 3) | 5);
+            blob.extend_from_slice(&value.to_le_bytes());
+        }
+        // varint fields: the minimum lapse interval and graduating intervals
+        for (field, value) in [(17u8, 7u8), (18, 9), (19, 12)] {
+            blob.extend_from_slice(&[0x80 | (field << 3), field >> 4, value]);
+        }
+        col.storage
+            .db
+            .execute(
+                "update deck_config set config = ? where id = ?",
+                rusqlite::params![blob, dcid],
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn stored_sm2_values_are_dropped_and_change_nothing() -> Result<()> {
+        use crate::scheduler::states::CardState;
+        use crate::scheduler::states::NormalState;
+
+        let answer = |col: &mut Collection| -> Result<(u32, u32, u32)> {
+            let nt = col.get_notetype_by_name("Basic")?.unwrap();
+            let mut note = nt.new_note();
+            col.add_note(&mut note, DeckId(1))?;
+            let cid = col.search_cards(note.id, crate::search::SortMode::NoOrder)?[0];
+            let mut card = col.storage.get_card(cid)?.unwrap();
+            card.ctype = crate::card::CardType::Review;
+            card.queue = crate::card::CardQueue::Review;
+            card.interval = 40;
+            card.ease_factor = 2500;
+            card.due = 0;
+            col.storage.update_card(&card)?;
+            let states = col.get_scheduling_states(cid)?;
+            let days = |state: CardState| match state {
+                CardState::Normal(NormalState::Review(review)) => review.scheduled_days,
+                other => panic!("expected review: {other:?}"),
+            };
+            Ok((days(states.hard), days(states.good), days(states.easy)))
+        };
+        let mut plain = Collection::new();
+        let expected = answer(&mut plain)?;
+
+        let mut col = Collection::new();
+        stored_row_with_sm2_fields(&col, DeckConfigId(1), 0.9);
+        let config = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
+        assert_eq!(config.inner, DeckConfig::default().inner);
+        assert_eq!(answer(&mut col)?, expected);
+
+        // saving writes the row without them
+        let mut config = config;
+        config.inner.new_per_day = 5;
+        col.add_or_update_deck_config(&mut config)?;
+        let blob: Vec<u8> =
+            col.storage
+                .db
+                .query_row("select config from deck_config where id = 1", [], |row| {
+                    row.get(0)
+                })?;
+        let mut expected_inner = DeckConfig::default().inner;
+        expected_inner.new_per_day = 5;
+        use prost::Message;
+        assert_eq!(blob, expected_inner.encode_to_vec());
+
+        Ok(())
+    }
+
+    /// FSRS takes a logarithm of this, so a 0 gives nonsense stability.
+    #[test]
+    fn missing_historical_retention_is_repaired_on_reading() -> Result<()> {
+        let col = Collection::new();
+        stored_row_with_sm2_fields(&col, DeckConfigId(1), 0.0);
+        let unchecked = &col.storage.all_deck_config_unchecked()?[0];
+        assert_eq!(unchecked.inner.historical_retention, 0.0);
+        let config = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
+        assert_eq!(config.inner.historical_retention, 0.9);
         Ok(())
     }
 }
