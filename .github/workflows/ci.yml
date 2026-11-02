@@ -31,6 +31,11 @@ jobs:
           cache: true
           rustflags: "" # don't inject -D warnings; the build handles that
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 #v2.85.7
+        with:
+          tool: cargo-nextest@0.9.99
+
       # check:format needs the nightly in cargo/format, which rustup installs by itself.
       - name: Check formatting
         run: ./ninja check:format
