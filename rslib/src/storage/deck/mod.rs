@@ -361,8 +361,8 @@ impl SqliteStorage {
         self.add_or_update_deck_with_existing_id(&deck)
     }
 
-    pub(crate) fn upgrade_decks_to_schema15(&self, server: bool) -> Result<()> {
-        let usn = self.usn(server)?;
+    pub(crate) fn upgrade_decks_to_schema15(&self) -> Result<()> {
+        let usn = self.usn()?;
         let decks = self
             .get_schema11_decks()
             .map_err(|e| AnkiError::JsonError {

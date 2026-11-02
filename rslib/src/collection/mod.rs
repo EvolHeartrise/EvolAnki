@@ -35,7 +35,6 @@ pub struct CollectionBuilder {
     collection_path: Option<PathBuf>,
     media_folder: Option<PathBuf>,
     media_db: Option<PathBuf>,
-    server: Option<bool>,
     tr: Option<I18n>,
     check_integrity: bool,
     progress_handler: Option<Arc<Mutex<ProgressState>>>,
@@ -56,17 +55,15 @@ impl CollectionBuilder {
             .clone()
             .unwrap_or_else(|| PathBuf::from(":memory:"));
         let tr = self.tr.clone().unwrap_or_else(I18n::template_only);
-        let server = self.server.unwrap_or_default();
         let media_folder = self.media_folder.clone().unwrap_or_default();
         let media_db = self.media_db.clone().unwrap_or_default();
-        let storage = SqliteStorage::open_or_create(&col_path, &tr, server, self.check_integrity)?;
+        let storage = SqliteStorage::open_or_create(&col_path, &tr, self.check_integrity)?;
         let col = Collection {
             storage,
             col_path,
             media_folder,
             media_db,
             tr,
-            server,
             state: CollectionState {
                 progress: self.progress_handler.clone().unwrap_or_default(),
                 ..Default::default()
@@ -97,11 +94,6 @@ impl CollectionBuilder {
         create_dir_all(&media_folder).expect("creating media folder");
         let media_db = col_path.with_extension("mdb");
         self.set_media_paths(media_folder, media_db)
-    }
-
-    pub fn set_server(&mut self, server: bool) -> &mut Self {
-        self.server = Some(server);
-        self
     }
 
     pub fn set_tr(&mut self, tr: I18n) -> &mut Self {
@@ -135,7 +127,6 @@ pub struct Collection {
     pub(crate) media_folder: PathBuf,
     pub(crate) media_db: PathBuf,
     pub(crate) tr: I18n,
-    pub(crate) server: bool,
     pub(crate) state: CollectionState,
 }
 
@@ -153,28 +144,6 @@ impl Collection {
     }
 
     pub(crate) fn usn(&self) -> Result<Usn> {
-        self.storage.usn(self.server)
-    }
-
-    /// Mark everything as sent to a server, as far as the usn columns go. Lets
-    /// tests check that an object changes or keeps its usn when it's next
-    /// modified. Caller should not create transaction.
-    #[cfg(test)]
-    pub(crate) fn before_upload(&mut self) -> Result<()> {
-        self.transact_no_undo(|col| {
-            col.storage.clear_all_graves()?;
-            col.storage.clear_pending_note_usns()?;
-            col.storage.clear_pending_card_usns()?;
-            col.storage.clear_pending_revlog_usns()?;
-            col.storage.clear_tag_usns()?;
-            col.storage.clear_deck_conf_usns()?;
-            col.storage.clear_deck_usns()?;
-            col.storage.clear_notetype_usns()?;
-            col.storage.increment_usn()?;
-            col.set_schema_modified()?;
-            col.storage
-                .set_last_sync(col.storage.get_collection_timestamps()?.schema_change)
-        })?;
-        self.storage.optimize()
+        self.storage.usn()
     }
 }

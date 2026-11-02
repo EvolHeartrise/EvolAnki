@@ -221,8 +221,7 @@ mod test {
     use crate::card::Card;
 
     fn create_test_storage() -> SqliteStorage {
-        SqliteStorage::open_or_create(Path::new(":memory:"), &I18n::template_only(), false, false)
-            .unwrap()
+        SqliteStorage::open_or_create(Path::new(":memory:"), &I18n::template_only(), false).unwrap()
     }
 
     /// A revlog entry with a fixed card id, used where the card is irrelevant.

@@ -136,8 +136,7 @@ impl Collection {
         })
     }
 
-    /// Saves changes to a note type. This will force a full sync if templates
-    /// or fields have been added/removed/reordered.
+    /// Saves changes to a note type.
     ///
     /// This does not assign ordinals to the provided notetype, so if you wish
     /// to make use of template_idx, the notetype must be fetched again.
@@ -722,7 +721,6 @@ impl Collection {
         self.remove_notes_inner(&note_ids, usn)?;
 
         // remove notetype
-        self.set_schema_modified()?;
         self.state.notetype_cache.remove(&ntid);
         self.clear_aux_config_for_notetype(ntid)?;
         self.remove_notetype_only_undoable(notetype)?;

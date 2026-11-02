@@ -55,10 +55,6 @@ impl TemplateOrdChanges {
 
         changes
     }
-
-    fn is_empty(&self) -> bool {
-        *self == Self::default()
-    }
 }
 
 impl Collection {
@@ -76,7 +72,6 @@ impl Collection {
         if !ords_changed(&ords, previous_field_count) {
             if nt.config.sort_field_idx != previous_sort_idx {
                 // only need to update sort field
-                self.set_schema_modified()?;
                 let nids = self.search_notes_unordered(nt.id)?;
                 for nid in nids {
                     let mut note = self.storage.get_note(nid)?.unwrap();
@@ -99,7 +94,6 @@ impl Collection {
         }
 
         // fields have changed
-        self.set_schema_modified()?;
         let nids = self.search_notes_unordered(nt.id)?;
         let usn = self.usn()?;
         for nid in nids {
@@ -131,10 +125,6 @@ impl Collection {
         let usn = self.usn()?;
         let ords: Vec<_> = nt.templates.iter().map(|f| f.ord).collect();
         let changes = TemplateOrdChanges::new(ords, old_templates.len() as u32);
-
-        if !changes.is_empty() {
-            self.set_schema_modified()?;
-        }
 
         // remove any cards where the template was deleted
         if !changes.removed.is_empty() {

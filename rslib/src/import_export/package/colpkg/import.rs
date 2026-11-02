@@ -44,7 +44,7 @@ pub fn import_colpkg(
 
     copy_collection(&mut archive, &mut tempfile, &meta)?;
     progress.set(ImportProgress::File)?;
-    check_collection_and_mod_schema(tempfile.path())?;
+    check_collection(tempfile.path())?;
     progress.set(ImportProgress::File)?;
 
     restore_media(
@@ -60,12 +60,11 @@ pub fn import_colpkg(
     Ok(())
 }
 
-fn check_collection_and_mod_schema(col_path: &Path) -> Result<()> {
+fn check_collection(col_path: &Path) -> Result<()> {
     CollectionBuilder::new(col_path)
         .build()
         .ok()
         .and_then(|mut col| {
-            col.set_schema_modified().ok()?;
             col.set_modified().ok()?;
             col.storage
                 .db

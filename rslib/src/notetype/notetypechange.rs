@@ -17,7 +17,6 @@ use crate::storage::comma_separated_ids;
 
 #[derive(Debug)]
 pub struct ChangeNotetypeInput {
-    pub current_schema: TimestampMillis,
     pub note_ids: Vec<NoteId>,
     pub old_notetype_id: NotetypeId,
     pub new_notetype_id: NotetypeId,
@@ -164,13 +163,7 @@ impl Collection {
         &mut self,
         input: ChangeNotetypeInput,
     ) -> Result<()> {
-        require!(
-            input.current_schema == self.storage.get_collection_timestamps()?.schema_change,
-            "schema changed"
-        );
-
         let usn = self.usn()?;
-        self.set_schema_modified()?;
         if let Some(new_templates) = input.new_templates {
             let old_notetype = self
                 .get_notetype(input.old_notetype_id)?
@@ -339,13 +332,11 @@ impl Collection {
             .get_notetype(new_notetype_id)?
             .or_not_found(new_notetype_id)?;
 
-        let current_schema = self.storage.get_collection_timestamps()?.schema_change;
         let old_notetype_name = &old_notetype.name;
         let new_fields = default_field_map(&old_notetype, &new_notetype);
         let new_templates = default_template_map(&old_notetype, &new_notetype);
         Ok(NotetypeChangeInfo {
             input: ChangeNotetypeInput {
-                current_schema,
                 note_ids: vec![],
                 old_notetype_id,
                 new_notetype_id,

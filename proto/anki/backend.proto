@@ -18,7 +18,6 @@ message BackendInit {
   // an English preference stops consideration of subsequent entries.
   repeated string preferred_langs = 1;
   string locale_folder_path = 2;
-  bool server = 3;
 }
 
 message BackendError {

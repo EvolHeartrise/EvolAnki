@@ -36,7 +36,6 @@ impl Deref for Backend {
 pub struct BackendInner {
     col: Mutex<Option<Collection>>,
     pub(crate) tr: I18n,
-    server: bool,
     progress_state: Arc<Mutex<ProgressState>>,
 }
 
@@ -49,15 +48,14 @@ pub fn init_backend(init_msg: &[u8]) -> result::Result<Backend, String> {
 
     let tr = I18n::new(&input.preferred_langs);
 
-    Ok(Backend::new(tr, input.server))
+    Ok(Backend::new(tr))
 }
 
 impl Backend {
-    pub fn new(tr: I18n, server: bool) -> Backend {
+    pub fn new(tr: I18n) -> Backend {
         Backend(Arc::new(BackendInner {
             col: Mutex::new(None),
             tr,
-            server,
             progress_state: Arc::new(Mutex::new(ProgressState {
                 want_abort: false,
                 last_progress: None,

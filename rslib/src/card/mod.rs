@@ -640,18 +640,15 @@ mod test {
         let source_card_id = col.storage.card_ids_of_notes(&[source_note.id]).unwrap()[0];
         col.grade_now(&[source_card_id], 3)?;
 
-        // Fake a sync after the cards exist, before moving anything.
-        col.before_upload()?;
+        let target_before = col.storage.get_card(target_card_id)?.unwrap();
 
         col.set_deck(&[source_card_id], target.id)?;
 
-        let before = col.storage.get_card(source_card_id)?.unwrap();
-        assert!(before.memory_state.is_some());
+        let moved = col.storage.get_card(source_card_id)?.unwrap();
+        assert!(moved.memory_state.is_some());
+        assert_eq!(moved.deck_id, target.id);
 
-        let after = col.storage.get_card(target_card_id)?.unwrap();
-
-        assert_eq!(before.usn.0, -1);
-        assert_ne!(after.usn.0, -1);
+        assert_eq!(col.storage.get_card(target_card_id)?.unwrap(), target_before);
         Ok(())
     }
 

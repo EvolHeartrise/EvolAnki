@@ -13,7 +13,7 @@ use super::SqliteStorage;
 use crate::error::Result;
 
 impl SqliteStorage {
-    pub(super) fn upgrade_to_latest_schema(&self, ver: u8, server: bool) -> Result<()> {
+    pub(super) fn upgrade_to_latest_schema(&self, ver: u8) -> Result<()> {
         if ver < 14 {
             self.db
                 .execute_batch(include_str!("schema14_upgrade.sql"))?;
@@ -25,11 +25,11 @@ impl SqliteStorage {
             self.db
                 .execute_batch(include_str!("schema15_upgrade.sql"))?;
             self.upgrade_notetypes_to_schema15()?;
-            self.upgrade_decks_to_schema15(server)?;
+            self.upgrade_decks_to_schema15()?;
             self.upgrade_deck_conf_to_schema15()?;
         }
         if ver < 16 {
-            self.upgrade_deck_conf_to_schema16(server)?;
+            self.upgrade_deck_conf_to_schema16()?;
             self.db.execute_batch("update col set ver = 16")?;
         }
         if ver < 17 {

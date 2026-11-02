@@ -642,11 +642,7 @@ impl super::SqliteStorage {
     /// Fix cards with low eases due to schema 15 bug.
     /// Deck configs were defaulting to 2.5% ease, which was capped to
     /// 130% when the deck options were edited for the first time.
-    pub(crate) fn fix_low_card_eases_for_configs(
-        &self,
-        configs: &[DeckConfigId],
-        server: bool,
-    ) -> Result<()> {
+    pub(crate) fn fix_low_card_eases_for_configs(&self, configs: &[DeckConfigId]) -> Result<()> {
         let mut affected_decks = vec![];
         for conf in configs {
             for (deck_id, _name) in self.get_all_deck_names()? {
@@ -664,7 +660,7 @@ impl super::SqliteStorage {
         ids_to_string(&mut ids, &affected_decks);
         let sql = include_str!("fix_low_ease.sql").replace("DECK_IDS", &ids);
 
-        self.db.prepare(&sql)?.execute(params![self.usn(server)?])?;
+        self.db.prepare(&sql)?.execute(params![self.usn()?])?;
 
         Ok(())
     }
@@ -856,7 +852,7 @@ mod test {
 
     fn create_test_storage() -> SqliteStorage {
         let tr: I18n = I18n::template_only();
-        SqliteStorage::open_or_create(Path::new(":memory:"), &tr, false, false).unwrap()
+        SqliteStorage::open_or_create(Path::new(":memory:"), &tr, false).unwrap()
     }
 
     #[test]

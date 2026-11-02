@@ -399,7 +399,7 @@ impl Collection {
     /// FSRS is always on in this fork, so collections that have been using SM-2
     /// need memory states for stats, search and retrievability sorting. To be
     /// called when a real user collection is opened, not on the temporary ones
-    /// used for import and sync. A failure is logged rather than preventing
+    /// used for import. A failure is logged rather than preventing
     /// the collection from opening: the transaction is rolled back, cards
     /// still get their state when answered, and the next open tries again.
     pub(crate) fn migrate_to_fsrs_if_needed(&mut self) {
@@ -409,10 +409,10 @@ impl Collection {
     }
 
     /// The stored config value marks whether this is needed, as nothing else
-    /// reads it. It is set to true afterwards, so this runs again only if sync
-    /// or import brings back false, along with any cards from an SM-2 client.
+    /// reads it. It is set to true afterwards, so this runs again only if an
+    /// import brings back false, along with any cards from an SM-2 client.
     fn migrate_to_fsrs(&mut self) -> Result<()> {
-        if self.server || self.get_config_optional::<bool, _>(BoolKey::Fsrs) == Some(true) {
+        if self.get_config_optional::<bool, _>(BoolKey::Fsrs) == Some(true) {
             return Ok(());
         }
         self.transact_no_undo(|col| {
@@ -841,8 +841,8 @@ mod tests {
         use super::*;
         use crate::tests::NoteAdder;
 
-        /// As sync does: replaces all config, with the provided value for FSRS.
-        fn receive_fsrs_config_from_sync(col: &mut Collection, value: bool) {
+        /// As importing a whole collection does: replaces all config, with the provided value for FSRS.
+        fn receive_fsrs_config_from_import(col: &mut Collection, value: bool) {
             let mut config = col.storage.get_all_config().unwrap();
             config.insert("fsrs".to_string(), Value::Bool(value));
             col.storage
@@ -875,10 +875,10 @@ mod tests {
         }
 
         #[test]
-        fn synced_false_config_does_not_turn_fsrs_off() {
+        fn imported_false_config_does_not_turn_fsrs_off() {
             let mut col = Collection::new();
             NoteAdder::basic(&mut col).add(&mut col);
-            receive_fsrs_config_from_sync(&mut col, false);
+            receive_fsrs_config_from_import(&mut col, false);
 
             assert_eq!(stored_flag(&col), Some(false));
             assert!(col.get_config_bool(BoolKey::Fsrs));
@@ -894,7 +894,7 @@ mod tests {
         fn migration_adds_memory_states_without_rescheduling() -> Result<()> {
             let mut col = Collection::new();
             let card_id = add_sm2_review_card(&mut col);
-            receive_fsrs_config_from_sync(&mut col, false);
+            receive_fsrs_config_from_import(&mut col, false);
             let before = col.storage.get_card(card_id)?.unwrap();
             let revlog_before = col.storage.get_all_revlog_entries(TimestampSecs(0))?;
             assert!(before.memory_state.is_none());
@@ -966,8 +966,6 @@ mod tests {
             col.answer_easy();
             let new = NoteAdder::basic(&mut col).add(&mut col);
             let new = col.storage.card_ids_of_notes(&[new.id])?[0];
-            // pending usns would hide a write to these cards
-            col.before_upload()?;
             let existing_before = col.storage.get_card(existing)?.unwrap();
             let new_before = col.storage.get_card(new)?.unwrap();
             assert!(existing_before.memory_state.is_some());
@@ -980,7 +978,7 @@ mod tests {
         }
 
         #[test]
-        fn migration_only_runs_once_until_sync_stores_false_again() -> Result<()> {
+        fn migration_only_runs_once_until_import_stores_false_again() -> Result<()> {
             let mut col = Collection::new();
             let card_id = add_sm2_review_card(&mut col);
             col.migrate_to_fsrs_if_needed();
@@ -1003,8 +1001,8 @@ mod tests {
                 .memory_state
                 .is_none());
 
-            // a synced false means an SM-2 client may have been used
-            receive_fsrs_config_from_sync(&mut col, false);
+            // an imported false means an SM-2 client may have been used
+            receive_fsrs_config_from_import(&mut col, false);
             col.migrate_to_fsrs_if_needed();
             assert!(col
                 .storage
@@ -1013,24 +1011,6 @@ mod tests {
                 .memory_state
                 .is_some());
             assert_eq!(stored_flag(&col), Some(true));
-            Ok(())
-        }
-
-        #[test]
-        fn migration_does_not_run_on_server() -> Result<()> {
-            let mut col = Collection::new();
-            let card_id = add_sm2_review_card(&mut col);
-            col.server = true;
-
-            col.migrate_to_fsrs_if_needed();
-
-            assert!(col
-                .storage
-                .get_card(card_id)?
-                .unwrap()
-                .memory_state
-                .is_none());
-            assert_eq!(stored_flag(&col), None);
             Ok(())
         }
     }

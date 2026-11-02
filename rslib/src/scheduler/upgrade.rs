@@ -120,8 +120,7 @@ impl Collection {
             self.set_creation_utc_offset(Some(local_minutes_west_for_stamp(created)?))?;
         }
 
-        // force full sync
-        self.set_schema_modified()
+        Ok(())
     }
 
     fn upgrade_cards_to_v2(&mut self) -> Result<()> {

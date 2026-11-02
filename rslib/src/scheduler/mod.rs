@@ -81,10 +81,8 @@ impl Collection {
         )
     }
 
-    /// In the client case, return the current local timezone offset,
-    /// ensuring the config reflects the current value.
-    /// In the server case, return the value set in the config, and
-    /// fall back on UTC if it's missing/invalid.
+    /// Return the current local timezone offset, ensuring the config reflects
+    /// the current value.
     pub(crate) fn local_utc_offset_for_user(&mut self) -> Result<FixedOffset> {
         let config_tz = self
             .get_configured_utc_offset()
@@ -93,15 +91,11 @@ impl Collection {
 
         let local_tz = TimestampSecs::now().local_utc_offset()?;
 
-        Ok(if self.server {
-            config_tz
-        } else {
-            // if the timezone has changed, update the config
-            if config_tz != local_tz {
-                self.set_configured_utc_offset(local_tz.utc_minus_local() / 60)?;
-            }
-            local_tz
-        })
+        // if the timezone has changed, update the config
+        if config_tz != local_tz {
+            self.set_configured_utc_offset(local_tz.utc_minus_local() / 60)?;
+        }
+        Ok(local_tz)
     }
 
     /// Return the timezone offset at collection creation time. This should

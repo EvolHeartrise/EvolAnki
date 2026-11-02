@@ -206,7 +206,7 @@ impl SqliteStorage {
 
     // schema 15->16
 
-    pub(super) fn upgrade_deck_conf_to_schema16(&self, server: bool) -> Result<()> {
+    pub(super) fn upgrade_deck_conf_to_schema16(&self) -> Result<()> {
         let mut invalid_configs = vec![];
         for mut conf in self.all_deck_config_unchecked()? {
             // schema 16 changed starting ease of 250 to 2.5
@@ -221,7 +221,7 @@ impl SqliteStorage {
             self.update_deck_conf(&conf)?;
         }
 
-        self.fix_low_card_eases_for_configs(&invalid_configs, server)
+        self.fix_low_card_eases_for_configs(&invalid_configs)
     }
 
     // schema 15->11

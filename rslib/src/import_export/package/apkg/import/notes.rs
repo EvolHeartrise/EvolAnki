@@ -276,7 +276,6 @@ impl<'n> NoteContext<'n> {
             let note_ids = self.target_col.search_notes_unordered(nt.id)?;
             self.target_col
                 .change_notetype_of_notes_inner(ChangeNotetypeInput {
-                    current_schema: self.target_col_schema_change()?,
                     note_ids,
                     old_notetype_id: nt.id,
                     new_notetype_id: original.id,
@@ -286,13 +285,6 @@ impl<'n> NoteContext<'n> {
             self.merged_notetypes.insert(nt.id);
         }
         Ok(())
-    }
-
-    fn target_col_schema_change(&self) -> Result<TimestampMillis> {
-        self.target_col
-            .storage
-            .get_collection_timestamps()
-            .map(|ts| ts.schema_change)
     }
 
     /// Maintain map of ord changes in order to remap incoming note fields and
@@ -388,7 +380,6 @@ impl<'n> NoteContext<'n> {
 
             self.target_col
                 .change_notetype_of_notes_inner(ChangeNotetypeInput {
-                    current_schema: self.target_col_schema_change()?,
                     note_ids,
                     old_notetype_id: existing_ntid,
                     new_notetype_id: incoming_ntid,
@@ -835,7 +826,7 @@ mod test {
     }
 
     #[test]
-    fn should_rename_field_with_matching_id_without_schema_change() {
+    fn should_rename_field_with_matching_id_without_changing_ords() {
         let mut col = Collection::new();
         let mut to_import = col.basic_notetype();
         to_import.fields[0].name = String::from("renamed");

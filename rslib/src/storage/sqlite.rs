@@ -475,7 +475,6 @@ impl SqliteStorage {
     pub(crate) fn open_or_create(
         path: &Path,
         tr: &I18n,
-        server: bool,
         check_integrity: bool,
     ) -> Result<Self> {
         let db = open_or_create_collection_db(path)?;
@@ -510,16 +509,11 @@ impl SqliteStorage {
             db.execute_batch(include_str!("schema11.sql"))?;
             // start at schema 11, then upgrade below
             let crt = TimestampSecs(v1_creation_date());
-            let offset = if server {
-                None
-            } else {
-                Some(local_minutes_west_for_stamp(crt)?)
-            };
+            let offset = Some(local_minutes_west_for_stamp(crt)?);
             db.execute(
-                "update col set crt=?, scm=?, ver=?, conf=?",
+                "update col set crt=?, ver=?, conf=?",
                 params![
                     crt,
-                    TimestampMillis::now(),
                     SCHEMA_STARTING_VERSION,
                     &schema11_config_as_string(offset)
                 ],
@@ -529,7 +523,7 @@ impl SqliteStorage {
         let storage = Self { db };
 
         if create || upgrade {
-            storage.upgrade_to_latest_schema(ver, server)?;
+            storage.upgrade_to_latest_schema(ver)?;
         }
 
         if create {
@@ -817,7 +811,7 @@ mod test {
             col.close(None).unwrap();
         }
         let err =
-            SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false, false).unwrap_err();
+            SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
         match err {
             AnkiError::DbError {
                 source: DbError { kind, .. },
@@ -885,7 +879,7 @@ mod test {
             col.storage.set_modified_time(collection_change).unwrap();
             col.close(None).unwrap();
 
-            SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false, false).unwrap_err();
+            SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
 
             assert_eq!(stored_schema_version(tempfile.path()), ver, "schema {ver}");
             // A rejected open must be side-effect free, so the modification time

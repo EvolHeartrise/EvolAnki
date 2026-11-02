@@ -178,18 +178,12 @@ impl Collection {
         out.card_properties_invalid += other_cards_fixed;
         out.card_last_review_time_empty = last_review_time_fixed;
 
-        // last_review_time was updated, which backups taken before now lack
-        if last_review_time_fixed > 0 {
-            self.set_schema_modified()?;
-        }
-
         Ok(())
     }
 
     fn check_orphaned_cards(&mut self, out: &mut CheckDatabaseOutput) -> Result<()> {
         let cnt = self.storage.delete_orphaned_cards()?;
         if cnt > 0 {
-            self.set_schema_modified()?;
             out.cards_missing_note = cnt;
         }
         Ok(())
@@ -222,7 +216,6 @@ impl Collection {
         }
 
         if wrong > 0 {
-            self.set_schema_modified()?;
             out.card_properties_invalid += wrong;
         }
 
@@ -315,14 +308,6 @@ impl Collection {
         if self.storage.get_all_notetype_names()?.is_empty() {
             let mut nt = all_stock_notetypes(&self.tr).remove(0);
             self.add_notetype_inner(&mut nt, usn, true)?;
-        }
-
-        if out.card_ords_duplicated > 0
-            || out.field_count_mismatch > 0
-            || out.templates_missing > 0
-            || out.notetypes_recovered > 0
-        {
-            self.set_schema_modified()?;
         }
 
         Ok(())
@@ -418,7 +403,6 @@ impl Collection {
     fn check_revlog(&mut self, out: &mut CheckDatabaseOutput) -> Result<()> {
         let cnt = self.storage.fix_revlog_properties()?;
         if cnt > 0 {
-            self.set_schema_modified()?;
             out.revlog_properties_invalid = cnt;
         }
 
@@ -442,7 +426,6 @@ impl Collection {
         let num_invalid_ids = self.storage.invalid_ids(tomorrow)?;
         if num_invalid_ids > 0 {
             self.storage.fix_invalid_ids(tomorrow, now.0)?;
-            self.set_schema_modified()?;
         }
         Ok(num_invalid_ids)
     }

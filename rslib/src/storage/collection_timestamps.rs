@@ -10,28 +10,13 @@ use crate::prelude::*;
 impl SqliteStorage {
     pub(crate) fn get_collection_timestamps(&self) -> Result<CollectionTimestamps> {
         self.db
-            .prepare_cached("select mod, scm, ls from col")?
+            .prepare_cached("select mod from col")?
             .query_row([], |row| {
                 Ok(CollectionTimestamps {
                     collection_change: row.get(0)?,
-                    schema_change: row.get(1)?,
-                    last_sync: row.get(2)?,
                 })
             })
             .map_err(Into::into)
-    }
-
-    pub(crate) fn set_schema_modified_time(&self, stamp: TimestampMillis) -> Result<()> {
-        self.db
-            .prepare_cached("update col set scm = ?")?
-            .execute([stamp])?;
-        Ok(())
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_last_sync(&self, stamp: TimestampMillis) -> Result<()> {
-        self.db.prepare("update col set ls = ?")?.execute([stamp])?;
-        Ok(())
     }
 
     pub(crate) fn set_modified_time(&self, stamp: TimestampMillis) -> Result<()> {

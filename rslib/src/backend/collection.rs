@@ -19,7 +19,6 @@ impl BackendCollectionService for Backend {
         let mut builder = CollectionBuilder::new(input.collection_path);
         builder
             .set_media_paths(input.media_folder_path, input.media_db_path)
-            .set_server(self.server)
             .set_tr(self.tr.clone())
             .set_shared_progress_state(self.progress_state.clone());
 
@@ -105,7 +104,7 @@ mod test {
         assert!(col.get_first_card().memory_state.is_none());
         col.close(None)?;
 
-        let backend = Backend::new(I18n::template_only(), false);
+        let backend = Backend::new(I18n::template_only());
         BackendCollectionService::open_collection(
             &backend,
             anki_proto::collection::OpenCollectionRequest {

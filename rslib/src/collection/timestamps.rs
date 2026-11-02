@@ -5,14 +5,6 @@ use crate::prelude::*;
 
 pub(crate) struct CollectionTimestamps {
     pub collection_change: TimestampMillis,
-    pub schema_change: TimestampMillis,
-    pub last_sync: TimestampMillis,
-}
-
-impl CollectionTimestamps {
-    pub fn schema_changed_since_sync(&self) -> bool {
-        self.schema_change > self.last_sync
-    }
 }
 
 impl Collection {
@@ -22,10 +14,5 @@ impl Collection {
     pub fn set_modified(&mut self) -> Result<()> {
         let stamps = self.storage.get_collection_timestamps()?;
         self.set_modified_time_undoable(TimestampMillis::now(), stamps.collection_change)
-    }
-
-    pub fn set_schema_modified(&mut self) -> Result<()> {
-        let stamps = self.storage.get_collection_timestamps()?;
-        self.set_schema_modified_time_undoable(TimestampMillis::now(), stamps.schema_change)
     }
 }

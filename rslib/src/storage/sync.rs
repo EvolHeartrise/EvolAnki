@@ -5,22 +5,7 @@ use super::*;
 use crate::prelude::*;
 
 impl SqliteStorage {
-    pub(crate) fn usn(&self, server: bool) -> Result<Usn> {
-        if server {
-            Ok(Usn(self
-                .db
-                .prepare_cached("select usn from col")?
-                .query_row([], |row| row.get(0))?))
-        } else {
-            Ok(Usn(-1))
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn increment_usn(&self) -> Result<()> {
-        self.db
-            .prepare_cached("update col set usn = usn + 1")?
-            .execute([])?;
-        Ok(())
+    pub(crate) fn usn(&self) -> Result<Usn> {
+        Ok(Usn(-1))
     }
 }

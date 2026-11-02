@@ -60,10 +60,6 @@ impl Collection {
             current_deck: Some(self.get_current_deck_for_update(deck)?),
             config: Some(self.get_deck_settings_for_update(deck)?.into()),
             defaults: Some(defaults.into()),
-            schema_modified: self
-                .storage
-                .get_collection_timestamps()?
-                .schema_changed_since_sync(),
             card_state_customizer: self.get_config_string(StringKey::CardStateCustomizer),
             new_cards_ignore_review_limit: self.get_config_bool(BoolKey::NewCardsIgnoreReviewLimit),
             apply_all_parent_limits: self.get_config_bool(BoolKey::ApplyAllParentLimits),
