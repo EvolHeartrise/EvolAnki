@@ -278,14 +278,6 @@ impl SqliteStorage {
             .collect()
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_notetype_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update notetypes set usn = 0 where usn != 0")?
-            .execute([])?;
-        Ok(())
-    }
-
     pub(crate) fn highest_card_ordinal_for_notetype(&self, ntid: NotetypeId) -> Result<u16> {
         self.db
             .prepare(include_str!("highest_card_ord.sql"))?

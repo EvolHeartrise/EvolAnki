@@ -124,14 +124,6 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_pending_note_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update notes set usn = 0 where usn = -1")?
-            .execute([])?;
-        Ok(())
-    }
-
     pub(crate) fn fix_invalid_utf8_in_note(&self, nid: NoteId) -> Result<()> {
         self.db
             .query_row(

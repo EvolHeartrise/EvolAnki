@@ -315,13 +315,13 @@ impl Collection {
         for cid in cids {
             if let Some(card) = self.storage.get_card(*cid)? {
                 nids.insert(card.note_id);
-                self.remove_card_and_add_grave_undoable(card, usn)?;
+                self.remove_card_undoable(card)?;
                 card_count += 1;
             }
         }
         for nid in nids {
             if self.storage.note_is_orphaned(nid)? {
-                self.remove_note_only_undoable(nid, usn)?;
+                self.remove_note_only_undoable(nid)?;
             }
         }
 

@@ -109,13 +109,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_tag_usns(&self) -> Result<()> {
-        self.db
-            .execute("update tags set usn = 0 where usn != 0", [])?;
-        Ok(())
-    }
-
     // fixme: in the future we could just register tags as part of the sync
     // instead of sending the tag list separately
 

@@ -11,15 +11,13 @@ pub(crate) enum UndoableNoteChange {
     Added(Box<Note>),
     Updated(Box<Note>),
     Removed(Box<Note>),
-    GraveAdded(Box<(NoteId, Usn)>),
-    GraveRemoved(Box<(NoteId, Usn)>),
     TagsUpdated(Box<NoteTags>),
 }
 
 impl Collection {
     pub(crate) fn undo_note_change(&mut self, change: UndoableNoteChange) -> Result<()> {
         match change {
-            UndoableNoteChange::Added(note) => self.remove_note_without_grave(*note),
+            UndoableNoteChange::Added(note) => self.remove_note_undoable(*note),
             UndoableNoteChange::Updated(note) => {
                 let current = self
                     .storage
@@ -28,8 +26,6 @@ impl Collection {
                 self.update_note_undoable(&note, &current)
             }
             UndoableNoteChange::Removed(note) => self.restore_deleted_note(*note),
-            UndoableNoteChange::GraveAdded(e) => self.remove_note_grave(e.0, e.1),
-            UndoableNoteChange::GraveRemoved(e) => self.add_note_grave(e.0, e.1),
             UndoableNoteChange::TagsUpdated(note_tags) => {
                 let current = self
                     .storage
@@ -50,11 +46,10 @@ impl Collection {
     }
 
     /// Remove a note. Cards must already have been deleted.
-    pub(crate) fn remove_note_only_undoable(&mut self, nid: NoteId, usn: Usn) -> Result<()> {
+    pub(crate) fn remove_note_only_undoable(&mut self, nid: NoteId) -> Result<()> {
         if let Some(note) = self.storage.get_note(nid)? {
             self.save_undo(UndoableNoteChange::Removed(Box::new(note)));
             self.storage.remove_note(nid)?;
-            self.add_note_grave(nid, usn)?;
         }
         Ok(())
     }
@@ -109,7 +104,7 @@ impl Collection {
         self.storage.update_note_tags(tags)
     }
 
-    fn remove_note_without_grave(&mut self, note: Note) -> Result<()> {
+    fn remove_note_undoable(&mut self, note: Note) -> Result<()> {
         self.storage.remove_note(note.id)?;
         self.save_undo(UndoableNoteChange::Removed(Box::new(note)));
         Ok(())
@@ -119,15 +114,5 @@ impl Collection {
         self.storage.add_or_update_note(&note)?;
         self.save_undo(UndoableNoteChange::Added(Box::new(note)));
         Ok(())
-    }
-
-    fn add_note_grave(&mut self, nid: NoteId, usn: Usn) -> Result<()> {
-        self.save_undo(UndoableNoteChange::GraveAdded(Box::new((nid, usn))));
-        self.storage.add_note_grave(nid, usn)
-    }
-
-    fn remove_note_grave(&mut self, nid: NoteId, usn: Usn) -> Result<()> {
-        self.save_undo(UndoableNoteChange::GraveRemoved(Box::new((nid, usn))));
-        self.storage.remove_note_grave(nid)
     }
 }

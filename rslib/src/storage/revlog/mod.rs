@@ -53,14 +53,6 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_pending_revlog_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update revlog set usn = 0 where usn = -1")?
-            .execute([])?;
-        Ok(())
-    }
-
     /// Adds the entry, if its id is unique. If it is not, and `uniquify` is
     /// true, adds it with a new id. Returns the added id.
     /// (I.e., the option is safe to unwrap, if `uniquify` is true.)

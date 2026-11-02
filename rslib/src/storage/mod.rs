@@ -7,7 +7,6 @@ mod config;
 mod dbcheck;
 mod deck;
 mod deckconfig;
-mod graves;
 mod note;
 mod notetype;
 mod revlog;

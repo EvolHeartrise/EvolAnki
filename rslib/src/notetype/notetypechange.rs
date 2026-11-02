@@ -247,7 +247,7 @@ impl Collection {
             let ords =
                 SearchBuilder::any(map.removed.iter().map(|o| TemplateKind::Ordinal(*o as u16)));
             for card in self.all_cards_for_search(nids.and(ords))? {
-                self.remove_card_and_add_grave_undoable(card, usn)?;
+                self.remove_card_undoable(card)?;
             }
         }
 
@@ -295,7 +295,7 @@ impl Collection {
                 .storage
                 .all_cards_of_notes_above_ordinal(note_ids, notetype.templates.len() - 1)?
             {
-                self.remove_card_and_add_grave_undoable(card, usn)?;
+                self.remove_card_undoable(card)?;
             }
         }
 

@@ -126,14 +126,6 @@ impl SqliteStorage {
         Ok(())
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_deck_conf_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update deck_config set usn = 0 where usn != 0")?
-            .execute([])?;
-        Ok(())
-    }
-
     // Creating/upgrading/downgrading
 
     // schema 11->14

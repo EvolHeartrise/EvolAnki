@@ -316,14 +316,6 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_deck_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update decks set usn = 0 where usn != 0")?
-            .execute([])?;
-        Ok(())
-    }
-
     /// Write active decks into temporary active_decks table.
     pub(crate) fn update_active_decks(&self, current: &Deck) -> Result<()> {
         self.db.execute_batch(concat!(

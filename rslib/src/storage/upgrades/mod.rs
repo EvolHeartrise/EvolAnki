@@ -133,7 +133,6 @@ mod test {
         col.set_config("migrationTest", &vec![1, 2, 3])?;
         let tag = Tag::new("migration::tag".into(), Usn(7));
         col.storage.register_tag(&tag)?;
-        col.storage.add_card_grave(CardId(123), Usn(-1))?;
 
         let original_note = col.storage.get_note(note.id)?.unwrap();
         let original_cards = col.storage.get_all_cards();
@@ -163,11 +162,6 @@ mod test {
         assert_eq!(col.storage.all_tags()?, vec![tag]);
         assert_eq!(col.storage.get_note(note.id)?, Some(original_note));
         assert_eq!(col.storage.get_all_cards(), original_cards);
-        assert_eq!(
-            col.storage
-                .db_scalar::<i64>("select oid from graves where type = 0 and usn = -1")?,
-            123
-        );
         Ok(())
     }
 }

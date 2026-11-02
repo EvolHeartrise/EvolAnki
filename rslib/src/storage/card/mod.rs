@@ -424,14 +424,6 @@ impl super::SqliteStorage {
             .map_err(Into::into)
     }
 
-    #[cfg(test)]
-    pub(crate) fn clear_pending_card_usns(&self) -> Result<()> {
-        self.db
-            .prepare("update cards set usn = 0 where usn = -1")?
-            .execute([])?;
-        Ok(())
-    }
-
     pub fn all_cards_of_note(&self, nid: NoteId) -> Result<Vec<Card>> {
         self.db
             .prepare_cached(concat!(include_str!("get_card.sql"), " where nid = ?"))?

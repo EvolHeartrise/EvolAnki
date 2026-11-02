@@ -490,9 +490,9 @@ impl Collection {
             if let Some(_existing_note) = self.storage.get_note(nid)? {
                 for card in self.storage.all_cards_of_note(nid)? {
                     card_count += 1;
-                    self.remove_card_and_add_grave_undoable(card, usn)?;
+                    self.remove_card_undoable(card)?;
                 }
-                self.remove_note_only_undoable(nid, usn)?;
+                self.remove_note_only_undoable(nid)?;
             }
         }
         Ok(card_count)
@@ -739,10 +739,6 @@ mod test {
         let assert_initial = |col: &mut Collection| -> Result<()> {
             assert_eq!(col.search_notes_unordered("")?.len(), 0);
             assert_eq!(col.search_cards("", SortMode::NoOrder)?.len(), 0);
-            assert_eq!(
-                col.storage.db_scalar::<u32>("select count() from graves")?,
-                0
-            );
             assert!(col.get_next_card()?.is_none());
             Ok(())
         };
@@ -750,10 +746,6 @@ mod test {
         let assert_after_add = |col: &mut Collection| -> Result<()> {
             assert_eq!(col.search_notes_unordered("")?.len(), 1);
             assert_eq!(col.search_cards("", SortMode::NoOrder)?.len(), 2);
-            assert_eq!(
-                col.storage.db_scalar::<u32>("select count() from graves")?,
-                0
-            );
             assert!(col.get_next_card()?.is_some());
             Ok(())
         };
@@ -777,11 +769,6 @@ mod test {
         let assert_after_remove = |col: &mut Collection| -> Result<()> {
             assert_eq!(col.search_notes_unordered("")?.len(), 0);
             assert_eq!(col.search_cards("", SortMode::NoOrder)?.len(), 0);
-            // 1 note + 2 cards
-            assert_eq!(
-                col.storage.db_scalar::<u32>("select count() from graves")?,
-                3
-            );
             assert!(col.get_next_card()?.is_none());
             Ok(())
         };

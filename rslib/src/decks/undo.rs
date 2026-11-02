@@ -9,8 +9,6 @@ pub(crate) enum UndoableDeckChange {
     Added(Box<Deck>),
     Updated(Box<Deck>),
     Removed(Box<Deck>),
-    GraveAdded(Box<(DeckId, Usn)>),
-    GraveRemoved(Box<(DeckId, Usn)>),
 }
 
 impl Collection {
@@ -25,18 +23,11 @@ impl Collection {
                 self.update_single_deck_undoable(&mut deck, current)
             }
             UndoableDeckChange::Removed(deck) => self.restore_deleted_deck(*deck),
-            UndoableDeckChange::GraveAdded(e) => self.remove_deck_grave(e.0, e.1),
-            UndoableDeckChange::GraveRemoved(e) => self.add_deck_grave_undoable(e.0, e.1),
         }
     }
 
-    pub(crate) fn remove_deck_and_add_grave_undoable(
-        &mut self,
-        deck: Deck,
-        usn: Usn,
-    ) -> Result<()> {
+    pub(crate) fn remove_deck_and_settings_undoable(&mut self, deck: Deck) -> Result<()> {
         self.state.deck_cache.clear();
-        self.add_deck_grave_undoable(deck.id, usn)?;
         self.storage.remove_deck(deck.id)?;
         if let Some(config) = self.storage.get_deck_config(DeckConfigId(deck.id.0))? {
             self.remove_deck_config_undoable(config)?;
@@ -90,15 +81,5 @@ impl Collection {
         }
         self.save_undo(UndoableDeckChange::Removed(Box::new(deck)));
         Ok(())
-    }
-
-    fn add_deck_grave_undoable(&mut self, did: DeckId, usn: Usn) -> Result<()> {
-        self.save_undo(UndoableDeckChange::GraveAdded(Box::new((did, usn))));
-        self.storage.add_deck_grave(did, usn)
-    }
-
-    fn remove_deck_grave(&mut self, did: DeckId, usn: Usn) -> Result<()> {
-        self.save_undo(UndoableDeckChange::GraveRemoved(Box::new((did, usn))));
-        self.storage.remove_deck_grave(did)
     }
 }

@@ -131,7 +131,7 @@ impl Collection {
             let ords =
                 SearchBuilder::any(changes.removed.iter().cloned().map(TemplateKind::Ordinal));
             for card in self.all_cards_for_search(nt.id.and(ords))? {
-                self.remove_card_and_add_grave_undoable(card, usn)?;
+                self.remove_card_undoable(card)?;
             }
         }
         // update ordinals for cards with a repositioned template

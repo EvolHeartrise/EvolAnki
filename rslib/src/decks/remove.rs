@@ -44,7 +44,7 @@ impl Collection {
             self.update_single_deck_undoable(&mut modified_default, deck.clone())?;
             self.reset_settings(deck.id)?;
         } else {
-            self.remove_deck_and_add_grave_undoable(deck.clone(), usn)?;
+            self.remove_deck_and_settings_undoable(deck.clone())?;
         }
         Ok(card_count)
     }
