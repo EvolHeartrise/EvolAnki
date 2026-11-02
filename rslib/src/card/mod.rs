@@ -337,7 +337,6 @@ impl Collection {
             source: FilteredDeckError::CanNotMoveCardsInto,
         })?;
         let config = self.get_deck_config(config_id, true)?.unwrap();
-        let fsrs_enabled = self.fsrs_enabled();
         let mut steps_adjuster = RemainingStepsAdjuster::new(&config);
         self.transact(Op::SetCardDeck, |col| {
             let mut count = 0;
@@ -355,7 +354,7 @@ impl Collection {
             // avoiding wasted work on a no-op, this prevents a set_deck call on
             // cards already in the target deck from triggering a recompute of
             // *other* memory-state-less cards in that deck.
-            if fsrs_enabled && count > 0 {
+            if count > 0 {
                 use crate::search::SearchNode::*;
 
                 col.update_memory_state(vec![UpdateMemoryStateEntry {

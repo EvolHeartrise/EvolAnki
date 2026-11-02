@@ -440,7 +440,7 @@ fn add_extract_fsrs_relative_retrievability(db: &Connection) -> rusqlite::Result
                 }
             }
             let days_elapsed = secs_elapsed / 86_400;
-            // FSRS data missing; fall back to SM2 ordering
+            // FSRS data missing; fall back on how overdue it is relative to its interval
             Ok(Some(
                 -((days_elapsed as f32) + 0.001) / (interval as f32).max(1.0),
             ))
@@ -902,13 +902,12 @@ mod test {
     }
 
     #[test]
-    fn missing_memory_state_falls_back_to_sm2() -> Result<()> {
+    fn missing_memory_state_falls_back_on_relative_overdueness() -> Result<()> {
         let (mut col, _cids) = v3_test_collection(1)?;
-        col.set_config_bool(BoolKey::Fsrs, true, true)?;
         col.answer_easy();
 
         let timing = col.timing_today()?;
-        let sql_func = ReviewOrderSubclause::RelativeOverdueness { fsrs: true, timing }
+        let sql_func = ReviewOrderSubclause::RelativeOverdueness { timing }
             .to_string()
             .replace(" asc", "");
         let sql = format!("select {sql_func} from cards");

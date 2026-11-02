@@ -39,7 +39,6 @@ pub(crate) struct CardQueues {
     /// user returns from editing a review card.
     current_learning_cutoff: TimestampSecs,
     pub(crate) load_balancer: Option<LoadBalancer>,
-    pub(crate) fsrs_enabled: bool,
     pub(crate) fsrs_short_term_with_steps: bool,
 }
 

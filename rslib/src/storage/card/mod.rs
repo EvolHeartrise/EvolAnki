@@ -248,13 +248,12 @@ impl super::SqliteStorage {
         timing: SchedTimingToday,
         order: ReviewCardOrder,
         kind: DueCardKind,
-        fsrs: bool,
         mut func: F,
     ) -> Result<()>
     where
         F: FnMut(DueCard) -> Result<bool>,
     {
-        let order_clause = review_order_sql(order, timing, fsrs);
+        let order_clause = review_order_sql(order, timing);
         let mut stmt = self.db.prepare_cached(&format!(
             "{} order by {}",
             include_str!("due_cards.sql"),
@@ -683,18 +682,13 @@ pub(crate) enum ReviewOrderSubclause {
     Random,
     IntervalsAscending,
     IntervalsDescending,
-    EaseAscending,
-    EaseDescending,
-    /// FSRS
     DifficultyAscending,
-    /// FSRS
     DifficultyDescending,
     RetrievabilityFsrs {
         timing: SchedTimingToday,
         order: SqlSortOrder,
     },
     RelativeOverdueness {
-        fsrs: bool,
         timing: SchedTimingToday,
     },
     Added,
@@ -710,8 +704,6 @@ impl fmt::Display for ReviewOrderSubclause {
             ReviewOrderSubclause::Random => "fnvhash(id, mod)",
             ReviewOrderSubclause::IntervalsAscending => "ivl asc",
             ReviewOrderSubclause::IntervalsDescending => "ivl desc",
-            ReviewOrderSubclause::EaseAscending => "factor asc",
-            ReviewOrderSubclause::EaseDescending => "factor desc",
             ReviewOrderSubclause::DifficultyAscending => "extract_fsrs_variable(data, 'd') asc",
             ReviewOrderSubclause::DifficultyDescending => "extract_fsrs_variable(data, 'd') desc",
             ReviewOrderSubclause::RetrievabilityFsrs { timing, order } => {
@@ -722,18 +714,11 @@ impl fmt::Display for ReviewOrderSubclause {
                     format!("extract_fsrs_retrievability(data, case when odue !=0 then odue else due end, ivl, {today}, {next_day_at}, {now}) {order}");
                 &temp_string
             }
-            ReviewOrderSubclause::RelativeOverdueness { fsrs, timing } => {
+            ReviewOrderSubclause::RelativeOverdueness { timing } => {
                 let today = timing.days_elapsed;
                 let next_day_at = timing.next_day_at.0;
                 let now = timing.now.0;
-                temp_string = if *fsrs {
-                    format!("extract_fsrs_relative_retrievability(data, case when odue !=0 then odue else due end, ivl, {today}, {next_day_at}, {now}) asc")
-                } else {
-                    format!(
-                        // - (elapsed days+0.001)/(scheduled interval)
-                        "-(1 + cast({today}-due+0.001 as real)/ivl) asc"
-                    )
-                };
+                temp_string = format!("extract_fsrs_relative_retrievability(data, case when odue !=0 then odue else due end, ivl, {today}, {next_day_at}, {now}) asc");
                 &temp_string
             }
             ReviewOrderSubclause::Added => "nid asc, ord asc",
@@ -743,25 +728,16 @@ impl fmt::Display for ReviewOrderSubclause {
     }
 }
 
-fn review_order_sql(order: ReviewCardOrder, timing: SchedTimingToday, fsrs: bool) -> String {
+fn review_order_sql(order: ReviewCardOrder, timing: SchedTimingToday) -> String {
     let mut subclauses = match order {
         ReviewCardOrder::Day => vec![ReviewOrderSubclause::Day],
         ReviewCardOrder::DayThenDeck => vec![ReviewOrderSubclause::Day, ReviewOrderSubclause::Deck],
         ReviewCardOrder::DeckThenDay => vec![ReviewOrderSubclause::Deck, ReviewOrderSubclause::Day],
         ReviewCardOrder::IntervalsAscending => vec![ReviewOrderSubclause::IntervalsAscending],
         ReviewCardOrder::IntervalsDescending => vec![ReviewOrderSubclause::IntervalsDescending],
-        ReviewCardOrder::EaseAscending => {
-            vec![if fsrs {
-                ReviewOrderSubclause::DifficultyDescending
-            } else {
-                ReviewOrderSubclause::EaseAscending
-            }]
-        }
-        ReviewCardOrder::EaseDescending => vec![if fsrs {
-            ReviewOrderSubclause::DifficultyAscending
-        } else {
-            ReviewOrderSubclause::EaseDescending
-        }],
+        // These stored values keep their old names, and now mean difficulty.
+        ReviewCardOrder::EaseAscending => vec![ReviewOrderSubclause::DifficultyDescending],
+        ReviewCardOrder::EaseDescending => vec![ReviewOrderSubclause::DifficultyAscending],
         ReviewCardOrder::RetrievabilityAscending => {
             vec![ReviewOrderSubclause::RetrievabilityFsrs {
                 timing,
@@ -775,7 +751,7 @@ fn review_order_sql(order: ReviewCardOrder, timing: SchedTimingToday, fsrs: bool
             }]
         }
         ReviewCardOrder::RelativeOverdueness => {
-            vec![ReviewOrderSubclause::RelativeOverdueness { fsrs, timing }]
+            vec![ReviewOrderSubclause::RelativeOverdueness { timing }]
         }
         ReviewCardOrder::Random => vec![],
         ReviewCardOrder::Added => vec![ReviewOrderSubclause::Added],

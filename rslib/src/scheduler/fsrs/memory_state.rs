@@ -863,7 +863,6 @@ mod tests {
             let mut col = Collection::new();
             assert_eq!(stored_flag(&col), None);
             assert!(col.get_config_bool(BoolKey::Fsrs));
-            assert!(col.fsrs_enabled());
             assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
         }
 
@@ -875,7 +874,6 @@ mod tests {
 
             assert_eq!(stored_flag(&col), Some(false));
             assert!(col.get_config_bool(BoolKey::Fsrs));
-            assert!(col.fsrs_enabled());
             assert!(col.get_deck_configs_for_update(DeckId(1)).unwrap().fsrs);
 
             // answering schedules with FSRS

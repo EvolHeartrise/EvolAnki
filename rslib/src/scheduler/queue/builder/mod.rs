@@ -114,7 +114,6 @@ struct Context {
     timing: SchedTimingToday,
     root_deck: Deck,
     sort_options: QueueSortOptions,
-    fsrs: bool,
     fsrs_short_term_with_steps: bool,
 }
 
@@ -168,7 +167,6 @@ impl QueueBuilder {
                 timing,
                 root_deck,
                 sort_options,
-                fsrs: col.get_config_bool(BoolKey::Fsrs),
                 fsrs_short_term_with_steps: col
                     .get_config_bool(BoolKey::FsrsShortTermWithStepsEnabled),
             },
@@ -212,7 +210,6 @@ impl QueueBuilder {
             build_time: TimestampMillis::now(),
             load_balancer: self.load_balancer,
             current_learning_cutoff: now,
-            fsrs_enabled: self.context.fsrs,
             fsrs_short_term_with_steps: self.context.fsrs_short_term_with_steps,
         }
     }

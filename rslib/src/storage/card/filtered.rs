@@ -9,7 +9,6 @@ use crate::storage::sqlite::SqlSortOrder;
 pub(crate) fn order_and_limit_for_search(
     term: &FilteredSearchTerm,
     timing: SchedTimingToday,
-    fsrs: bool,
 ) -> String {
     let temp_string;
     let today = timing.days_elapsed;
@@ -31,12 +30,12 @@ pub(crate) fn order_and_limit_for_search(
         }
         FilteredSearchOrder::RetrievabilityAscending => {
             temp_string =
-                build_retrievability_query(fsrs, today, next_day_at, now, SqlSortOrder::Ascending);
+                build_retrievability_query(today, next_day_at, now, SqlSortOrder::Ascending);
             &temp_string
         }
         FilteredSearchOrder::RetrievabilityDescending => {
             temp_string =
-                build_retrievability_query(fsrs, today, next_day_at, now, SqlSortOrder::Descending);
+                build_retrievability_query(today, next_day_at, now, SqlSortOrder::Descending);
             &temp_string
         }
         FilteredSearchOrder::RelativeOverdueness => {
@@ -50,21 +49,14 @@ pub(crate) fn order_and_limit_for_search(
 }
 
 fn build_retrievability_query(
-    fsrs: bool,
     today: u32,
     next_day_at: i64,
     now: i64,
     order: SqlSortOrder,
 ) -> String {
-    if fsrs {
-        format!(
-            "extract_fsrs_retrievability(c.data, case when c.odue !=0 then c.odue else c.due end, ivl, {today}, {next_day_at}, {now}) {order}"
-        )
-    } else {
-        // A saved retrievability order can remain after FSRS is disabled. Match
-        // the filtered-deck dialog's fallback instead of an empty SQL term.
-        "random()".to_string()
-    }
+    format!(
+        "extract_fsrs_retrievability(c.data, case when c.odue !=0 then c.odue else c.due end, ivl, {today}, {next_day_at}, {now}) {order}"
+    )
 }
 
 #[cfg(test)]
@@ -127,13 +119,8 @@ mod test {
     }
 
     /// Pulls cards in the order the filtered-deck builder would use.
-    fn cards_in_order(
-        col: &mut Collection,
-        order: FilteredSearchOrder,
-        limit: u32,
-        fsrs: bool,
-    ) -> Vec<CardId> {
-        let clause = order_and_limit_for_search(&term(order, limit), timing(), fsrs);
+    fn cards_in_order(col: &mut Collection, order: FilteredSearchOrder, limit: u32) -> Vec<CardId> {
+        let clause = order_and_limit_for_search(&term(order, limit), timing());
         col.search_cards("", SortMode::Custom(clause)).unwrap()
     }
 
@@ -148,16 +135,11 @@ mod test {
         set_card_columns(&col, large, 10, 0, 0);
 
         assert_eq!(
-            cards_in_order(&mut col, FilteredSearchOrder::IntervalsAscending, 10, false),
+            cards_in_order(&mut col, FilteredSearchOrder::IntervalsAscending, 10),
             vec![small, mid, large]
         );
         assert_eq!(
-            cards_in_order(
-                &mut col,
-                FilteredSearchOrder::IntervalsDescending,
-                10,
-                false
-            ),
+            cards_in_order(&mut col, FilteredSearchOrder::IntervalsDescending, 10),
             vec![large, mid, small]
         );
     }
@@ -173,7 +155,7 @@ mod test {
         set_card_columns(&col, most, 0, 3, 0);
 
         assert_eq!(
-            cards_in_order(&mut col, FilteredSearchOrder::Lapses, 10, false),
+            cards_in_order(&mut col, FilteredSearchOrder::Lapses, 10),
             vec![most, some, none]
         );
     }
@@ -186,11 +168,11 @@ mod test {
         let third = add_card(&mut col, "third");
 
         assert_eq!(
-            cards_in_order(&mut col, FilteredSearchOrder::Added, 10, false),
+            cards_in_order(&mut col, FilteredSearchOrder::Added, 10),
             vec![first, second, third]
         );
         assert_eq!(
-            cards_in_order(&mut col, FilteredSearchOrder::ReverseAdded, 10, false),
+            cards_in_order(&mut col, FilteredSearchOrder::ReverseAdded, 10),
             vec![third, second, first]
         );
     }
@@ -208,7 +190,7 @@ mod test {
         set_card_columns(&col, late, 0, 0, TODAY as i32 + 1);
 
         assert_eq!(
-            cards_in_order(&mut col, FilteredSearchOrder::Due, 10, false),
+            cards_in_order(&mut col, FilteredSearchOrder::Due, 10),
             vec![early, middle, late]
         );
     }
@@ -225,12 +207,7 @@ mod test {
         add_review(&col, reviewed_later, 4_000_000);
 
         assert_eq!(
-            cards_in_order(
-                &mut col,
-                FilteredSearchOrder::OldestReviewedFirst,
-                10,
-                false
-            ),
+            cards_in_order(&mut col, FilteredSearchOrder::OldestReviewedFirst, 10),
             vec![reviewed_earlier, reviewed_later]
         );
     }
@@ -247,7 +224,7 @@ mod test {
 
         // only the two smallest intervals are pulled in
         assert_eq!(
-            cards_in_order(&mut col, FilteredSearchOrder::IntervalsAscending, 2, false),
+            cards_in_order(&mut col, FilteredSearchOrder::IntervalsAscending, 2),
             vec![small, mid]
         );
     }
@@ -261,7 +238,7 @@ mod test {
             .collect();
         expected.sort();
 
-        let mut got = cards_in_order(&mut col, FilteredSearchOrder::Random, 10, false);
+        let mut got = cards_in_order(&mut col, FilteredSearchOrder::Random, 10);
         got.sort();
 
         assert_eq!(got, expected);
@@ -300,13 +277,13 @@ mod test {
                 vec![low, medium, high],
             ),
         ] {
-            let cards = cards_in_order(&mut col, order, 10, true);
+            let cards = cards_in_order(&mut col, order, 10);
             assert_eq!(cards, expected, "order {order:?}");
         }
     }
 
     #[test]
-    fn retrievability_orders_fall_back_to_random_without_fsrs() {
+    fn retrievability_orders_work_for_cards_without_a_memory_state() {
         let mut col = Collection::new();
         for front in ["one", "two", "three"] {
             add_card(&mut col, front);
@@ -315,8 +292,7 @@ mod test {
             FilteredSearchOrder::RetrievabilityAscending,
             FilteredSearchOrder::RetrievabilityDescending,
         ] {
-            // would fail on the old empty-order SQL (leading comma)
-            let cards = cards_in_order(&mut col, order, 2, false);
+            let cards = cards_in_order(&mut col, order, 2);
             assert_eq!(cards.len(), 2, "order {order:?}");
         }
     }
