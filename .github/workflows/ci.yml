@@ -3,9 +3,9 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main, web-local]
+    branches: [main]
   pull_request:
-    branches: [main, web-local]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -29,6 +29,10 @@ jobs:
         with:
           components: clippy
           cache: true
+          # ninja builds here, not in the default target/
+          cache-workspaces: ". -> out/rust"
+          # a new key, as main already has a cache without compiled code under the old one
+          cache-key: out-rust
           rustflags: "" # don't inject -D warnings; the build handles that
 
       - name: Install cargo-nextest
@@ -51,7 +55,9 @@ jobs:
         run: ./ninja check:rust_test check:vitest
 
       - name: Browser tests
+        env:
+          # built by the Test step
+          EVOLANKI_SERVER: ${{ github.workspace }}/out/rust/ci/evolanki-server
         run: |
-          CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
           out/extracted/node/bin/yarn playwright install --with-deps chromium webkit
           out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts

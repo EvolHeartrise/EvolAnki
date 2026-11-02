@@ -3,13 +3,13 @@ name: cargo-deny
 on:
   workflow_dispatch:
   push:
-    branches: [main, web-local]
+    branches: [main]
     paths:
       - "Cargo.lock"
       - "**/Cargo.toml"
       - ".deny.toml"
   pull_request:
-    branches: [main, web-local]
+    branches: [main]
     paths:
       - "Cargo.lock"
       - "**/Cargo.toml"
