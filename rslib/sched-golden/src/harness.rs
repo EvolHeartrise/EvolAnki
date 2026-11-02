@@ -129,7 +129,7 @@ impl Harness {
 
     pub fn open(&mut self, path: &Path) -> Result<()> {
         let label = path.file_name().unwrap_or_default().to_string_lossy();
-        self.open_as(path, &label.into_owned())
+        self.open_as(path, &label)
     }
 
     fn open_as(&mut self, path: &Path, label: &str) -> Result<()> {
