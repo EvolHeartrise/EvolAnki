@@ -31,6 +31,8 @@ jobs:
           cache: true
           # ninja builds here, not in the default target/
           cache-workspaces: ". -> out/rust"
+          # a new key, as main already has a cache without compiled code under the old one
+          cache-key: out-rust
           rustflags: "" # don't inject -D warnings; the build handles that
 
       - name: Install cargo-nextest
