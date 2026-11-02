@@ -271,10 +271,10 @@ Safari 18.4. A file that can't play is skipped.
   every day counts as normal. The load balancer has no control either, and stays on
   unless the collection's config says otherwise.
 
-## Differences from desktop Anki's mediasrv.py
+## Differences from desktop Anki's media server
 
 - `updateDeckConfigs` returns when the save is done, with the real output.
-  mediasrv.py started a Qt background op, returned nothing, and closed the dialog
+  The desktop server started a Qt background op, returned nothing, and closed the dialog
   on success. The page shows progress itself, then returns to the deck.
 - The `Anki-Op-Changes` header is ignored. It drove on_op_finished() in Qt.
 - `/_addons/` isn't served, and neither are the legacy `/_anki/foo.js` remappings.
@@ -288,4 +288,4 @@ out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.
 
 Both create throwaway collections in temporary folders. The Playwright tests need the
 assets from above, a debug server binary, and Chromium and WebKit
-(`playwright install chromium webkit`). Set `EVOLANKI_SHOTS=folder` for screenshots.
+(`playwright install chromium webkit`).

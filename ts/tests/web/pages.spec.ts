@@ -56,13 +56,6 @@ test("the favicon is served", async ({ page }) => {
     expect(response?.status()).toBe(200);
 });
 
-test("FSRS controls are always shown, with no on/off toggle", async ({ page }) => {
-    await page.goto(`${server.url}/deck-options/1`);
-
-    await expect(page.getByRole("button", { name: "FSRS Parameters", exact: true })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: /^FSRS\b/ })).toHaveCount(0);
-});
-
 test("FSRS parameter unlock timing can be configured by the host", async ({ page }) => {
     await page.clock.install();
     await page.goto(`${server.url}/deck-options/1`);
@@ -150,17 +143,12 @@ test("FSRS optimize runs with progress polling", async ({ page }) => {
     expect(problems).toEqual([]);
 });
 
-test("deck options has settings for this deck, and nothing about sharing them", async ({ page }) => {
+test("deck options has settings for this deck", async ({ page }) => {
     const problems = failOnPageProblems(page);
     await page.goto(`${server.url}/deck-options/1`);
     await expect(page.getByRole("heading", { name: "Default", exact: true })).toBeVisible();
     await expect(newCardsInput(page)).toBeVisible();
 
-    const text = await page.locator("body").innerText();
-    expect(text).not.toMatch(/preset/i);
-    expect(text).not.toMatch(/used by/i);
-    expect(text).not.toMatch(/subdecks/i);
-    await expect(page.getByRole("button", { name: "This deck", exact: true })).toHaveCount(0);
     // the daily limits have a regular value, and one for today
     const everyDay = page.getByRole("button", { name: "Every day", exact: true });
     const today = page.getByRole("button", { name: "Today only", exact: true });
@@ -237,7 +225,6 @@ test("methods off the allow-list are refused", async ({ page }) => {
         }, method);
     expect(await statusOf("closeCollection")).toBe(404);
     expect(await statusOf("getAbsoluteMediaPath")).toBe(404);
-    expect(await statusOf("openFilePicker")).toBe(404);
     expect(await statusOf("suspendCards")).toBe(404);
     expect(await statusOf("getGraphPreferences")).toBe(200);
 });

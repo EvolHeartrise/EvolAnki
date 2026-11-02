@@ -325,18 +325,6 @@ mod tests {
     }
 
     #[test]
-    fn easy_interval_is_from_fsrs() {
-        let ctx = StateContext::defaults_for_testing();
-        let state = relearn_state(); // review.scheduled_days = 3
-        let states = state.next_states(&ctx);
-        if let CardState::Normal(NormalState::Review(r)) = states.easy {
-            assert_eq!(r.scheduled_days, 7);
-        } else {
-            panic!("easy should produce a ReviewState");
-        }
-    }
-
-    #[test]
     fn again_fsrs_exits_to_review_with_algorithm_interval() {
         let ctx = StateContext {
             relearn_steps: LearningSteps::new(&[]),

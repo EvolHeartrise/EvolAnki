@@ -263,7 +263,7 @@ fn check_web_root(web_root: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Pages and the API share one entry point, as in mediasrv.py.
+/// Pages and the API share one entry point.
 async fn handle(State(state): State<Arc<AppState>>, request: Request) -> Response {
     match *request.method() {
         Method::POST => post(state, request).await,

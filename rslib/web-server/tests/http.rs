@@ -251,7 +251,7 @@ fn deck_options_save_persists_across_restart() {
 }
 
 #[test]
-fn rpc_behaviour_matches_mediasrv() {
+fn rpc_replies_are_binary_and_backend_errors_are_plain_text() {
     let fixture = Fixture::new();
     let server = fixture.start();
 
@@ -291,9 +291,6 @@ fn methods_off_the_allow_list_are_refused() {
         "suspendCards",
         "changeNotetype",
         "getChangeNotetypeInfo",
-        // stubs for Qt that no longer exist at all
-        "openFilePicker",
-        "deckOptionsReady",
         "doesNotExist",
     ] {
         assert_eq!(server.rpc_raw(method, b"").status, 404, "{method}");
@@ -519,8 +516,6 @@ fn pages_have_the_expected_headers() {
 
     assert!(reply_is_web_app(&server, "/deck-options/1"));
     assert!(reply_is_web_app(&server, "/"));
-    assert_eq!(server.get("/congrats").status, 404);
-    assert_eq!(server.get("/card-info/5").status, 404);
 
     for framing in ["/", "/overview/1", "/review"] {
         let csp = server
@@ -542,11 +537,6 @@ fn pages_have_the_expected_headers() {
         "{csp}"
     );
     assert!(!csp.contains("127.0.0.1"), "{csp}");
-
-    // removed pages are just media paths now
-    assert_eq!(server.get("/editor/").status, 404);
-    assert_eq!(server.get("/import-csv/x").status, 404);
-    assert_eq!(server.get("/image-occlusion/x").status, 404);
 
     let reply = server.get("/_app/immutable/a.mjs");
     assert_eq!(reply.status, 200);

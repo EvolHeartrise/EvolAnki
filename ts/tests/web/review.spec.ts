@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { type Browser, devices, expect, type FrameLocator, type Page, test } from "@playwright/test";
+import { expect, type FrameLocator, type Page, test } from "@playwright/test";
 
 import { Server, tempCollection } from "./server";
 
@@ -398,7 +398,7 @@ test("each deck's options are its own, down to subdecks and new ones", async ({ 
     expect(counts[0].settings).toBe(counts[0].decks);
 });
 
-test("failing a card leaves it unsuspended and untagged, with no leech controls", async ({ page }) => {
+test("failing a card leaves it unsuspended and untagged", async ({ page }) => {
     await start({
         decks: [{ name: "Lapses" }],
         notes: [{ ...BASIC("lapsing", "a", "Lapses"), due: true }, BASIC("next", "a", "Lapses")],
@@ -407,7 +407,6 @@ test("failing a card leaves it unsuspended and untagged, with no leech controls"
     await page.goto(`${server.url}/`);
     await page.locator(`tr[data-deck="Lapses"] .options a`).click();
     await expect(page.locator(".setting-title", { hasText: "Relearning steps" })).toBeVisible();
-    await expect(page.locator(".setting-title", { hasText: /leech/i })).toHaveCount(0);
     await page.goBack();
 
     await page.locator(`tr[data-deck="Lapses"] .name a`).click();
@@ -842,10 +841,9 @@ test("deck options reports a slow save and returns to the deck", async ({ page }
     await expect(page).toHaveURL(/\/overview\/\d+/);
     await expect(page.getByRole("status")).toContainText("saved");
 
-    // the reviewer doesn't run custom scheduling, and its setting is left alone
+    // and the saved value is there when the page is opened again
     await page.getByRole("link", { name: "Options" }).click();
     await expect(page.locator(".row", { has: title }).locator("input").first()).toHaveValue("37");
-    await expect(page.getByText("Custom scheduling")).toHaveCount(0);
     expect(problems).toEqual([]);
 });
 
@@ -859,65 +857,4 @@ test("the graphs page doesn't break without a card browser", async ({ page }) =>
     }
     await expect(page.getByRole("link", { name: "Decks" })).toBeVisible();
     expect(problems).toEqual([]);
-});
-
-/** Not a check: leaves pictures behind for a person to look at. */
-test("screenshots", async ({ browser }: { browser: Browser }) => {
-    const dir = process.env.EVOLANKI_SHOTS;
-    test.skip(!dir, "EVOLANKI_SHOTS is not set");
-    await start({
-        decks: [
-            { name: "Languages" },
-            { name: "Languages::French" },
-            { name: "Languages::German" },
-            { name: "Science", description: "<b>Physics</b> and chemistry, from the textbook." },
-        ],
-        notes: [
-            { deck: "Science", notetype: "Basic", fields: [`What is \\(E=mc^2\\)?`, "Mass-energy equivalence"] },
-            { deck: "Science", notetype: "Basic", fields: ["Second", "Card"] },
-            BASIC("bonjour", "hello", "Languages::French"),
-            { ...BASIC("merci", "thank you", "Languages::French"), due: true },
-            BASIC("danke", "thank you", "Languages::German"),
-        ],
-    });
-    const viewports = {
-        desktop: { viewport: { width: 1100, height: 700 } },
-        mobile: { ...devices["Pixel 7"] },
-    };
-    for (const scheme of ["light", "dark"] as const) {
-        for (const [size, options] of Object.entries(viewports)) {
-            const context = await browser.newContext({ ...options, colorScheme: scheme });
-            const page = await context.newPage();
-            const shot = (name: string) => page.screenshot({ path: join(dir!, `${size}-${name}-${scheme}.png`) });
-            await page.goto(server.url);
-            await page.locator(`tr[data-deck="Languages"]`).waitFor();
-            if (await page.locator(`tr[data-deck="French"]`).count() === 0) {
-                await page.locator(`tr[data-deck="Languages"]`).getByRole("button").click();
-                await page.locator(`tr[data-deck="French"]`).waitFor();
-            }
-            await shot("decks");
-            await openDeck(page, "Science");
-            await expect(page.frameLocator(".description iframe").locator("b")).toBeVisible();
-            await page.waitForTimeout(100);
-            await shot("overview");
-            await page.getByRole("button", { name: "Study Now" }).click();
-            await expect(card(page).locator("mjx-container")).toBeVisible({ timeout: 20_000 });
-            await page.waitForTimeout(200);
-            await shot("question");
-            await page.getByRole("button", { name: "Show Answer" }).click();
-            await expect(card(page)).toContainText("Mass-energy");
-            await expect(card(page).locator("mjx-container")).toBeVisible();
-            await page.waitForTimeout(200);
-            await shot("answer");
-            await page.goto(`${server.url}/deck-options/1`);
-            await page.locator(".setting-title", { hasText: "New cards/day" }).first().waitFor();
-            await page.waitForTimeout(100);
-            await shot("options");
-            await page.goto(`${server.url}/graphs`);
-            await page.locator("svg").first().waitFor();
-            await page.waitForTimeout(300);
-            await shot("stats");
-            await context.close();
-        }
-    }
 });

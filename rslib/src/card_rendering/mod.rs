@@ -58,12 +58,6 @@ struct Directive<'a> {
     options: HashMap<&'a str, &'a str>,
 }
 
-#[cfg(feature = "bench")]
-#[inline]
-pub fn anki_directive_benchmark() {
-    CardNodes::parse("[anki:foo bar=baz][/anki:foo]");
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

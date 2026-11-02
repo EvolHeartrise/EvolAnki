@@ -190,7 +190,7 @@ fn check(
                 return Err(format!("cross-site request refused: {site}"));
             }
         }
-        // as in mediasrv.py
+        // a cross-site form can't send this type without a CORS preflight
         if single_header(headers, header::CONTENT_TYPE)? != Some("application/binary") {
             return Err("content type must be application/binary".into());
         }
