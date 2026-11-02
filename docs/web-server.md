@@ -190,7 +190,8 @@ to downgrade.
 Going back: an older build refuses a collection at a newer schema, saying that it's too new,
 and leaves it as it is. So to go back, stop the server, install the older build, follow
 [Restoring](#restoring) with the backup taken just before the upgrade, and delete
-`collection.media.db2`, which that build rebuilds from the media folder. Anything done since
+`collection.media.db2`, whose columns no longer match that build, and which it rebuilds from
+the media folder. Anything done since
 that backup, such as reviews, is lost. Backups are pruned in time, so copy that one somewhere
 safe if you might want it.
 

@@ -357,7 +357,9 @@ fn validate_with_work_dir(
     ] {
         let sql = format!("select count() from {table}");
         let (a, b) = (scalar(snapshot, &sql)?, scalar(converted, &sql)?);
-        if a != b {
+        // each normal deck has its own row, whatever the source's decks shared;
+        // the deck settings section compares what they use
+        if a != b && table != "deck_config" {
             problems.push(format!("{table} count changed from {a} to {b}"));
         }
         rows.push(vec![table.to_string(), a.to_string(), b.to_string()]);
