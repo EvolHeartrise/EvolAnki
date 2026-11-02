@@ -75,26 +75,19 @@ pub(crate) struct StateContext<'a> {
     /// In range `0.0..1.0`. Used to pick the final interval from the fuzz
     /// range.
     pub fuzz_factor: Option<f32>,
-    pub fsrs_next_states: Option<NextStates>,
+    pub fsrs_next_states: NextStates,
     pub fsrs_short_term_with_steps_enabled: bool,
     pub fsrs_allow_short_term: bool,
     // learning
     pub steps: LearningSteps<'a>,
-    pub graduating_interval_good: u32,
-    pub graduating_interval_easy: u32,
     pub initial_ease_factor: f32,
 
     // reviewing
-    pub hard_multiplier: f32,
-    pub easy_multiplier: f32,
-    pub interval_multiplier: f32,
     pub maximum_review_interval: u32,
     pub load_balancer_ctx: Option<LoadBalancerContext<'a>>,
 
     // relearning
     pub relearn_steps: LearningSteps<'a>,
-    pub lapse_multiplier: f32,
-    pub minimum_lapse_interval: u32,
 
     // filtered
     pub in_filtered_deck: bool,
@@ -116,27 +109,38 @@ impl StateContext<'_> {
         Self {
             fuzz_factor: None,
             steps: LearningSteps::new(&[1.0, 10.0]),
-            graduating_interval_good: 1,
-            graduating_interval_easy: 4,
             initial_ease_factor: 2.5,
-            hard_multiplier: 1.2,
-            easy_multiplier: 1.3,
-            interval_multiplier: 1.0,
             maximum_review_interval: 36500,
             load_balancer_ctx: None,
             relearn_steps: LearningSteps::new(&[10.0]),
-            lapse_multiplier: 0.0,
-            minimum_lapse_interval: 1,
             in_filtered_deck: false,
             preview_delays: PreviewDelays {
                 again: 1,
                 hard: 10,
                 good: 0,
             },
-            fsrs_next_states: None,
+            fsrs_next_states: test_next_states(1.0, 2.0, 3.0, 7.0),
             fsrs_short_term_with_steps_enabled: false,
             fsrs_allow_short_term: false,
         }
+    }
+}
+
+/// What FSRS would return, with the given intervals in days.
+#[cfg(test)]
+pub(crate) fn test_next_states(again: f32, hard: f32, good: f32, easy: f32) -> NextStates {
+    let item = |interval| fsrs::ItemState {
+        memory: fsrs::MemoryState {
+            stability: 4.0,
+            difficulty: 5.0,
+        },
+        interval,
+    };
+    NextStates {
+        again: item(again),
+        hard: item(hard),
+        good: item(good),
+        easy: item(easy),
     }
 }
 

@@ -70,10 +70,8 @@ struct CardStateUpdater {
     timing: SchedTimingToday,
     now: TimestampSecs,
     fuzz_seed: Option<u64>,
-    /// Set if FSRS is enabled.
-    fsrs_next_states: Option<NextStates>,
-    /// Set if FSRS is enabled.
-    desired_retention: Option<f32>,
+    fsrs_next_states: NextStates,
+    desired_retention: f32,
     fsrs_short_term_with_steps: bool,
     fsrs_allow_short_term: bool,
 }
@@ -89,18 +87,11 @@ impl CardStateUpdater {
         StateContext {
             fuzz_factor: get_fuzz_factor(self.fuzz_seed),
             steps: self.learn_steps(),
-            graduating_interval_good: self.config.inner.graduating_interval_good,
-            graduating_interval_easy: self.config.inner.graduating_interval_easy,
             initial_ease_factor: self.config.inner.initial_ease,
-            hard_multiplier: self.config.inner.hard_multiplier,
-            easy_multiplier: self.config.inner.easy_multiplier,
-            interval_multiplier: self.config.inner.interval_multiplier,
             maximum_review_interval: self.config.inner.maximum_review_interval,
             load_balancer_ctx: load_balancer_ctx
                 .map(|load_balancer_ctx| load_balancer_ctx.set_fuzz_seed(self.fuzz_seed)),
             relearn_steps: self.relearn_steps(),
-            lapse_multiplier: self.config.inner.lapse_multiplier,
-            minimum_lapse_interval: self.config.inner.minimum_lapse_interval,
             in_filtered_deck: self.deck.is_filtered(),
             preview_delays: if let DeckKind::Filtered(deck) = &self.deck.kind {
                 PreviewDelays {
@@ -179,7 +170,7 @@ impl CardStateUpdater {
         next: NormalState,
     ) -> RevlogEntryPartial {
         self.card.reps += 1;
-        self.card.desired_retention = self.desired_retention;
+        self.card.desired_retention = Some(self.desired_retention);
 
         match next {
             NormalState::New(next) => self.apply_new_state(current, next),
@@ -462,55 +453,41 @@ impl Collection {
             .unwrap_or_default();
 
         let desired_retention = config.inner.desired_retention;
-        let fsrs_enabled = self.fsrs_enabled();
-        let fsrs_next_states = if fsrs_enabled {
-            let params = config.fsrs_params();
-            let fsrs = FSRS::new(params)?;
-            card.decay = Some(get_decay_from_params(params));
-            if card.memory_state.is_none() && card.ctype != CardType::New {
-                // Card has been moved or imported into an FSRS deck after params were set,
-                // and will need its initial memory state to be calculated based on review
-                // history.
-                let revlog = self.revlog_for_srs(SearchNode::CardIds(card.id.to_string()))?;
-                let item = fsrs_item_for_memory_state(
-                    &fsrs,
-                    revlog,
-                    timing.next_day_at,
-                    config.inner.historical_retention,
-                    ignore_revlogs_before_ms_from_config(&config)?,
-                )?;
-                card.set_memory_state(&fsrs, item, config.inner.historical_retention)?;
-            }
-            let days_elapsed = if let Some(last_review_time) = card.last_review_time {
-                timing.next_day_at.elapsed_days_since(last_review_time) as u32
-            } else {
-                self.storage
-                    .time_of_last_review(card.id)?
-                    .map(|ts| timing.next_day_at.elapsed_days_since(ts))
-                    .unwrap_or_default() as u32
-            };
-            Some(fsrs.next_states(
-                card.memory_state.map(Into::into),
-                desired_retention,
-                days_elapsed,
-            )?)
+        let params = config.fsrs_params();
+        let fsrs = FSRS::new(params)?;
+        card.decay = Some(get_decay_from_params(params));
+        if card.memory_state.is_none() && card.ctype != CardType::New {
+            // Card has been moved or imported after params were set, and will need its
+            // initial memory state to be calculated based on review history.
+            let revlog = self.revlog_for_srs(SearchNode::CardIds(card.id.to_string()))?;
+            let item = fsrs_item_for_memory_state(
+                &fsrs,
+                revlog,
+                timing.next_day_at,
+                config.inner.historical_retention,
+                ignore_revlogs_before_ms_from_config(&config)?,
+            )?;
+            card.set_memory_state(&fsrs, item, config.inner.historical_retention)?;
+        }
+        let days_elapsed = if let Some(last_review_time) = card.last_review_time {
+            timing.next_day_at.elapsed_days_since(last_review_time) as u32
         } else {
-            None
+            self.storage
+                .time_of_last_review(card.id)?
+                .map(|ts| timing.next_day_at.elapsed_days_since(ts))
+                .unwrap_or_default() as u32
         };
-        let desired_retention = fsrs_enabled.then_some(desired_retention);
+        let fsrs_next_states = fsrs.next_states(
+            card.memory_state.map(Into::into),
+            desired_retention,
+            days_elapsed,
+        )?;
         let fsrs_short_term_with_steps = self.fsrs_short_term_with_steps_enabled();
-        let fsrs_allow_short_term = if fsrs_enabled {
-            let params = config.fsrs_params();
-            if params.len() >= 19 {
-                params[17] > 0.0 && params[18] > 0.0
-            } else if params.is_empty() {
-                // fallback to true when using default params
-                true
-            } else {
-                false
-            }
+        let fsrs_allow_short_term = if params.len() >= 19 {
+            params[17] > 0.0 && params[18] > 0.0
         } else {
-            false
+            // fallback to true when using default params
+            params.is_empty()
         };
         let original_deck = self
             .storage
@@ -688,9 +665,6 @@ pub(crate) mod test {
     fn deck_specific_desired_retention() -> Result<()> {
         let mut col = Collection::new();
 
-        // Enable FSRS
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
-
         // Create a deck with specific desired retention
         let deck_id = DeckId(1);
         let mut config = col
@@ -711,11 +685,7 @@ pub(crate) mod test {
         // Test that the card state updater uses deck-specific desired retention
         let updater = col.card_state_updater(card)?;
 
-        // Print debug information
-        println!("FSRS enabled: {}", col.get_config_bool(BoolKey::Fsrs));
-        println!("Desired retention: {:?}", updater.desired_retention);
-
-        assert_eq!(updater.desired_retention, Some(0.85));
+        assert_eq!(updater.desired_retention, 0.85);
 
         Ok(())
     }
@@ -727,15 +697,13 @@ pub(crate) mod test {
         let mut note = nt.new_note();
         col.add_note(&mut note, DeckId(1))?;
 
-        // Graduate without FSRS so the stored card has no decay/dr.
-        // This could happen if the card is moved between decks in an earlier version.
+        // Lose the memory state, as can happen to a card imported with scheduling.
         col.answer_easy();
         let card_id = col.get_first_card().id;
         let mut stored = col.storage.get_card(card_id)?.unwrap();
         stored.memory_state = None;
         col.storage.update_card(&stored)?;
 
-        col.set_config_bool(BoolKey::Fsrs, true, false)?;
         col.clear_study_queues();
 
         let input = col.storage.get_card(card_id)?.unwrap();

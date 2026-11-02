@@ -37,7 +37,7 @@ impl LearnState {
     }
 
     fn answer_again(self, ctx: &StateContext) -> CardState {
-        let memory_state = ctx.fsrs_next_states.as_ref().map(|s| s.again.memory.into());
+        let memory_state = Some(ctx.fsrs_next_states.again.memory.into());
         if let Some(again_delay) = ctx.steps.again_delay_secs_learn() {
             LearnState {
                 remaining_steps: ctx.steps.remaining_for_failed(),
@@ -48,16 +48,10 @@ impl LearnState {
             .into()
         } else {
             let (minimum, maximum) = ctx.min_and_max_review_intervals(1);
-            let (interval, short_term) = if let Some(states) = &ctx.fsrs_next_states {
-                (
-                    states.again.interval,
-                    ctx.fsrs_allow_short_term
-                        && (ctx.fsrs_short_term_with_steps_enabled || ctx.steps.is_empty())
-                        && states.again.interval < 0.5,
-                )
-            } else {
-                (ctx.graduating_interval_good as f32, false)
-            };
+            let interval = ctx.fsrs_next_states.again.interval;
+            let short_term = ctx.fsrs_allow_short_term
+                && (ctx.fsrs_short_term_with_steps_enabled || ctx.steps.is_empty())
+                && interval < 0.5;
 
             if short_term {
                 LearnState {
@@ -84,7 +78,7 @@ impl LearnState {
     }
 
     fn answer_hard(self, ctx: &StateContext) -> CardState {
-        let memory_state = ctx.fsrs_next_states.as_ref().map(|s| s.hard.memory.into());
+        let memory_state = Some(ctx.fsrs_next_states.hard.memory.into());
         if let Some(hard_delay) = ctx.steps.hard_delay_secs(self.remaining_steps) {
             LearnState {
                 scheduled_secs: hard_delay,
@@ -95,16 +89,10 @@ impl LearnState {
             .into()
         } else {
             let (minimum, maximum) = ctx.min_and_max_review_intervals(1);
-            let (interval, short_term) = if let Some(states) = &ctx.fsrs_next_states {
-                (
-                    states.hard.interval,
-                    ctx.fsrs_allow_short_term
-                        && (ctx.fsrs_short_term_with_steps_enabled || ctx.steps.is_empty())
-                        && states.hard.interval < 0.5,
-                )
-            } else {
-                (ctx.graduating_interval_good as f32, false)
-            };
+            let interval = ctx.fsrs_next_states.hard.interval;
+            let short_term = ctx.fsrs_allow_short_term
+                && (ctx.fsrs_short_term_with_steps_enabled || ctx.steps.is_empty())
+                && interval < 0.5;
 
             if short_term {
                 LearnState {
@@ -131,7 +119,7 @@ impl LearnState {
     }
 
     fn answer_good(self, ctx: &StateContext) -> CardState {
-        let memory_state = ctx.fsrs_next_states.as_ref().map(|s| s.good.memory.into());
+        let memory_state = Some(ctx.fsrs_next_states.good.memory.into());
         if let Some(good_delay) = ctx.steps.good_delay_secs(self.remaining_steps) {
             LearnState {
                 remaining_steps: ctx.steps.remaining_for_good(self.remaining_steps),
@@ -142,16 +130,10 @@ impl LearnState {
             .into()
         } else {
             let (minimum, maximum) = ctx.min_and_max_review_intervals(1);
-            let (interval, short_term) = if let Some(states) = &ctx.fsrs_next_states {
-                (
-                    states.good.interval,
-                    ctx.fsrs_allow_short_term
-                        && (ctx.fsrs_short_term_with_steps_enabled || ctx.steps.is_empty())
-                        && states.good.interval < 0.5,
-                )
-            } else {
-                (ctx.graduating_interval_good as f32, false)
-            };
+            let interval = ctx.fsrs_next_states.good.interval;
+            let short_term = ctx.fsrs_allow_short_term
+                && (ctx.fsrs_short_term_with_steps_enabled || ctx.steps.is_empty())
+                && interval < 0.5;
 
             if short_term {
                 LearnState {
@@ -179,17 +161,14 @@ impl LearnState {
 
     fn answer_easy(self, ctx: &StateContext) -> ReviewState {
         let (mut minimum, maximum) = ctx.min_and_max_review_intervals(1);
-        let interval = if let Some(states) = &ctx.fsrs_next_states {
-            let good = ctx.with_review_fuzz(states.good.interval, minimum, maximum);
-            minimum = good + 1;
-            states.easy.interval.round().max(1.0) as u32
-        } else {
-            ctx.graduating_interval_easy
-        };
+        let states = &ctx.fsrs_next_states;
+        let good = ctx.with_review_fuzz(states.good.interval, minimum, maximum);
+        minimum = good + 1;
+        let interval = states.easy.interval.round().max(1.0) as u32;
         ReviewState {
             scheduled_days: ctx.with_review_fuzz(interval as f32, minimum, maximum),
             ease_factor: ctx.initial_ease_factor,
-            memory_state: ctx.fsrs_next_states.as_ref().map(|s| s.easy.memory.into()),
+            memory_state: Some(states.easy.memory.into()),
             ..Default::default()
         }
     }
@@ -199,10 +178,11 @@ impl LearnState {
 mod tests {
     use super::super::steps::LearningSteps;
     use super::*;
+    use crate::scheduler::states::test_next_states;
     use crate::scheduler::states::NormalState;
 
-    // defaults_for_testing: steps=[1.0, 10.0]min, graduating_good=1day,
-    // graduating_easy=4days, fuzz_factor=None (deterministic)
+    // defaults_for_testing: steps=[1.0, 10.0]min, FSRS intervals of again=1,
+    // hard=2, good=3 and easy=7 days, fuzz_factor=None (deterministic)
     //   remaining_steps=2 → first step  (1min = 60s)
     //   remaining_steps=1 → last step  (10min = 600s)
 
@@ -246,8 +226,7 @@ mod tests {
         // again_delay_secs_learn() always returns None regardless of position.
         let state = learn_state(0);
         let states = state.next_states(&ctx);
-        // No steps → Again graduates directly to Review using graduating_interval_good
-        // (1 day)
+        // No steps → Again graduates directly to Review using FSRS's interval (1 day)
         assert!(matches!(
             states.again,
             CardState::Normal(NormalState::Review(ReviewState {
@@ -298,11 +277,11 @@ mod tests {
         // is empty.
         let state = learn_state(1);
         let states = state.next_states(&ctx);
-        // No steps → Hard graduates to Review using graduating_interval_good (1 day)
+        // No steps → Hard graduates to Review using FSRS's interval (2 days)
         assert!(matches!(
             states.hard,
             CardState::Normal(NormalState::Review(ReviewState {
-                scheduled_days: 1,
+                scheduled_days: 2,
                 ..
             }))
         ));
@@ -329,11 +308,11 @@ mod tests {
         let ctx = StateContext::defaults_for_testing();
         let state = learn_state(1); // last step (means step 2 of 2)
         let states = state.next_states(&ctx);
-        // Good from last step → Review with graduating_interval_good = 1 day
+        // Good from last step → Review with FSRS's interval of 3 days
         assert!(matches!(
             states.good,
             CardState::Normal(NormalState::Review(ReviewState {
-                scheduled_days: 1,
+                scheduled_days: 3,
                 ..
             }))
         ));
@@ -366,10 +345,63 @@ mod tests {
             CardState::Normal(NormalState::Review(r)) => r.scheduled_days,
             _ => panic!("good from last step should produce a ReviewState"),
         };
-        // graduating_interval_easy=4 > graduating_interval_good=1
+        // FSRS gives easy=7, good=3
         assert!(
             easy_days > good_days,
             "easy interval ({easy_days}d) should exceed good interval ({good_days}d)"
         );
+        assert_eq!((easy_days, good_days), (7, 3));
+    }
+
+    #[test]
+    fn easy_stays_above_fuzzed_good_when_fsrs_gives_them_the_same() {
+        let ctx = StateContext {
+            fsrs_next_states: test_next_states(1.0, 2.0, 5.0, 5.0),
+            ..StateContext::defaults_for_testing()
+        };
+        let states = learn_state(1).next_states(&ctx);
+        let CardState::Normal(NormalState::Review(easy)) = states.easy else {
+            panic!("easy should produce a ReviewState");
+        };
+        assert_eq!(easy.scheduled_days, 6);
+    }
+
+    #[test]
+    fn short_term_interval_stays_in_learning_when_allowed() {
+        let ctx = StateContext {
+            steps: LearningSteps::new(&[]),
+            fsrs_next_states: test_next_states(0.2, 0.3, 0.4, 7.0),
+            fsrs_allow_short_term: true,
+            ..StateContext::defaults_for_testing()
+        };
+        let states = learn_state(0).next_states(&ctx);
+        for (state, secs) in [
+            (states.again, 17280),
+            (states.hard, 25920),
+            (states.good, 34560),
+        ] {
+            let CardState::Normal(NormalState::Learning(learning)) = state else {
+                panic!("expected learning, got: {state:?}");
+            };
+            assert_eq!(learning.scheduled_secs, secs);
+        }
+    }
+
+    #[test]
+    fn short_term_interval_graduates_when_not_allowed() {
+        let ctx = StateContext {
+            steps: LearningSteps::new(&[]),
+            fsrs_next_states: test_next_states(0.2, 0.3, 0.4, 7.0),
+            fsrs_allow_short_term: false,
+            ..StateContext::defaults_for_testing()
+        };
+        let states = learn_state(0).next_states(&ctx);
+        assert!(matches!(
+            states.good,
+            CardState::Normal(NormalState::Review(ReviewState {
+                scheduled_days: 1,
+                ..
+            }))
+        ));
     }
 }
