@@ -117,8 +117,8 @@ impl Harness {
             .unwrap_or_else(|err| json!({ "error": err }))
     }
 
-    /// Work on a new copy of `source`. Randomness restarts by name, so a section's
-    /// output doesn't depend on which ran before it.
+    /// Work on a new copy of `source`. Randomness restarts by name, so a
+    /// section's output doesn't depend on which ran before it.
     pub fn open_copy(&mut self, source: &Path, name: &str) -> Result<PathBuf> {
         self.open_count += 1;
         let target = self.work.join(format!("{name}-{}.anki2", self.open_count));

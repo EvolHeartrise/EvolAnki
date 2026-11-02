@@ -521,7 +521,7 @@ fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<Stri
     for (idx, order) in orders.iter().enumerate() {
         for reschedule in [true, false] {
             let case_number = idx as i64 * 2 + i64::from(!reschedule);
-            let case_seed = splitmix(config.seed ^ case_number as u64);
+            let case_seed = config.seed ^ 1 ^ case_number as u64;
             clock::set_ms(start_ms + case_number * CASE_MS + 1000);
             let name = format!("golden {idx} {reschedule}");
             let path = harness.open_copy(source, &name)?;
