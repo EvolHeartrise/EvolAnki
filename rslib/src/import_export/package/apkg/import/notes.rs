@@ -213,7 +213,6 @@ impl<'n> NoteContext<'n> {
         if modified {
             notetype.set_modified();
             notetype.prepare_for_update(Some(&original), true)?;
-        } else {
         }
         self.target_col
             .add_or_update_notetype_with_existing_id_inner(notetype, Some(original), true)
