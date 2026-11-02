@@ -104,8 +104,11 @@ pub unsafe extern "C" fn getrandom(
     _flags: libc::c_uint,
 ) -> libc::ssize_t {
     let out = std::slice::from_raw_parts_mut(buf as *mut u8, len);
+    // Every call gets the same bytes until the next reset, so what a call gets
+    // doesn't depend on how many came before it, which varies between builds.
+    let mut state = RANDOM_STATE.load(Ordering::SeqCst);
     for chunk in out.chunks_mut(8) {
-        let state = RANDOM_STATE.fetch_add(0x9e37_79b9_7f4a_7c15, Ordering::SeqCst);
+        state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
         let bytes = crate::json::splitmix(state).to_le_bytes();
         chunk.copy_from_slice(&bytes[..chunk.len()]);
     }

@@ -25,6 +25,7 @@ use crate::json::float32;
 use crate::json::hex;
 use crate::json::json_to_message;
 use crate::json::message_to_json;
+use crate::json::splitmix;
 
 pub const RATINGS: [(&str, &str); 4] = [
     ("AGAIN", "again"),
@@ -39,6 +40,8 @@ pub struct Harness {
     pub skipped: BTreeSet<String>,
     work: PathBuf,
     open_count: u32,
+    seed: u64,
+    rpc_count: u64,
 }
 
 impl Harness {
@@ -51,6 +54,8 @@ impl Harness {
             skipped: BTreeSet::new(),
             work: work.to_path_buf(),
             open_count: 0,
+            seed: 0,
+            rpc_count: 0,
         })
     }
 
@@ -71,11 +76,33 @@ impl Harness {
         self.skipped.extend(skipped);
         let mut camel = name.to_string();
         camel[..1].make_ascii_lowercase();
-        let bytes = rpc::call(&self.backend, &camel, &request.encode_to_vec())
-            .map_err(|err| err.message)?;
+        let encoded = request.encode_to_vec();
+        self.rpc_count += 1;
+        reset_randomness(splitmix(self.seed.wrapping_add(self.rpc_count)));
+        // On a new thread each time, so that a thread's generator and hash keys
+        // come from the seed above, and not from what earlier calls drew.
+        let backend = &self.backend;
+        let bytes = std::thread::scope(|scope| {
+            std::thread::Builder::new()
+                .stack_size(16 << 20)
+                .spawn_scoped(scope, || rpc::call(backend, &camel, &encoded))
+                .expect("spawning a thread")
+                .join()
+                .expect("rpc panicked")
+        })
+        .map_err(|err| err.message)?;
         let response = DynamicMessage::decode(method.output(), bytes.as_slice())
             .map_err(|err| format!("{name} response: {err}"))?;
         Ok(message_to_json(&response))
+    }
+
+    /// Calls after this draw randomness from `label` and their position after
+    /// it. Keeps a part of a run independent of the parts before it.
+    pub fn reseed(&mut self, label: &str) {
+        self.seed = label.bytes().fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
+            (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+        });
+        self.rpc_count = 0;
     }
 
     /// For calls the harness can't go on without.
@@ -90,18 +117,23 @@ impl Harness {
             .unwrap_or_else(|err| json!({ "error": err }))
     }
 
-    /// Work on a new copy of `source`. Randomness restarts for each one, so a
-    /// section's output doesn't depend on which ran before it.
+    /// Work on a new copy of `source`. Randomness restarts by name, so a section's
+    /// output doesn't depend on which ran before it.
     pub fn open_copy(&mut self, source: &Path, name: &str) -> Result<PathBuf> {
         self.open_count += 1;
         let target = self.work.join(format!("{name}-{}.anki2", self.open_count));
         fs::copy(source, &target)?;
-        self.open(&target)?;
+        self.open_as(&target, name)?;
         Ok(target)
     }
 
     pub fn open(&mut self, path: &Path) -> Result<()> {
-        reset_randomness(u64::from(self.open_count) + 1);
+        let label = path.file_name().unwrap_or_default().to_string_lossy();
+        self.open_as(path, &label.into_owned())
+    }
+
+    fn open_as(&mut self, path: &Path, label: &str) -> Result<()> {
+        self.reseed(label);
         let media = path.with_extension("media");
         fs::create_dir_all(&media)?;
         self.must(

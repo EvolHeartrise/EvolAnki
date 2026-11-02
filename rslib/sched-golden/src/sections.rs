@@ -422,7 +422,7 @@ fn sample(cids: &[i64], count: usize, salt: u64) -> Vec<i64> {
 
 fn filtered_case(
     harness: &mut Harness,
-    rng: &mut Rng,
+    seed: u64,
     name: &str,
     reschedule: bool,
     order: &str,
@@ -437,6 +437,7 @@ fn filtered_case(
     request["config"]["preview_again_secs"] = 60.into();
     request["config"]["preview_hard_secs"] = 600.into();
     request["config"]["preview_good_secs"] = 0.into();
+    let mut rng = Rng::new(seed);
     let built = harness.record("AddOrUpdateFilteredDeck", request);
     let Some(did) = built["id"].as_i64() else {
         return Ok(json!({ "error": built["error"] }));
@@ -451,7 +452,7 @@ fn filtered_case(
     let mut coverage = BTreeMap::new();
     let mut answered = vec![];
     for _ in 0..25 {
-        match answer_next(harness, rng, &mut coverage)? {
+        match answer_next(harness, &mut rng, &mut coverage)? {
             Some(event) => answered.push(event),
             None => break,
         }
@@ -472,6 +473,7 @@ fn filtered_case(
 }
 
 fn change_case(harness: &mut Harness, method: &str, input: Value, cids: &[i64]) -> Value {
+    harness.reseed(&format!("{method} {input}"));
     let before = harness.cards(cids);
     let result = harness.record(method, input);
     let after = harness.cards(cids);
@@ -497,8 +499,6 @@ fn change_case(harness: &mut Harness, method: &str, input: Value, cids: &[i64]) 
 
 fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<String, Value>> {
     let mut output = Map::new();
-    let path = harness.open_copy(source, "filtered")?;
-    let mut rng = Rng::new(config.seed ^ 1);
     let orders = [
         "OLDEST_REVIEWED_FIRST",
         "RANDOM",
@@ -512,20 +512,29 @@ fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<Stri
         "RETRIEVABILITY_DESCENDING",
         "RELATIVE_OVERDUENESS",
     ];
+    // Each case gets its own copy, clock and generator, so that if a case's
+    // `RANDOM` picks ever moved, nothing else would follow them.
+    // A case gets a fixed span of time: 1s, then 10s for each of up to 25 answers.
+    const CASE_MS: i64 = 251_000;
+    let start_ms = clock::now_ms();
     let mut cases = Map::new();
     for (idx, order) in orders.iter().enumerate() {
         for reschedule in [true, false] {
+            let case_number = idx as i64 * 2 + i64::from(!reschedule);
+            let case_seed = splitmix(config.seed ^ case_number as u64);
+            clock::set_ms(start_ms + case_number * CASE_MS + 1000);
             let name = format!("golden {idx} {reschedule}");
-            clock::advance_ms(1000);
+            let path = harness.open_copy(source, &name)?;
             cases.insert(
                 format!("{order} reschedule={reschedule}"),
-                filtered_case(harness, &mut rng, &name, reschedule, order)?,
+                filtered_case(harness, case_seed, &name, reschedule, order)?,
             );
+            harness.close()?;
+            fs::remove_file(path)?;
         }
     }
     output.insert("filtered".into(), Value::Object(cases));
-    harness.close()?;
-    fs::remove_file(path)?;
+    clock::set_ms(start_ms + orders.len() as i64 * 2 * CASE_MS);
 
     let path = harness.open_copy(source, "changes")?;
     let review = harness.search("is:review -is:suspended")?;
