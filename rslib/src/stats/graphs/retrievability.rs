@@ -6,11 +6,10 @@ use fsrs::FSRS5_DEFAULT_DECAY;
 
 use crate::prelude::TimestampSecs;
 use crate::scheduler::timing::SchedTimingToday;
-use crate::stats::graphs::eases::percent_to_bin;
+use crate::stats::graphs::difficulty::percent_to_bin;
 use crate::stats::graphs::GraphsContext;
 
 impl GraphsContext {
-    /// (SM-2, FSRS)
     pub(super) fn retrievability(&self) -> Retrievability {
         let mut retrievability = Retrievability::default();
         let mut card_with_retrievability_count: usize = 0;

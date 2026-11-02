@@ -4,7 +4,7 @@
 mod added;
 mod buttons;
 mod card_counts;
-mod eases;
+mod difficulty;
 mod future_due;
 mod hours;
 mod intervals;
@@ -62,7 +62,6 @@ impl Collection {
             next_day_start: timing.next_day_at,
             local_offset_secs,
         };
-        let (eases, difficulty) = ctx.eases();
         let resp = anki_proto::stats::GraphsResponse {
             added: Some(ctx.added_days()),
             reviews: Some(ctx.review_counts_and_times()),
@@ -70,15 +69,13 @@ impl Collection {
             future_due: Some(ctx.future_due()),
             intervals: Some(ctx.intervals()),
             stability: Some(ctx.stability()),
-            eases: Some(eases),
-            difficulty: Some(difficulty),
+            difficulty: Some(ctx.difficulty()),
             today: Some(ctx.today()),
             hours: Some(ctx.hours()),
             buttons: Some(ctx.buttons()),
             card_counts: Some(ctx.card_counts()),
             rollover_hour: self.rollover_for_current_scheduler()? as u32,
             retrievability: Some(ctx.retrievability()),
-            fsrs: true,
         };
         Ok(resp)
     }

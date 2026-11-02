@@ -153,7 +153,8 @@ message GraphsResponse {
   CardCounts card_counts = 2;
   Hours hours = 3;
   Today today = 4;
-  Eases eases = 5;
+  reserved 5;
+  // Named for what it once held. Now the difficulty of each card.
   Eases difficulty = 11;
   Intervals intervals = 6;
   FutureDue future_due = 7;
@@ -161,7 +162,7 @@ message GraphsResponse {
   ReviewCountsAndTimes reviews = 9;
   uint32 rollover_hour = 10;
   Retrievability retrievability = 12;
-  bool fsrs = 13;
+  reserved 13;
   Intervals stability = 14;
   TrueRetentionStats true_retention = 15;
 }

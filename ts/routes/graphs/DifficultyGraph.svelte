@@ -39,7 +39,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     const subtitle = tr.statisticsCardDifficultySubtitle2();
 </script>
 
-{#if sourceData?.fsrs}
+{#if sourceData}
     <Graph {title} {subtitle}>
         <PercentageRange bind:range />
 

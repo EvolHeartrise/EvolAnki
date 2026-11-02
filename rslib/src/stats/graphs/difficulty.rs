@@ -3,14 +3,10 @@
 
 use anki_proto::stats::graphs_response::Eases;
 
-use crate::card::CardType;
 use crate::stats::graphs::GraphsContext;
 
 impl GraphsContext {
-    /// (SM-2, FSRS)
-    pub(super) fn eases(&self) -> (Eases, Eases) {
-        let mut eases = Eases::default();
-        let mut ease_values = Vec::new();
+    pub(super) fn difficulty(&self) -> Eases {
         let mut difficulty = Eases::default();
         let mut difficulty_values = Vec::new();
         for card in &self.cards {
@@ -20,19 +16,12 @@ impl GraphsContext {
                     .entry(percent_to_bin(state.difficulty() * 100.0, 1))
                     .or_insert_with(Default::default) += 1;
                 difficulty_values.push(state.difficulty());
-            } else if matches!(card.ctype, CardType::Review | CardType::Relearn) {
-                *eases
-                    .eases
-                    .entry((card.ease_factor / 10) as u32)
-                    .or_insert_with(Default::default) += 1;
-                ease_values.push(card.ease_factor as f32);
             }
         }
 
-        eases.average = median(&mut ease_values) / 10.0;
         difficulty.average = median(&mut difficulty_values) * 100.0;
 
-        (eases, difficulty)
+        difficulty
     }
 }
 

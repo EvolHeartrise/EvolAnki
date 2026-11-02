@@ -52,7 +52,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     const all = tr.statisticsRangeAllTime();
 </script>
 
-{#if sourceData?.fsrs}
+{#if sourceData}
     <Graph {title} {subtitle}>
         <InputBox>
             <label>
