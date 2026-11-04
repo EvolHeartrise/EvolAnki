@@ -9,9 +9,8 @@ package anki.i18n;
 
 import "anki/generic.proto";
 
-service I18nService {
-  rpc I18nResources(I18nResourcesRequest) returns (generic.Json);
-}
+// Implemented on the backend, so it doesn't need the collection lock.
+service I18nService {}
 
 // Implicitly includes any of the above methods that are not listed in the
 // backend service.

@@ -8,26 +8,17 @@ use fluent::FluentBundle;
 use fluent::FluentResource;
 use unic_langid::LanguageIdentifier;
 
-use super::gather::TranslationsByLang;
+use super::gather::TranslationsByModule;
 
-pub fn check(lang_map: &TranslationsByLang) {
-    for (lang, files_map) in lang_map {
-        for (fname, repos) in files_map {
-            for content in repos.values() {
-                check_content(lang, fname, content);
-            }
-        }
-    }
-}
-
-fn check_content(lang: &str, fname: &str, content: &str) {
+pub fn check(modules: &TranslationsByModule) {
     let lang_id: LanguageIdentifier = "en-US".parse().unwrap();
-    let resource = FluentResource::try_new(content.into()).unwrap_or_else(|e| {
-        panic!("{content}\nUnable to parse {lang}/{fname}: {e:?}");
-    });
-
-    let mut bundle: FluentBundle<FluentResource> = FluentBundle::new(vec![lang_id]);
-    bundle.add_resource(resource).unwrap_or_else(|e| {
-        panic!("{content}\nUnable to bundle - duplicate key? {lang}/{fname}: {e:?}");
-    });
+    for (module, content) in modules {
+        let resource = FluentResource::try_new(content.clone()).unwrap_or_else(|e| {
+            panic!("{content}\nUnable to parse {module}: {e:?}");
+        });
+        let mut bundle: FluentBundle<FluentResource> = FluentBundle::new(vec![lang_id.clone()]);
+        bundle.add_resource(resource).unwrap_or_else(|e| {
+            panic!("{content}\nUnable to bundle - duplicate key? {module}: {e:?}");
+        });
+    }
 }

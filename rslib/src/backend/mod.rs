@@ -40,13 +40,13 @@ pub struct BackendInner {
 }
 
 pub fn init_backend(init_msg: &[u8]) -> result::Result<Backend, String> {
-    let input: anki_proto::backend::BackendInit =
+    let _input: anki_proto::backend::BackendInit =
         match anki_proto::backend::BackendInit::decode(init_msg) {
             Ok(req) => req,
             Err(_) => return Err("couldn't decode init request".into()),
         };
 
-    let tr = I18n::new(&input.preferred_langs);
+    let tr = I18n::new();
 
     Ok(Backend::new(tr))
 }

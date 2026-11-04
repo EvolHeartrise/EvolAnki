@@ -12,34 +12,29 @@ use fluent_syntax::ast::InlineExpression;
 use fluent_syntax::ast::Pattern;
 use fluent_syntax::ast::PatternElement;
 use fluent_syntax::parser::parse;
-use serde::Serialize;
 
-use crate::gather::TranslationsByLang;
-use crate::gather::TranslationsByRepo;
+use crate::gather::TranslationsByModule;
 
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Module {
     pub name: String,
     pub translations: Vec<Translation>,
-    pub index: usize,
 }
 
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Translation {
     pub key: String,
-    pub repo: String,
     pub text: String,
     pub variables: Vec<Variable>,
-    pub index: usize,
 }
 
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Variable {
     pub name: String,
     pub kind: VariableKind,
 }
 
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub enum VariableKind {
     Int,
     Float,
@@ -47,65 +42,41 @@ pub enum VariableKind {
     Any,
 }
 
-impl Translation {
-    pub fn is_core(&self) -> bool {
-        !["qt", "mobile"].contains(&self.repo.as_str())
-    }
+pub fn get_modules(data: &TranslationsByModule) -> Vec<Module> {
+    data.iter()
+        .map(|(name, ftl_text)| Module {
+            name: name.clone(),
+            translations: extract_metadata(ftl_text),
+        })
+        .collect()
 }
 
-pub fn get_modules(data: &TranslationsByLang) -> Vec<Module> {
+fn extract_metadata(ftl_text: &str) -> Vec<Translation> {
     let mut output = vec![];
+    let res = parse(ftl_text.to_string()).unwrap();
+    for entry in res.body {
+        if let Entry::Message(m) = entry {
+            if let Some(pattern) = m.value {
+                let mut visitor = Visitor::default();
+                visitor.visit_pattern(&pattern);
+                let key = m.id.name.to_string();
 
-    for (module, translations_by_repo) in &data["templates"] {
-        output.push(Module {
-            name: module.to_string(),
-            translations: extract_metadata(translations_by_repo),
-            index: 0,
-        });
-    }
-
-    output.sort_unstable();
-
-    for (module_idx, module) in output.iter_mut().enumerate() {
-        module.index = module_idx;
-        for (entry_idx, entry) in module.translations.iter_mut().enumerate() {
-            entry.index = entry_idx;
-        }
-    }
-
-    output
-}
-
-fn extract_metadata(translations_by_repo: &TranslationsByRepo) -> Vec<Translation> {
-    let mut output = vec![];
-    for (repo, ftl_text) in translations_by_repo.iter() {
-        let res = parse(ftl_text.clone()).unwrap();
-        for entry in res.body {
-            if let Entry::Message(m) = entry {
-                if let Some(pattern) = m.value {
-                    let mut visitor = Visitor::default();
-                    visitor.visit_pattern(&pattern);
-                    let key = m.id.name.to_string();
-
-                    // special case translations that were ported from gettext, and use embedded
-                    // terms that reference other variables that aren't visible to our visitor
-                    if key == "statistics-studied-today" {
-                        visitor.variables.push("amount".to_string());
-                        visitor.variables.push("cards".to_string());
-                    } else if key == "statistics-average-answer-time" {
-                        visitor.variables.push("cards-per-minute".to_string());
-                    }
-
-                    let (text, variables) = visitor.into_output();
-
-                    output.push(Translation {
-                        key,
-                        repo: repo.clone(),
-                        text,
-                        variables,
-                        index: 0,
-                    })
+                // special case translations that were ported from gettext, and use embedded
+                // terms that reference other variables that aren't visible to our visitor
+                if key == "statistics-studied-today" {
+                    visitor.variables.push("amount".to_string());
+                    visitor.variables.push("cards".to_string());
+                } else if key == "statistics-average-answer-time" {
+                    visitor.variables.push("cards-per-minute".to_string());
                 }
+
+                let (text, variables) = visitor.into_output();
+
+                output.push(Translation {
+                    key,
+                    text,
+                    variables,
+                })
             }
         }
     }
