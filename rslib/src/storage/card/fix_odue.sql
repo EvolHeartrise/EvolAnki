@@ -6,7 +6,6 @@ SET odue = (
         type = 1
         OR queue = 2
       )
-      AND NOT ?2
       AND NOT odid THEN 0
       ELSE min(max(round(odue), -2147483648), 2147483647)
     END
@@ -19,7 +18,6 @@ WHERE odue != (
         type = 1
         OR queue = 2
       )
-      AND NOT ?2
       AND NOT odid THEN 0
       ELSE min(max(round(odue), -2147483648), 2147483647)
     END

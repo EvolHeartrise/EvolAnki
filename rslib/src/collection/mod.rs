@@ -56,7 +56,7 @@ impl CollectionBuilder {
         let media_folder = self.media_folder.clone().unwrap_or_default();
         let media_db = self.media_db.clone().unwrap_or_default();
         let storage = SqliteStorage::open_or_create(&col_path, &tr, self.check_integrity)?;
-        let col = Collection {
+        let mut col = Collection {
             storage,
             col_path,
             media_folder,
@@ -67,6 +67,7 @@ impl CollectionBuilder {
                 ..Default::default()
             },
         };
+        col.upgrade_v1_scheduler()?;
 
         Ok(col)
     }
