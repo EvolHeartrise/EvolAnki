@@ -16,6 +16,5 @@ camino.workspace = true
 inflections.workspace = true
 itertools.workspace = true
 prost-reflect.workspace = true
-prost-types.workspace = true
 regex.workspace = true
 walkdir.workspace = true

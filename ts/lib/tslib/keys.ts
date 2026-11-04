@@ -29,10 +29,6 @@ export function checkIfModifierKey(event: KeyboardEvent): boolean {
     return isInputKey;
 }
 
-export function keyboardEventIsPrintableKey(event: KeyboardEvent): boolean {
-    return event.key.length === 1;
-}
-
 export const checkModifiers = (required: Modifier[], optional: Modifier[] = []) => (event: KeyboardEvent): boolean => {
     return allModifiers.reduce(
         (
@@ -56,8 +52,6 @@ const modifierPressed = (modifier: Modifier) => (event: MouseEvent | KeyboardEve
         : state;
 };
 
-export const controlPressed = modifierPressed("Control");
-export const shiftPressed = modifierPressed("Shift");
 export const altPressed = modifierPressed("Alt");
 export const metaPressed = modifierPressed("Meta");
 
@@ -89,22 +83,6 @@ export function keyToPlatformString(key: string): string {
     }
 }
 
-export function isArrowLeft(event: KeyboardEvent): boolean {
-    if (event.key === "ArrowLeft") {
-        return true;
-    }
-
-    return isApplePlatform() && metaPressed(event) && event.code === "KeyB";
-}
-
-export function isArrowRight(event: KeyboardEvent): boolean {
-    if (event.key === "ArrowRight") {
-        return true;
-    }
-
-    return isApplePlatform() && metaPressed(event) && event.code === "KeyF";
-}
-
 export function isArrowUp(event: KeyboardEvent): boolean {
     if (event.key === "ArrowUp") {
         return true;
@@ -119,15 +97,4 @@ export function isArrowDown(event: KeyboardEvent): boolean {
     }
 
     return isApplePlatform() && metaPressed(event) && event.code === "KeyN";
-}
-
-export function onEnterOrSpace(callback: () => void): (event: KeyboardEvent) => void {
-    return (event: KeyboardEvent) => {
-        switch (event.code) {
-            case "Enter":
-            case "Space":
-                callback();
-                break;
-        }
-    };
 }

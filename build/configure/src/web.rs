@@ -25,7 +25,6 @@ pub fn build_and_check_web(build: &mut Build) -> Result<()> {
     build_sass(build)?;
     build_and_check_tslib(build)?;
     build_sveltekit(build)?;
-    declare_and_check_other_libraries(build)?;
     build_and_check_reviewer(build)?;
     build_and_check_mathjax(build)?;
     build_web_root(build)?;
@@ -100,21 +99,6 @@ fn build_and_check_tslib(build: &mut Build) -> Result<()> {
 
     build.add_dependency("ts:lib", inputs![":ts:generated"]);
     build.add_dependency("ts:lib", src_files);
-
-    Ok(())
-}
-
-fn declare_and_check_other_libraries(build: &mut Build) -> Result<()> {
-    for (library, inputs) in [
-        ("sveltelib", inputs![":ts:lib", glob!("ts/sveltelib/**")]),
-        (
-            "components",
-            inputs![":ts:lib", ":ts:sveltelib", glob!("ts/components/**")],
-        ),
-    ] {
-        let library_with_ts = format!("ts:{library}");
-        build.add_dependency(&library_with_ts, inputs.clone());
-    }
 
     Ok(())
 }
@@ -351,16 +335,6 @@ fn build_web_root(build: &mut Build) -> Result<()> {
 
 fn build_sass(build: &mut Build) -> Result<()> {
     build.add_dependency("sass", inputs![glob!("ts/lib/sass/**")]);
-
-    build.add_action(
-        "css:_root-vars",
-        CompileSass {
-            input: inputs!["ts/lib/sass/_root-vars.scss"],
-            output: "ts/lib/sass/_root-vars.css",
-            deps: inputs![glob!["ts/lib/sass/*"]],
-            load_paths: vec![],
-        },
-    )?;
 
     Ok(())
 }

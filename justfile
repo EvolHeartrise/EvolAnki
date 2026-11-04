@@ -10,8 +10,9 @@ build:
 run *args:
     ./tools/run-web {{ args }}
 
-# Build and run all checks (lint + test) - lets ninja handle dependencies
+# Format the code, then build and run all checks (lint + test)
 check:
+    {{ ninja }} format
     {{ ninja }} check
 
 # Run all tests (Rust, TypeScript)
@@ -57,14 +58,6 @@ fix-lint:
 # Regenerate cargo/licenses.json and ts/licenses.json
 update-licenses:
     tools/update-licenses
-
-# Sync translation files
-ftl-sync:
-    {{ ninja }} ftl-sync
-
-# Deprecate translation strings
-ftl-deprecate:
-    {{ ninja }} ftl-deprecate
 
 # Build Rust API docs
 docs-rust:

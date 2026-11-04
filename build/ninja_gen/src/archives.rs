@@ -159,7 +159,3 @@ where
     )?;
     Ok(())
 }
-
-pub fn empty_manifest() -> HashMap<&'static str, &'static [&'static str]> {
-    Default::default()
-}

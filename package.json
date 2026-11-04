@@ -32,7 +32,6 @@
         "@typescript-eslint/eslint-plugin": "^5.60.1",
         "@typescript-eslint/parser": "^5.60.1",
         "caniuse-lite": "^1.0.30001809",
-        "cross-env": "^7.0.2",
         "diff": "^5.0.0",
         "dprint": "^0.56.0",
         "esbuild": "^0.28.2",

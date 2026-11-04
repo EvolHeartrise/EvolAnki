@@ -34,20 +34,6 @@ export function createLocaleNumberFormat(options?: Intl.NumberFormatOptions): In
     return new Intl.NumberFormat(langs, options);
 }
 
-export function localeCompare(
-    first: string,
-    second: string,
-    options?: Intl.CollatorOptions,
-): number {
-    return first.localeCompare(second, langs, options);
-}
-
-/** Treat text like HTML, merging multiple spaces and converting
- newlines to spaces. */
-export function withCollapsedWhitespace(s: string): string {
-    return s.replace(/\s+/g, " ");
-}
-
 export function withoutUnicodeIsolation(s: string): string {
     return s.replace(/[\u2068-\u2069]+/g, "");
 }

@@ -7,4 +7,3 @@ pub mod params;
 pub mod rescheduler;
 pub mod retention;
 pub mod simulator;
-pub mod try_collect;

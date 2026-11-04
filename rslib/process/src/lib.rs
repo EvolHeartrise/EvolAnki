@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::ffi::OsStr;
 use std::iter::once;
 use std::process::Command;
 use std::string::FromUtf8Error;
@@ -60,31 +59,8 @@ pub struct Utf8Output {
 }
 
 pub trait CommandExt {
-    /// A shortcut for when the command and its args are known up-front and have
-    /// no spaces in them.
-    fn run(cmd_and_args: impl AsRef<str>) -> Result<()> {
-        let mut all_args = cmd_and_args.as_ref().split(' ');
-        Command::new(all_args.next().unwrap())
-            .args(all_args)
-            .ensure_success()?;
-        Ok(())
-    }
-    fn run_with_output<I, S>(cmd_and_args: I) -> Result<Utf8Output>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        let mut all_args = cmd_and_args.into_iter();
-        Command::new(all_args.next().unwrap())
-            .args(all_args)
-            .utf8_output()
-    }
-
     fn ensure_success(&mut self) -> Result<&mut Self>;
     fn utf8_output(&mut self) -> Result<Utf8Output>;
-    fn ensure_spawn(&mut self) -> Result<std::process::Child>;
-    #[cfg(unix)]
-    fn ensure_exec(&mut self) -> Result<()>;
 }
 
 impl CommandExt for Command {
@@ -127,23 +103,6 @@ impl CommandExt for Command {
 
         Ok(Utf8Output { stdout, stderr })
     }
-
-    fn ensure_spawn(&mut self) -> Result<std::process::Child> {
-        self.spawn().with_context(|_| DidNotExecuteSnafu {
-            cmdline: get_cmdline(self),
-        })
-    }
-
-    #[cfg(unix)]
-    fn ensure_exec(&mut self) -> Result<()> {
-        use std::os::unix::process::CommandExt as UnixCommandExt;
-        let cmdline = get_cmdline(self);
-        let error = self.exec();
-        Err(Error::DidNotExecute {
-            cmdline,
-            source: error,
-        })
-    }
 }
 
 fn get_cmdline(arg: &mut Command) -> String {
@@ -159,7 +118,11 @@ mod test {
     #[test]
     fn test_run() {
         assert_eq!(
-            Command::run("fakefake 1 2").unwrap_err().to_string(),
+            Command::new("fakefake")
+                .args(["1", "2"])
+                .ensure_success()
+                .unwrap_err()
+                .to_string(),
             "Failed to execute: fakefake 1 2"
         );
         #[cfg(not(windows))]

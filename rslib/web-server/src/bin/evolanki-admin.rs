@@ -82,7 +82,7 @@ enum Action {
 }
 
 fn main() -> ExitCode {
-    let _ = anki::log::set_global_logger(None);
+    let _ = anki::log::set_global_logger();
     let printed = match Cli::parse().action {
         Action::Commands => Ok(list_commands()),
         Action::Run {

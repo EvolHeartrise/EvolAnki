@@ -328,11 +328,6 @@ pub fn strip_html_preserving_media_filenames(html: &str) -> Cow<'_, str> {
         .map_cow(strip_html)
 }
 
-#[allow(dead_code)]
-pub(crate) fn sanitize_html(html: &str) -> String {
-    ammonia::clean(html)
-}
-
 pub(crate) fn sanitize_html_no_images(html: &str) -> String {
     ammonia::Builder::default()
         .rm_tags(&["img"])

@@ -62,29 +62,6 @@ export function setDataAvailable(
         .attr("opacity", available ? 0 : 1);
 }
 
-export function millisecondCutoffForRange(
-    range: GraphRange,
-    nextDayAtSecs: number,
-): number {
-    let days: number;
-    switch (range) {
-        case GraphRange.Month:
-            days = 31;
-            break;
-        case GraphRange.ThreeMonths:
-            days = 90;
-            break;
-        case GraphRange.Year:
-            days = 365;
-            break;
-        case GraphRange.AllTime:
-        default:
-            return 0;
-    }
-
-    return (nextDayAtSecs - 86400 * days) * 1000;
-}
-
 export interface TableDatum {
     label: string;
     value: string;

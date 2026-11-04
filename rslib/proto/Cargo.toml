@@ -16,10 +16,8 @@ inflections.workspace = true
 itertools.workspace = true
 prost-build.workspace = true
 prost-reflect.workspace = true
-prost-types.workspace = true
 
 [dependencies]
 prost.workspace = true
 serde.workspace = true
-snafu.workspace = true
 strum.workspace = true

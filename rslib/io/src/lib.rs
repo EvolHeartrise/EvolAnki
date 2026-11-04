@@ -6,15 +6,11 @@ mod error;
 use std::fs::File;
 use std::fs::FileTimes;
 use std::fs::OpenOptions;
-use std::io::Read;
-use std::io::Seek;
 use std::io::Write;
 use std::path::Component;
 use std::path::Path;
-use std::path::PathBuf;
 
 use camino::Utf8Path;
-use camino::Utf8PathBuf;
 use snafu::ResultExt;
 use tempfile::NamedTempFile;
 
@@ -94,24 +90,6 @@ pub fn set_file_times(path: impl AsRef<Path>, times: FileTimes) -> Result<()> {
     })
 }
 
-/// See [std::fs::remove_file].
-#[allow(dead_code)]
-pub fn remove_file(path: impl AsRef<Path>) -> Result<()> {
-    std::fs::remove_file(&path).context(FileIoSnafu {
-        path: path.as_ref(),
-        op: FileOp::Remove,
-    })
-}
-
-/// See [std::fs::remove_dir_all].
-#[allow(dead_code)]
-pub fn remove_dir_all(path: impl AsRef<Path>) -> Result<()> {
-    std::fs::remove_dir_all(&path).context(FileIoSnafu {
-        path: path.as_ref(),
-        op: FileOp::Remove,
-    })
-}
-
 /// See [std::fs::create_dir].
 pub fn create_dir(path: impl AsRef<Path>) -> Result<()> {
     std::fs::create_dir(&path).context(FileIoSnafu {
@@ -141,86 +119,6 @@ pub fn read_to_string(path: impl AsRef<Path>) -> Result<String> {
     std::fs::read_to_string(&path).context(FileIoSnafu {
         path: path.as_ref(),
         op: FileOp::Read,
-    })
-}
-
-/// See [std::fs::copy].
-pub fn copy_file(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<u64> {
-    std::fs::copy(&src, &dst).context(FileIoSnafu {
-        path: dst.as_ref(),
-        op: FileOp::CopyFrom(src.as_ref().to_owned()),
-    })
-}
-
-/// Copy a file from src to dst if dst doesn't exist or if src is newer than
-/// dst. Preserves the modification time from the source file.
-pub fn copy_if_newer(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<bool> {
-    let src = src.as_ref();
-    let dst = dst.as_ref();
-
-    let should_copy = if !dst.exists() {
-        true
-    } else {
-        let src_time = modified_time(src)?;
-        let dst_time = modified_time(dst)?;
-        src_time > dst_time
-    };
-
-    if should_copy {
-        copy_file(src, dst)?;
-
-        // Preserve the modification time from the source file
-        let src_mtime = modified_time(src)?;
-        let times = FileTimes::new().set_modified(src_mtime);
-        set_file_times(dst, times)?;
-
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
-
-/// Like [read_file], but skips the section that is potentially locked by
-/// SQLite.
-pub fn read_locked_db_file(path: impl AsRef<Path>) -> Result<Vec<u8>> {
-    read_locked_db_file_inner(&path).context(FileIoSnafu {
-        path: path.as_ref(),
-        op: FileOp::Read,
-    })
-}
-
-const LOCKED_SECTION_START_BYTE: usize = 1024 * 1024 * 1024;
-const LOCKED_SECTION_LEN_BYTES: usize = 512;
-const LOCKED_SECTION_END_BYTE: usize = LOCKED_SECTION_START_BYTE + LOCKED_SECTION_LEN_BYTES;
-
-fn read_locked_db_file_inner(path: impl AsRef<Path>) -> std::io::Result<Vec<u8>> {
-    let size = std::fs::metadata(&path)?.len() as usize;
-    if size < LOCKED_SECTION_END_BYTE {
-        return std::fs::read(path);
-    }
-
-    let mut file = File::open(&path)?;
-    let mut buf = vec![0; size];
-    file.read_exact(&mut buf[..LOCKED_SECTION_START_BYTE])?;
-    file.seek(std::io::SeekFrom::Current(LOCKED_SECTION_LEN_BYTES as i64))?;
-    file.read_exact(&mut buf[LOCKED_SECTION_END_BYTE..])?;
-
-    Ok(buf)
-}
-
-/// See [std::fs::metadata].
-pub fn metadata(path: impl AsRef<Path>) -> Result<std::fs::Metadata> {
-    std::fs::metadata(&path).context(FileIoSnafu {
-        path: path.as_ref(),
-        op: FileOp::Metadata,
-    })
-}
-
-/// Get the modification time of a file.
-pub fn modified_time(path: impl AsRef<Path>) -> Result<std::time::SystemTime> {
-    metadata(&path)?.modified().context(FileIoSnafu {
-        path: path.as_ref(),
-        op: FileOp::Metadata,
     })
 }
 
@@ -293,20 +191,6 @@ pub fn read_dir_files(path: impl AsRef<Path>) -> Result<ReadDirFiles> {
             path: path.as_ref(),
             op: FileOp::Read,
         })
-}
-
-/// A shortcut for gathering the utf8 paths in a folder into a vec. Will
-/// abort if any dir entry is unreadable. Does not gather files from subfolders.
-pub fn paths_in_dir(path: impl AsRef<Path>) -> Result<Vec<Utf8PathBuf>> {
-    read_dir_files(path.as_ref())?
-        .map(|entry| {
-            let entry = entry.context(FileIoSnafu {
-                path: path.as_ref(),
-                op: FileOp::Read,
-            })?;
-            entry.path().utf8()
-        })
-        .collect()
 }
 
 /// True if name does not contain any path separators.
@@ -382,20 +266,6 @@ pub fn is_case_sensitive(dir: &Path) -> bool {
     cfg!(unix) && !cfg!(target_os = "macos")
 }
 
-pub trait ToUtf8PathBuf {
-    fn utf8(self) -> Result<Utf8PathBuf>;
-}
-
-impl ToUtf8PathBuf for PathBuf {
-    fn utf8(self) -> Result<Utf8PathBuf> {
-        Utf8PathBuf::from_path_buf(self).map_err(|path| FileIoError {
-            path,
-            op: FileOp::DecodeUtf8Filename,
-            source: std::io::Error::from(std::io::ErrorKind::InvalidData),
-        })
-    }
-}
-
 pub trait ToUtf8Path {
     fn utf8(&self) -> Result<&Utf8Path>;
 }
@@ -413,6 +283,7 @@ impl ToUtf8Path for Path {
 #[cfg(test)]
 mod test {
     use std::env;
+    use std::path::PathBuf;
 
     use tempfile::tempdir;
     use tempfile::TempDir;

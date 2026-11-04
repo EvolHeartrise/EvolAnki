@@ -40,4 +40,3 @@ pub mod timestamp;
 mod typeanswer;
 pub mod types;
 pub mod undo;
-pub mod version;
