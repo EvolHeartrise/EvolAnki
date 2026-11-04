@@ -34,11 +34,15 @@ pub struct Build {
 
 impl Build {
     pub fn new() -> Result<Self> {
-        let buildroot = if cfg!(windows) {
-            Utf8PathBuf::from("out")
+        let out = Utf8PathBuf::from("out");
+        // On Unix systems we allow out to be a symlink to an external location,
+        // which commands need the real path of. Otherwise stay relative, as
+        // commands run from the repo root, and an absolute path would break
+        // them if the repo's path contains a space.
+        let buildroot = if !cfg!(windows) && out.is_symlink() {
+            out.canonicalize_utf8()?
         } else {
-            // on Unix systems we allow out to be a symlink to an external location
-            Utf8PathBuf::from("out").canonicalize_utf8()?
+            out
         };
 
         let mut build = Build {

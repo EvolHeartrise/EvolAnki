@@ -3,11 +3,11 @@
 set -e
 
 if [ "$BUILD_ROOT" == "" ]; then
-    out=$(pwd)/out
+    out="$(pwd)/out"
 else
     out="$BUILD_ROOT"
 fi
-export CARGO_TARGET_DIR=$out/rust
+export CARGO_TARGET_DIR="$out/rust"
 export RECONFIGURE_KEY="${MAC_X86};${LIN_ARM64};${SOURCEMAP};${HMR};${CI}"
 
 if [ "$CI" = "true" ] && [ -z "$RELEASE" ]; then
@@ -19,6 +19,6 @@ fi
 if [ "$SKIP_RUNNER_BUILD" = "1" ]; then
     echo "Runner not rebuilt."
 else
-    cargo build -p runner --profile $runner_profile
+    cargo build -p runner --profile "$runner_profile"
 fi
-exec $out/rust/$runner_profile/runner build -- $*
+exec "$out/rust/$runner_profile/runner" build -- "$@"
