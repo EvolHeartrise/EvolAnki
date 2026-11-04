@@ -14,8 +14,6 @@ use sha1::Sha1;
 
 use crate::cloze::contains_cloze;
 use crate::define_newtype;
-use crate::error;
-use crate::error::AnkiError;
 use crate::error::OrInvalid;
 use crate::notetype::CardGenContext;
 use crate::notetype::NoteField;
@@ -59,36 +57,9 @@ impl Note {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AddNoteRequest {
-    pub note: Note,
-    pub deck_id: DeckId,
-}
-
-impl TryFrom<anki_proto::notes::AddNoteRequest> for AddNoteRequest {
-    type Error = AnkiError;
-
-    fn try_from(request: anki_proto::notes::AddNoteRequest) -> error::Result<Self, Self::Error> {
-        Ok(Self {
-            note: request.note.or_invalid("no note provided")?.into(),
-            deck_id: DeckId(request.deck_id),
-        })
-    }
-}
-
 impl Collection {
     pub fn add_note(&mut self, note: &mut Note, did: DeckId) -> Result<OpOutput<usize>> {
         self.transact(Op::AddNote, |col| col.add_note_inner(note, did))
-    }
-
-    pub fn add_notes(&mut self, requests: &mut [AddNoteRequest]) -> Result<OpOutput<()>> {
-        self.transact(Op::AddNote, |col| {
-            for request in requests {
-                col.add_note_inner(&mut request.note, request.deck_id)?;
-            }
-
-            Ok(())
-        })
     }
 
     /// Remove provided notes, and any cards that use them.

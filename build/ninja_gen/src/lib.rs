@@ -13,7 +13,6 @@ pub mod node;
 pub mod protobuf;
 pub mod render;
 pub mod rsync;
-pub mod sass;
 
 pub use build::Build;
 pub use camino::Utf8Path;

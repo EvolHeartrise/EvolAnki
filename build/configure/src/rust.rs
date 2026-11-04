@@ -28,16 +28,6 @@ fn prepare_translations(build: &mut Build) -> Result<()> {
         },
     )?;
 
-    build.add_action(
-        "ftl:bin",
-        CargoBuild {
-            inputs: inputs![glob!["ftl/**"],],
-            outputs: &[RustOutput::Binary("ftl")],
-            extra_args: "-p ftl",
-            release_override: None,
-        },
-    )?;
-
     Ok(())
 }
 

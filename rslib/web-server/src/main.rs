@@ -98,7 +98,7 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    anki::log::set_global_logger(None)?;
+    anki::log::set_global_logger()?;
     run(Args::parse()).await
 }
 

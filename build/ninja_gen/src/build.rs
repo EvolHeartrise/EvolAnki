@@ -167,22 +167,6 @@ rule {action_name}
         }
     }
 
-    /// Outputs from a given build statement group. An error if no files have
-    /// been registered yet.
-    pub fn group_outputs(&self, group_name: &'static str) -> &[String] {
-        self.groups
-            .get(group_name)
-            .unwrap_or_else(|| panic!("expected files in {group_name}"))
-    }
-
-    /// Single output from a given build statement group. An error if no files
-    /// have been registered yet, or more than one file has been registered.
-    pub fn group_output(&self, group_name: &'static str) -> String {
-        let outputs = self.group_outputs(group_name);
-        assert_eq!(outputs.len(), 1);
-        outputs.first().unwrap().into()
-    }
-
     pub fn expand_inputs(&self, inputs: impl AsRef<BuildInput>) -> Vec<String> {
         expand_inputs(inputs, &self.groups)
     }

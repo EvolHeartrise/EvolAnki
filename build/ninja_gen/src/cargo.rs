@@ -16,7 +16,6 @@ use crate::Build;
 #[derive(Debug, PartialEq, Eq)]
 pub enum RustOutput<'a> {
     Binary(&'a str),
-    StaticLib(&'a str),
     /// (group_name, fully qualified path)
     Data(&'a str, &'a str),
 }
@@ -25,7 +24,6 @@ impl RustOutput<'_> {
     pub fn name(&self) -> &str {
         match self {
             RustOutput::Binary(pkg) => pkg,
-            RustOutput::StaticLib(pkg) => pkg,
             RustOutput::Data(name, _) => name,
         }
     }
@@ -39,7 +37,6 @@ impl RustOutput<'_> {
                     package.into()
                 }
             }
-            RustOutput::StaticLib(package) => format!("lib{package}.a"),
             RustOutput::Data(_, path) => return path.to_string(),
         };
         let mut path: Utf8PathBuf = rust_base.into();
