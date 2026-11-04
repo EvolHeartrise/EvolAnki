@@ -120,11 +120,9 @@ dependencies = [
  "inflections",
  "intl-memoizer",
  "itertools 0.14.0",
- "num-format",
  "phf 0.11.3",
  "regex",
  "serde",
- "serde_json",
  "unic-langid",
 ]
 
@@ -1843,16 +1841,6 @@ name = "num-conv"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf97ec579c3c42f953ef76dbf8d55ac91fb219dde70e49aa4a6b7d74e9919050"
-
-[[package]]
-name = "num-format"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
-dependencies = [
- "arrayvec",
- "itoa",
-]
 
 [[package]]
 name = "num-integer"

@@ -92,10 +92,7 @@ impl RpcError {
 }
 
 pub fn new_backend() -> anyhow::Result<Backend> {
-    let init = BackendInit {
-        preferred_langs: vec!["en".to_string()],
-        locale_folder_path: String::new(),
-    };
+    let init = BackendInit {};
     anki::backend::init_backend(&init.encode_to_vec()).map_err(|e| anyhow!(e))
 }
 

@@ -14,7 +14,6 @@ pub mod dbcheck;
 pub mod deckconfig;
 pub mod decks;
 pub mod error;
-pub mod i18n;
 pub mod import_export;
 pub mod latex;
 pub mod log;

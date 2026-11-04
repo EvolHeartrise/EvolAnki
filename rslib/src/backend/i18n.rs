@@ -5,13 +5,14 @@ use anki_proto::generic;
 use anki_proto::i18n::I18nResourcesRequest;
 
 use super::Backend;
-use crate::i18n::service;
 use crate::prelude::*;
 
-// We avoid delegating to collection for these, as tr doesn't require a
+// Implemented here rather than on the collection, as tr doesn't require a
 // collection lock.
 impl crate::services::BackendI18nService for Backend {
     fn i18n_resources(&self, input: I18nResourcesRequest) -> Result<generic::Json> {
-        service::i18n_resources(&self.tr, input)
+        serde_json::to_vec(&self.tr.resources_for_js(&input.modules))
+            .map(Into::into)
+            .map_err(Into::into)
     }
 }
