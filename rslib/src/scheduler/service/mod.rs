@@ -322,7 +322,6 @@ mod tests {
 
     use crate::card::CardQueue;
     use crate::card::CardType;
-    use crate::config::SchedulerVersion;
     use crate::prelude::*;
     use crate::services::SchedulerService;
     use crate::tests::NoteAdder;
@@ -420,15 +419,6 @@ mod tests {
                 .unwrap();
         assert_eq!(counts.new, 3, "5 studied minus a limit extension of 2");
         assert_eq!(counts.review, 4, "5 studied minus a limit extension of 1");
-    }
-
-    #[test]
-    fn upgrade_switches_collection_to_v2() {
-        let mut col = Collection::new();
-
-        col.upgrade_to_v2_scheduler().unwrap();
-
-        assert_eq!(col.scheduler_version(), SchedulerVersion::V2);
     }
 
     #[test]

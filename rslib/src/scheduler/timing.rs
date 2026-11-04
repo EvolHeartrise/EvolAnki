@@ -112,16 +112,6 @@ fn v1_creation_date_inner(now: TimestampSecs, mins_west: i32) -> i64 {
     }
 }
 
-fn sched_timing_today_v1(crt: TimestampSecs, now: TimestampSecs) -> SchedTimingToday {
-    let days_elapsed = (now.0 - crt.0) / 86_400;
-    let next_day_at = TimestampSecs(crt.0 + (days_elapsed + 1) * 86_400);
-    SchedTimingToday {
-        now,
-        days_elapsed: days_elapsed as u32,
-        next_day_at,
-    }
-}
-
 fn sched_timing_today_v2_legacy(
     crt: TimestampSecs,
     rollover: u8,
@@ -154,19 +144,15 @@ pub(crate) fn sched_timing_today(
     current_secs: TimestampSecs,
     creation_utc_offset: Option<FixedOffset>,
     current_utc_offset: FixedOffset,
-    rollover_hour: Option<u8>,
+    rollover: u8,
 ) -> Result<SchedTimingToday> {
-    match (rollover_hour, creation_utc_offset) {
-        (None, _) => {
-            // if rollover unset, v1 scheduler
-            Ok(sched_timing_today_v1(creation_secs, current_secs))
-        }
-        (Some(rollover), None) => {
-            // if creationOffset unset, v2 scheduler with legacy cutoff handling
+    match creation_utc_offset {
+        None => {
+            // if creationOffset unset, legacy cutoff handling
             sched_timing_today_v2_legacy(creation_secs, rollover, current_secs, current_utc_offset)
         }
-        (Some(rollover), Some(creation_utc_offset)) => {
-            // v2 scheduler, new cutoff handling
+        Some(creation_utc_offset) => {
+            // new cutoff handling
             sched_timing_today_v2_new(
                 creation_secs,
                 creation_utc_offset,
@@ -415,15 +401,6 @@ mod test {
     #[test]
     fn legacy_timing() {
         let now = TimestampSecs(1584491078);
-
-        assert_eq!(
-            sched_timing_today_v1(TimestampSecs(1575226800), now),
-            SchedTimingToday {
-                now,
-                days_elapsed: 107,
-                next_day_at: TimestampSecs(1584558000)
-            }
-        );
 
         assert_eq!(
             sched_timing_today_v2_legacy(TimestampSecs(1533564000), 0, now, aest_offset()),

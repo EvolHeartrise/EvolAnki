@@ -15,7 +15,6 @@ use anki_io::open_file;
 use anki_io::FileIoSnafu;
 use anki_io::FileOp;
 pub(crate) use notes::NoteMeta;
-use rusqlite::OptionalExtension;
 use tempfile::NamedTempFile;
 use zip::ZipArchive;
 
@@ -136,7 +135,6 @@ impl ExchangeData {
         // so that what's gathered has a set of settings per deck, whatever
         // version made it
         col.ensure_decks_own_settings()?;
-        col.maybe_upgrade_scheduler()?;
 
         progress.set(ImportProgress::Gathering)?;
         let mut data = ExchangeData::default();
@@ -157,23 +155,4 @@ fn collection_to_tempfile(meta: &Meta, archive: &mut ZipArchive<File>) -> Result
         })?;
 
     Ok(tempfile)
-}
-
-impl Collection {
-    fn maybe_upgrade_scheduler(&mut self) -> Result<()> {
-        if self.scheduling_included()? {
-            self.upgrade_to_v2_scheduler()?;
-        }
-        Ok(())
-    }
-
-    fn scheduling_included(&mut self) -> Result<bool> {
-        const SQL: &str = "SELECT 1 FROM cards WHERE queue != 0";
-        Ok(self
-            .storage
-            .db
-            .query_row(SQL, [], |_| Ok(()))
-            .optional()?
-            .is_some())
-    }
 }

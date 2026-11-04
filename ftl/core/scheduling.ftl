@@ -46,13 +46,6 @@ scheduling-time-span-years =
        *[other] { $amount } years
     }
 
-## Scheduler upgrade
-
-scheduling-update-more-info-button = Learn More
-scheduling-update-required =
-    Your collection needs to be upgraded to the V2 scheduler.
-    Please select { scheduling-update-more-info-button } before proceeding.
-
 ## Other scheduling strings
 
 scheduling-end = (end)

@@ -2,7 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use crate::collection::Collection;
-use crate::config::SchedulerVersion;
 use crate::error::Result;
 use crate::prelude::*;
 
@@ -25,7 +24,6 @@ use timing::SchedTimingToday;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SchedulerInfo {
-    pub version: SchedulerVersion,
     pub timing: SchedTimingToday,
 }
 
@@ -38,9 +36,8 @@ impl Collection {
                 return Ok(info);
             }
         }
-        let version = self.scheduler_version();
         let timing = self.timing_for_timestamp(now)?;
-        let info = SchedulerInfo { version, timing };
+        let info = SchedulerInfo { timing };
         self.state.scheduler_info = Some(info);
         Ok(info)
     }
@@ -56,19 +53,12 @@ impl Collection {
     pub(crate) fn timing_for_timestamp(&mut self, now: TimestampSecs) -> Result<SchedTimingToday> {
         let current_utc_offset = self.local_utc_offset_for_user()?;
 
-        let rollover_hour = match self.scheduler_version() {
-            SchedulerVersion::V1 => None,
-            SchedulerVersion::V2 => {
-                let configured_rollover = self.get_v2_rollover();
-                match configured_rollover {
-                    None => {
-                        // an older Anki version failed to set this; correct
-                        // the issue
-                        self.set_v2_rollover(4)?;
-                        Some(4)
-                    }
-                    val => val,
-                }
+        let rollover_hour = match self.get_v2_rollover() {
+            Some(hour) => hour,
+            None => {
+                // an older Anki version failed to set this; correct the issue
+                self.set_v2_rollover(4)?;
+                4
             }
         };
 
@@ -106,11 +96,8 @@ impl Collection {
             .and_then(|v| FixedOffset::west_opt(v * 60))
     }
 
-    pub fn rollover_for_current_scheduler(&self) -> Result<u8> {
-        match self.scheduler_version() {
-            SchedulerVersion::V1 => Err(AnkiError::SchedulerUpgradeRequired),
-            SchedulerVersion::V2 => Ok(self.get_v2_rollover().unwrap_or(4)),
-        }
+    pub fn rollover_for_current_scheduler(&self) -> u8 {
+        self.get_v2_rollover().unwrap_or(4)
     }
 
     pub(crate) fn set_creation_stamp(&mut self, stamp: TimestampSecs) -> Result<()> {

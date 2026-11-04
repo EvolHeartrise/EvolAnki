@@ -104,6 +104,16 @@ fn get_filter_info_for_card(
 }
 
 impl Collection {
+    /// Collections from older Anki versions may still be on the V1 scheduler,
+    /// which nothing else supports. Called when a collection is opened, and
+    /// leaves V2 collections untouched.
+    pub(crate) fn upgrade_v1_scheduler(&mut self) -> Result<()> {
+        if self.scheduler_version() == SchedulerVersion::V2 {
+            return Ok(());
+        }
+        self.transact_no_undo(|col| col.upgrade_to_v2_scheduler())
+    }
+
     /// Expects an existing transaction. No-op if already on v2.
     pub(crate) fn upgrade_to_v2_scheduler(&mut self) -> Result<()> {
         if self.scheduler_version() == SchedulerVersion::V2 {
@@ -141,9 +151,36 @@ impl Collection {
         Ok(())
     }
 }
+
 #[cfg(test)]
 mod test {
+    use tempfile::tempdir;
+
     use super::*;
+    use crate::collection::CollectionBuilder;
+    use crate::config::ConfigKey;
+
+    #[test]
+    fn v1_collection_is_upgraded_when_opened() -> Result<()> {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("col.anki2");
+        let mut col = CollectionBuilder::new(&path).build()?;
+        col.set_config(ConfigKey::SchedulerVersion, &SchedulerVersion::V1)?;
+        // a review card left in the learning queue, as V1 did when relearning
+        col.storage.db.execute_batch(
+            "INSERT INTO cards (id, nid, did, ord, mod, type, queue, due, ivl, factor,
+              reps, lapses, left, odue, odid, flags, data)
+             VALUES (1, 1, 1, 0, 0, 2, 1, 0, 1, 2500, 1, 1, 1, 0, 0, 0, '')",
+        )?;
+        col.close()?;
+
+        let col = CollectionBuilder::new(&path).build()?;
+
+        assert_eq!(col.scheduler_version(), SchedulerVersion::V2);
+        let card = col.storage.get_card(CardId(1))?.unwrap();
+        assert_eq!(card.ctype, CardType::Relearn);
+        Ok(())
+    }
 
     #[test]
     fn v2_card() {

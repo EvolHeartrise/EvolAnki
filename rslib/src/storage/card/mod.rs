@@ -333,7 +333,6 @@ impl super::SqliteStorage {
         &self,
         today: u32,
         mtime: TimestampSecs,
-        v1_sched: bool,
     ) -> Result<CardFixStats> {
         let new_cnt = self
             .db
@@ -346,7 +345,7 @@ impl super::SqliteStorage {
         other_cnt += self
             .db
             .prepare(include_str!("fix_odue.sql"))?
-            .execute(params![mtime, v1_sched])?;
+            .execute(params![mtime])?;
         other_cnt += self
             .db
             .prepare(include_str!("fix_ivl.sql"))?
@@ -857,7 +856,7 @@ mod test {
 
         let stats = col
             .storage
-            .fix_card_properties(999, TimestampSecs(123), false)
+            .fix_card_properties(999, TimestampSecs(123))
             .unwrap();
 
         assert_eq!(stats.new_cards_fixed, 1);

@@ -100,7 +100,6 @@ pub enum AnkiError {
         count: usize,
     },
     FsrsUnableToDetermineDesiredRetention,
-    SchedulerUpgradeRequired,
     ZipError {
         info: String,
     },
@@ -163,9 +162,6 @@ impl AnkiError {
                 tr.deck_config_must_have_400_reviews(*count).into()
             }
             AnkiError::FsrsParamsInvalid => tr.deck_config_invalid_parameters().into(),
-            AnkiError::SchedulerUpgradeRequired => {
-                tr.scheduling_update_required().replace("V2", "v3")
-            }
             AnkiError::FsrsUnableToDetermineDesiredRetention => tr
                 .deck_config_unable_to_determine_desired_retention()
                 .into(),

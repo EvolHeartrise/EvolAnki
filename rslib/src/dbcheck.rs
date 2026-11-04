@@ -9,7 +9,6 @@ use itertools::Itertools;
 use tracing::debug;
 
 use crate::collection::Collection;
-use crate::config::SchedulerVersion;
 use crate::error::AnkiError;
 use crate::error::DbError;
 use crate::error::DbErrorKind;
@@ -168,11 +167,9 @@ impl Collection {
             new_cards_fixed,
             other_cards_fixed,
             last_review_time_fixed,
-        } = self.storage.fix_card_properties(
-            timing.days_elapsed,
-            TimestampSecs::now(),
-            self.scheduler_version() == SchedulerVersion::V1,
-        )?;
+        } = self
+            .storage
+            .fix_card_properties(timing.days_elapsed, TimestampSecs::now())?;
         out.card_position_too_high = new_cards_fixed;
         out.card_properties_invalid += other_cards_fixed;
         out.card_last_review_time_empty = last_review_time_fixed;

@@ -41,7 +41,6 @@ impl AnkiError {
             | AnkiError::FsrsParamsInvalid
             | AnkiError::FsrsUnableToDetermineDesiredRetention
             | AnkiError::FsrsInsufficientData => Kind::InvalidInput,
-            AnkiError::SchedulerUpgradeRequired => Kind::SchedulerUpgradeRequired,
             AnkiError::FsrsInsufficientReviews { .. } => Kind::InvalidInput,
             AnkiError::ZipError { .. } => Kind::IoError,
             AnkiError::InvalidChecksum { .. } => Kind::InvalidChecksum,

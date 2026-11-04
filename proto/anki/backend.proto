@@ -31,7 +31,6 @@ message BackendError {
     CARD_TYPE_ERROR = 18;
     // Originated from and usually specific to the OS.
     OS_ERROR = 20;
-    SCHEDULER_UPGRADE_REQUIRED = 21;
     INVALID_CERTIFICATE_FORMAT = 22;
     INVALID_CHECKSUM = 24;
   }

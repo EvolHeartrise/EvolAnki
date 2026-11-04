@@ -5,7 +5,6 @@ mod card;
 mod custom_study;
 
 use crate::config::ConfigKey;
-use crate::config::SchedulerVersion;
 use crate::decks::FilteredDeck;
 use crate::decks::FilteredSearchTerm;
 use crate::error::FilteredDeckError;
@@ -181,10 +180,6 @@ impl Collection {
     }
 
     fn rebuild_filtered_deck_inner(&mut self, deck: &Deck) -> Result<usize> {
-        if self.scheduler_version() == SchedulerVersion::V1 {
-            return Err(AnkiError::SchedulerUpgradeRequired);
-        }
-
         let config = deck.filtered()?;
         let timing = self.timing_today()?;
         let ctx = DeckFilterContext {

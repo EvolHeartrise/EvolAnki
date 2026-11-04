@@ -10,7 +10,6 @@ use rand::seq::SliceRandom;
 use crate::card::CardQueue;
 use crate::card::CardType;
 use crate::config::BoolKey;
-use crate::config::SchedulerVersion;
 use crate::deckconfig::NewCardInsertOrder;
 use crate::prelude::*;
 use crate::search::JoinSearches;
@@ -213,9 +212,6 @@ impl Collection {
         order: NewCardDueOrder,
         shift: bool,
     ) -> Result<usize> {
-        if self.scheduler_version() == SchedulerVersion::V1 {
-            return Err(AnkiError::SchedulerUpgradeRequired);
-        }
         if shift {
             self.shift_existing_cards(starting_from, step * cids.len() as u32)?;
         }
