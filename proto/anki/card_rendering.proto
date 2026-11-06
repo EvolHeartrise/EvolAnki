@@ -21,10 +21,6 @@ service CardRenderingService {
       returns (generic.String);
 }
 
-// Implicitly includes any of the above methods that are not listed in the
-// backend service.
-service BackendCardRenderingService {}
-
 message ExtractAvTagsRequest {
   string text = 1;
   bool question_side = 2;

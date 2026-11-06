@@ -1,20 +1,15 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-mod card_rendering;
 mod collection;
 mod config;
-mod error;
 mod i18n;
 mod import_export;
 mod ops;
 
 use std::ops::Deref;
-use std::result;
 use std::sync::Arc;
 use std::sync::Mutex;
-
-use prost::Message;
 
 use crate::prelude::*;
 use crate::progress::Progress;
@@ -37,18 +32,6 @@ pub struct BackendInner {
     col: Mutex<Option<Collection>>,
     pub(crate) tr: I18n,
     progress_state: Arc<Mutex<ProgressState>>,
-}
-
-pub fn init_backend(init_msg: &[u8]) -> result::Result<Backend, String> {
-    let _input: anki_proto::backend::BackendInit =
-        match anki_proto::backend::BackendInit::decode(init_msg) {
-            Ok(req) => req,
-            Err(_) => return Err("couldn't decode init request".into()),
-        };
-
-    let tr = I18n::new();
-
-    Ok(Backend::new(tr))
 }
 
 impl Backend {

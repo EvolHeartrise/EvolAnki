@@ -5,6 +5,15 @@ of some items in a collection file. See [the architecture](architecture.md#proto
 For types and syntax, see the official
 [language guide](https://protobuf.dev/programming-guides/proto3/).
 
+## Services
+
+Each `service` becomes a Rust trait in `anki::services`. One whose name starts with
+`Backend`, like `BackendCollectionService`, is implemented on `Backend` and works without
+an open collection; any other is implemented on `Collection`. `Backend::run_method()`
+calls any method by its camelCase name, so a method name may appear in only one service.
+The pages reach a method only once it's in the allow-list in
+`rslib/web-server/src/rpc.rs`.
+
 ## Names
 
 Generated code follows the naming conventions of the language: a field `foo_bar` is

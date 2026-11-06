@@ -181,7 +181,6 @@ impl Server {
                 ("Host", &self.host()),
                 ("Origin", &format!("http://{}", self.host())),
                 ("Content-Type", "application/binary"),
-                ("Anki-Op-Changes", "0"),
             ],
             input,
         )

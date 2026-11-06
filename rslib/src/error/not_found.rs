@@ -30,10 +30,6 @@ impl NotFoundError {
             self.identifier
         )
     }
-
-    pub fn context(&self) -> String {
-        format!("No such {}: '{}'", self.type_name, self.identifier)
-    }
 }
 
 impl PartialEq for NotFoundError {

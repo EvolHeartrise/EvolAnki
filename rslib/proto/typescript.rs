@@ -7,14 +7,13 @@ use std::path::Path;
 
 use anki_io::create_dir_all;
 use anki_io::write_file_if_changed;
-use anki_proto_gen::BackendService;
 use anki_proto_gen::Method;
+use anki_proto_gen::Service;
 use anyhow::Result;
 use inflections::Inflect;
 use itertools::Itertools;
-use prost_reflect::MessageDescriptor;
 
-pub(crate) fn write_ts_interface(services: &[BackendService]) -> Result<()> {
+pub(crate) fn write_ts_interface(services: &[Service]) -> Result<()> {
     let root = Path::new("../../out/ts/lib/generated");
     create_dir_all(root)?;
 
@@ -22,7 +21,7 @@ pub(crate) fn write_ts_interface(services: &[BackendService]) -> Result<()> {
     let mut referenced_packages = HashSet::new();
 
     for service in services {
-        for method in service.all_methods() {
+        for method in &service.methods {
             let method = MethodDetails::from_method(method);
             record_referenced_type(&mut referenced_packages, &method.input_type);
             record_referenced_type(&mut referenced_packages, &method.output_type);
@@ -70,16 +69,14 @@ fn write_ts_method(
         input_type,
         output_type,
         comments,
-        op_changes_type,
     }: &MethodDetails,
     out: &mut String,
 ) {
-    let op_changes_type = *op_changes_type as u8;
     let comments = format_comments(comments);
     writeln!(
         out,
         r#"{comments}export async function {method_name}(input: PlainMessage<{input_type}>, options?: PostProtoOptions): Promise<{output_type}> {{
-        return await postProto("{method_name}", new {input_type}(input), {output_type}, options, {op_changes_type});
+        return await postProto("{method_name}", new {input_type}(input), {output_type}, options);
 }}"#
     ).unwrap()
 }
@@ -91,21 +88,11 @@ fn format_comments(comments: &Option<String>) -> String {
         .unwrap_or_default()
 }
 
-#[derive(Clone, Copy)]
-#[repr(u8)]
-enum OpChangesType {
-    None = 0,
-    OpChanges = 1,
-    OpChangesOnly = 2,
-    NestedOpChanges = 3,
-}
-
 struct MethodDetails {
     method_name: String,
     input_type: String,
     output_type: String,
     comments: Option<String>,
-    op_changes_type: OpChangesType,
 }
 
 impl MethodDetails {
@@ -114,43 +101,12 @@ impl MethodDetails {
         let input_type = full_name_to_imported_reference(method.proto.input().full_name());
         let output_type = full_name_to_imported_reference(method.proto.output().full_name());
         let comments = method.comments.clone();
-        let op_changes_type =
-            get_op_changes_type(&method.proto.output(), &method.proto.output(), 1);
         Self {
             method_name: name,
             input_type,
             output_type,
             comments,
-            op_changes_type,
         }
-    }
-}
-
-fn get_op_changes_type(
-    root_message: &MessageDescriptor,
-    message: &MessageDescriptor,
-    level: u8,
-) -> OpChangesType {
-    if message.full_name() == "anki.collection.OpChanges" {
-        match level {
-            0 => OpChangesType::None,
-            1 => OpChangesType::OpChanges,
-            2 => OpChangesType::OpChangesOnly,
-            3 => OpChangesType::NestedOpChanges,
-            _ => panic!(
-                "unhandled op changes level for message {}: {}",
-                root_message.full_name(),
-                level
-            ),
-        }
-    } else if let Some(field) = message.get_field(1) {
-        if let Some(field_message) = field.kind().as_message() {
-            get_op_changes_type(root_message, field_message, level + 1)
-        } else {
-            OpChangesType::None
-        }
-    } else {
-        OpChangesType::None
     }
 }
 

@@ -14,7 +14,6 @@ macro_rules! protobuf {
     };
 }
 
-protobuf!(backend, "backend");
 protobuf!(card_rendering, "card_rendering");
 protobuf!(cards, "cards");
 protobuf!(collection, "collection");

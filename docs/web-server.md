@@ -276,7 +276,7 @@ Safari 18.4. A file that can't play is skipped.
 - `updateDeckConfigs` returns when the save is done, with the real output.
   The desktop server started a Qt background op, returned nothing, and closed the dialog
   on success. The page shows progress itself, then returns to the deck.
-- The `Anki-Op-Changes` header is ignored. It drove on_op_finished() in Qt.
+- There is no `Anki-Op-Changes` header. It drove on_op_finished() in Qt.
 - `/_addons/` isn't served, and neither are the legacy `/_anki/foo.js` remappings.
 
 ## Tests

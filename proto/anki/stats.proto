@@ -18,10 +18,6 @@ service StatsService {
   rpc SetGraphPreferences(GraphPreferences) returns (generic.Empty);
 }
 
-// Implicitly includes any of the above methods that are not listed in the
-// backend service.
-service BackendStatsService {}
-
 message ReviewLogs {
   repeated CardStatsResponse.StatsRevlogEntry entries = 1;
 }

@@ -1,8 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-//! Some helpers for code generation in external crates, that ensure indexes
-//! match.
+//! Helpers for generating the RPC interface code.
 
 use std::collections::HashMap;
 use std::env;
@@ -15,153 +14,65 @@ use anki_io::ToUtf8Path;
 use anyhow::Result;
 use camino::Utf8Path;
 use inflections::Inflect;
-use itertools::Either;
 use itertools::Itertools;
 use prost_reflect::DescriptorPool;
 use prost_reflect::MessageDescriptor;
 use prost_reflect::MethodDescriptor;
-use prost_reflect::ServiceDescriptor;
 use regex::Captures;
 use regex::Regex;
 use walkdir::WalkDir;
 
-/// We look for ExampleService and BackedExampleService, both of which are
-/// expected to exist (but may be empty).
-///
-/// - If a method is listed in BackendExampleService and not in ExampleService,
-///   that method is only available with a Backend.
-/// - If a method is listed in both services, you can provide separate
-///   implementations for each of the traits.
-/// - If a method is listed only in ExampleService, a forwarding method on
-///   Backend is automatically implemented. This bypasses the trait and
-///   implements directly on Backend.
-///
-/// It's important that service and method indices are the same for
-/// client-generated code, so the client code should use the .index fields
-/// of Service and Method provided by get_services(), and not
-/// .enumerate() or .proto.index()
-///
-/// Client code will want to ignore CollectionServices, and focus on
-/// BackendServices.
-pub fn get_services(pool: &DescriptorPool) -> (Vec<CollectionService>, Vec<BackendService>) {
-    // split services into backend and collection
-    let (mut col_services, mut backend_services): (Vec<_>, Vec<_>) =
-        pool.services().partition_map(|service| {
-            if service.name().starts_with("Backend") {
-                Either::Right(BackendService::from_proto(service))
-            } else {
-                Either::Left(CollectionService::from_proto(service))
-            }
-        });
-    assert_eq!(col_services.len(), backend_services.len());
-    // copy collection methods into backend services if they don't have one with
-    // a matching name
-    for service in &mut backend_services {
-        // locate associated collection service
-        let Some(col_service) = col_services
-            .iter()
-            .find(|cs| cs.name == service.name.trim_start_matches("Backend"))
-        else {
-            panic!("missing associated service: {}", service.name)
-        };
-
-        // add any methods that don't exist in backend trait methods to the delegating
-        // methods
-        service.delegating_methods = col_service
-            .trait_methods
-            .iter()
-            .filter(|m| service.trait_methods.iter().all(|bm| bm.name != m.name))
-            .map(|method| Method {
-                index: method.index + service.trait_methods.len(),
-                ..method.clone()
-            })
-            .collect();
-    }
-    // fill comments in
+/// The RPC services. A service whose name starts with `Backend` is implemented
+/// on the Backend, and works without an open collection; any other is
+/// implemented on the Collection. Methods are called by name, so each name
+/// must be unique across all services.
+pub fn get_services(pool: &DescriptorPool) -> Vec<Service> {
     let comments = MethodComments::from_pool(pool);
-    for service in &mut col_services {
-        for method in &mut service.trait_methods {
-            method.comments = comments.get_for_method(&method.proto);
-        }
-    }
-    for service in &mut backend_services {
-        for method in &mut service.trait_methods {
-            method.comments = comments.get_for_method(&method.proto);
-        }
-        for method in &mut service.delegating_methods {
-            method.comments = comments.get_for_method(&method.proto);
-        }
-    }
-
-    (col_services, backend_services)
+    let services: Vec<Service> = pool
+        .services()
+        .map(|service| Service {
+            name: service.name().to_string(),
+            on_backend: service.name().starts_with("Backend"),
+            methods: service
+                .methods()
+                .map(|method| Method {
+                    name: method.name().to_snake_case(),
+                    comments: comments.get_for_method(&method),
+                    proto: method,
+                })
+                .collect(),
+        })
+        .collect();
+    let duplicates = services
+        .iter()
+        .flat_map(|service| &service.methods)
+        .map(|method| &method.name)
+        .duplicates()
+        .collect_vec();
+    assert!(
+        duplicates.is_empty(),
+        "methods defined twice: {duplicates:?}"
+    );
+    services
 }
 
 #[derive(Debug)]
-pub struct CollectionService {
+pub struct Service {
     pub name: String,
-    pub index: usize,
-    pub trait_methods: Vec<Method>,
-    pub proto: ServiceDescriptor,
-}
-
-#[derive(Debug)]
-pub struct BackendService {
-    pub name: String,
-    pub index: usize,
-    pub trait_methods: Vec<Method>,
-    pub delegating_methods: Vec<Method>,
-    pub proto: ServiceDescriptor,
+    /// Implemented on the Backend rather than the Collection.
+    pub on_backend: bool,
+    pub methods: Vec<Method>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Method {
+    /// snake_case
     pub name: String,
-    pub index: usize,
     pub comments: Option<String>,
     pub proto: MethodDescriptor,
 }
 
-impl CollectionService {
-    pub fn from_proto(service: prost_reflect::ServiceDescriptor) -> Self {
-        CollectionService {
-            name: service.name().to_string(),
-            index: service.index(),
-            trait_methods: service.methods().map(Method::from_proto).collect(),
-            proto: service,
-        }
-    }
-}
-
-impl BackendService {
-    pub fn from_proto(service: prost_reflect::ServiceDescriptor) -> Self {
-        BackendService {
-            name: service.name().to_string(),
-            index: service.index(),
-            trait_methods: service.methods().map(Method::from_proto).collect(),
-            proto: service,
-            // filled in later
-            delegating_methods: vec![],
-        }
-    }
-
-    pub fn all_methods(&self) -> impl Iterator<Item = &Method> {
-        self.trait_methods
-            .iter()
-            .chain(self.delegating_methods.iter())
-    }
-}
-
 impl Method {
-    pub fn from_proto(method: prost_reflect::MethodDescriptor) -> Self {
-        Method {
-            name: method.name().to_snake_case(),
-            index: method.index(),
-            proto: method,
-            // filled in later
-            comments: None,
-        }
-    }
-
     /// The input type, if not empty.
     pub fn input(&self) -> Option<MessageDescriptor> {
         msg_if_not_empty(self.proto.input())
