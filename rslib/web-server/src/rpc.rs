@@ -7,17 +7,11 @@
 //! protobuf-encoded output, as ts/lib/generated/post.ts expects. Failures are a
 //! plain-text message with an error status, which post.ts surfaces to the page.
 
-use std::collections::HashMap;
-use std::sync::LazyLock;
-
 use anki::backend::Backend;
-use anki_proto::backend::BackendError;
-use anki_proto::backend::BackendInit;
+use anki::prelude::I18n;
 use anyhow::anyhow;
 use axum::http::StatusCode;
 use prost::Message;
-
-include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 
 /// The RPCs that a browser can reach. This server has no login, so it's what
 /// the pages use and nothing else, which `allow_list_matches_the_pages` in
@@ -73,13 +67,6 @@ pub const ALLOWED: &[&str] = &[
     "getConfigBool",
 ];
 
-static INDEXES: LazyLock<HashMap<&'static str, (u32, u32)>> = LazyLock::new(|| {
-    ALL_METHODS
-        .iter()
-        .map(|&(name, service, method)| (name, (service, method)))
-        .collect()
-});
-
 pub struct RpcError {
     pub status: StatusCode,
     pub message: String,
@@ -92,28 +79,24 @@ impl RpcError {
 }
 
 pub fn new_backend() -> anyhow::Result<Backend> {
-    let init = BackendInit {};
-    anki::backend::init_backend(&init.encode_to_vec()).map_err(|e| anyhow!(e))
+    Ok(Backend::new(I18n::new()))
 }
 
 /// Call any backend method by its camelCase name, bypassing the allow-list.
 /// Blocks; collection access is serialised by the mutex inside the backend.
 pub fn call(backend: &Backend, method: &str, input: &[u8]) -> Result<Vec<u8>, RpcError> {
-    let Some(&(service_idx, method_idx)) = INDEXES.get(method) else {
-        return Err(RpcError::new(
+    match backend.run_method(method, input) {
+        None => Err(RpcError::new(
             StatusCode::NOT_FOUND,
             format!("{method} not found"),
-        ));
-    };
-    backend
-        .run_service_method(service_idx, method_idx, input)
-        .map_err(|bytes| match BackendError::decode(bytes.as_slice()) {
-            Ok(err) => RpcError::new(StatusCode::INTERNAL_SERVER_ERROR, err.message),
-            Err(err) => RpcError::new(
+        )),
+        Some(result) => result.map_err(|err| {
+            RpcError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("undecodable backend error: {err}"),
-            ),
-        })
+                err.message(backend.i18n()),
+            )
+        }),
+    }
 }
 
 /// Typed version of [call], for the server's own use.
@@ -146,7 +129,10 @@ mod test {
     #[test]
     fn allowed_methods_exist_in_the_backend() {
         for &method in ALLOWED {
-            assert!(INDEXES.contains_key(method), "unknown method {method}");
+            assert!(
+                Backend::METHODS.contains(&method),
+                "unknown method {method}"
+            );
         }
     }
 

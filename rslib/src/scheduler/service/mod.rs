@@ -16,7 +16,6 @@ use anki_proto::scheduler::SimulateFsrsReviewRequest;
 use anki_proto::scheduler::SimulateFsrsReviewResponse;
 use anki_proto::scheduler::SimulateFsrsWorkloadResponse;
 
-use crate::backend::Backend;
 use crate::prelude::*;
 use crate::scheduler::fsrs::params::ComputeParamsRequest;
 use crate::scheduler::new::NewCardDueOrder;
@@ -302,8 +301,6 @@ impl crate::services::SchedulerService for Collection {
         })
     }
 }
-
-impl crate::services::BackendSchedulerService for Backend {}
 
 impl From<crate::scheduler::timing::SchedTimingToday> for scheduler::SchedTimingTodayResponse {
     fn from(t: crate::scheduler::timing::SchedTimingToday) -> Self {

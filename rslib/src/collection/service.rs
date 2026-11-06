@@ -6,7 +6,6 @@ use crate::collection::Collection;
 use crate::error;
 use crate::prelude::BoolKey;
 use crate::prelude::Op;
-use crate::progress::progress_to_proto;
 
 impl crate::services::CollectionService for Collection {
     fn check_database(&mut self) -> error::Result<anki_proto::collection::CheckDatabaseResponse> {
@@ -28,16 +27,6 @@ impl crate::services::CollectionService for Collection {
 
     fn redo(&mut self) -> error::Result<anki_proto::collection::OpChangesAfterUndo> {
         self.redo().map(|out| out.into_protobuf(&self.tr))
-    }
-
-    fn latest_progress(&mut self) -> error::Result<anki_proto::collection::Progress> {
-        let progress = self.state.progress.lock().unwrap().last_progress;
-        Ok(progress_to_proto(progress, &self.tr))
-    }
-
-    fn set_wants_abort(&mut self) -> error::Result<()> {
-        self.state.progress.lock().unwrap().want_abort = true;
-        Ok(())
     }
 
     fn set_load_balancer_enabled(

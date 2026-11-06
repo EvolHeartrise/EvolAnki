@@ -90,8 +90,6 @@ pub enum AnkiError {
         source: ImportError,
     },
     InvalidId,
-    InvalidMethodIndex,
-    InvalidServiceIndex,
     FsrsParamsInvalid,
     /// Returned by fsrs-rs; may happen even if 400+ reviews
     FsrsInsufficientData,
@@ -150,8 +148,6 @@ impl AnkiError {
             | AnkiError::CollectionNotOpen
             | AnkiError::CollectionAlreadyOpen
             | AnkiError::Existing
-            | AnkiError::InvalidServiceIndex
-            | AnkiError::InvalidMethodIndex
             | AnkiError::UndoEmpty => format!("{self:?}"),
             AnkiError::ZipError { info } => info.clone(),
             AnkiError::FileIoError { source } => source.message(),
@@ -167,31 +163,6 @@ impl AnkiError {
                 .into(),
             AnkiError::InvalidChecksum { info } => info.into(),
         }
-    }
-
-    pub fn context(&self) -> String {
-        match self {
-            Self::InvalidInput { source } => source.context(),
-            Self::NotFound { source } => source.context(),
-            _ => String::new(),
-        }
-    }
-
-    pub fn backtrace(&self) -> String {
-        match self {
-            Self::InvalidInput { source } => {
-                if let Some(bt) = snafu::ErrorCompat::backtrace(source) {
-                    return format!("{bt}");
-                }
-            }
-            Self::NotFound { source } => {
-                if let Some(bt) = snafu::ErrorCompat::backtrace(source) {
-                    return format!("{bt}");
-                }
-            }
-            _ => (),
-        }
-        String::new()
     }
 }
 

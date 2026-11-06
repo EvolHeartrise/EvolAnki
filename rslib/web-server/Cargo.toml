@@ -20,13 +20,6 @@ name = "evolanki-server"
 path = "src/bin/evolanki-admin.rs"
 name = "evolanki-admin"
 
-[build-dependencies]
-anki_proto.workspace = true
-anki_proto_gen.workspace = true
-anyhow.workspace = true
-inflections.workspace = true
-prost-reflect.workspace = true
-
 [dependencies]
 anki.workspace = true
 anki_proto.workspace = true

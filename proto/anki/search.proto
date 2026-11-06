@@ -14,10 +14,6 @@ service SearchService {
   rpc SearchNotes(SearchRequest) returns (SearchResponse);
 }
 
-// Implicitly includes any of the above methods that are not listed in the
-// backend service.
-service BackendSearchService {}
-
 message SearchRequest {
   string search = 1;
   SortOrder order = 2;

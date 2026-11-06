@@ -23,14 +23,6 @@ impl InvalidInputError {
     pub fn message(&self) -> String {
         self.message.clone()
     }
-
-    pub fn context(&self) -> String {
-        if let Some(source) = &self.source {
-            format!("{source}")
-        } else {
-            String::new()
-        }
-    }
 }
 
 impl PartialEq for InvalidInputError {

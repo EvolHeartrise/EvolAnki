@@ -12,8 +12,7 @@ fn main() -> Result<()> {
     let descriptors_path = descriptors_path();
 
     let pool = rust::write_rust_protos(descriptors_path)?;
-    let (_, services) = get_services(&pool);
-    typescript::write_ts_interface(&services)?;
+    typescript::write_ts_interface(&get_services(&pool))?;
 
     Ok(())
 }
