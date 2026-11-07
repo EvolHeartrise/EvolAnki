@@ -12,13 +12,10 @@
         "svelte-check:once": "cd ts && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --threshold warning",
         "svelte-check": "cd ts && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
         "vitest:once": "cd ts && vitest run",
-        "vitest": "cd ts && vitest",
-        "test:e2e": "playwright test -c playwright.web.config.ts",
-        "test:e2e:ui": "playwright test -c playwright.web.config.ts --ui"
+        "vitest": "cd ts && vitest"
     },
     "devDependencies": {
         "@bufbuild/protoc-gen-es": "^1.8.0",
-        "@playwright/test": "^1.62.1",
         "@poppanator/sveltekit-svg": "^5.0.0",
         "@sqltools/formatter": "^1.2.2",
         "@sveltejs/adapter-static": "^3.0.10",

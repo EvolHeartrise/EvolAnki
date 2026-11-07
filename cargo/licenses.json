@@ -377,14 +377,6 @@
   },
   {
     "authors": null,
-    "description": "Multi-producer multi-consumer channels for message passing",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "crossbeam-channel",
-    "repository": "https://github.com/crossbeam-rs/crossbeam"
-  },
-  {
-    "authors": null,
     "description": "Concurrent work-stealing deque",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -1232,14 +1224,6 @@
     "repository": "https://github.com/jhpratt/num-conv"
   },
   {
-    "authors": "Brian Myers <brian.carl.myers@gmail.com>",
-    "description": "A Rust crate for producing string-representations of numbers, formatted according to international standards",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "num-format",
-    "repository": "https://github.com/bcmyers/num-format"
-  },
-  {
     "authors": "The Rust Project Developers",
     "description": "Integer traits and functions",
     "license": "Apache-2.0 OR MIT",
@@ -1422,14 +1406,6 @@
     "license_file": null,
     "name": "pin-project-lite",
     "repository": "https://github.com/taiki-e/pin-project-lite"
-  },
-  {
-    "authors": "Josef Brandl <mail@josefbrandl.de>",
-    "description": "Utilities for pinning",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "pin-utils",
-    "repository": "https://github.com/rust-lang-nursery/pin-utils"
   },
   {
     "authors": "Alex Crichton <alex@alexcrichton.com>",
@@ -1686,14 +1662,6 @@
     "license_file": null,
     "name": "rusqlite",
     "repository": "https://github.com/rusqlite/rusqlite"
-  },
-  {
-    "authors": "The Rust Project Developers",
-    "description": "A speedy, non-cryptographic hashing algorithm used by rustc",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "rustc-hash",
-    "repository": "https://github.com/rust-lang/rustc-hash"
   },
   {
     "authors": "Dan Gohman <dev@sunfishcode.online>|Jakub Konka <kubkon@jakubkonka.com>",
@@ -2064,38 +2032,6 @@
     "repository": "https://github.com/servo/html5ever"
   },
   {
-    "authors": "David Tolnay <dtolnay@gmail.com>",
-    "description": "derive(Error)",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "thiserror",
-    "repository": "https://github.com/dtolnay/thiserror"
-  },
-  {
-    "authors": "David Tolnay <dtolnay@gmail.com>",
-    "description": "derive(Error)",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "thiserror",
-    "repository": "https://github.com/dtolnay/thiserror"
-  },
-  {
-    "authors": "David Tolnay <dtolnay@gmail.com>",
-    "description": "Implementation detail of the `thiserror` crate",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "thiserror-impl",
-    "repository": "https://github.com/dtolnay/thiserror"
-  },
-  {
-    "authors": "David Tolnay <dtolnay@gmail.com>",
-    "description": "Implementation detail of the `thiserror` crate",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "thiserror-impl",
-    "repository": "https://github.com/dtolnay/thiserror"
-  },
-  {
     "authors": "Amanieu d'Antras <amanieu@gmail.com>",
     "description": "Per-object thread-local storage",
     "license": "Apache-2.0 OR MIT",
@@ -2117,14 +2053,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "name": "time-core",
-    "repository": "https://github.com/time-rs/time"
-  },
-  {
-    "authors": "Jacob Pratt <open-source@jhpratt.dev>|Time contributors",
-    "description": "Procedural macros for the time crate.     This crate is an implementation detail and should not be relied upon directly.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "time-macros",
     "repository": "https://github.com/time-rs/time"
   },
   {
@@ -2229,14 +2157,6 @@
     "license": "MIT",
     "license_file": null,
     "name": "tracing",
-    "repository": "https://github.com/tokio-rs/tracing"
-  },
-  {
-    "authors": "Zeki Sherif <zekshi@amazon.com>|Tokio Contributors <team@tokio.rs>",
-    "description": "Provides utilities for file appenders and making non-blocking writers.",
-    "license": "MIT",
-    "license_file": null,
-    "name": "tracing-appender",
     "repository": "https://github.com/tokio-rs/tracing"
   },
   {
