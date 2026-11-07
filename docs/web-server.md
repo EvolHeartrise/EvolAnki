@@ -1,8 +1,8 @@
 # Web server
 
 `evolanki-server` (`rslib/web-server`) serves a collection to browsers on your network,
-including your phone. It links the Rust backend directly. Building it needs Rust and
-Node, which the build downloads, and what [development.md](development.md) lists.
+including your phone. It links the Rust backend directly. Building it needs Rust, Node,
+just, and what [development.md](development.md) lists.
 
 ## Run
 
@@ -18,21 +18,19 @@ settings if a collection from an older version doesn't have them: see
 [Settings](#settings).
 
 Leave out `--release` for a quicker debug build, and the path for a demo collection in
-`out/web-dev`. It runs from any folder, and the repo path must not contain a space, as
-`./ninja` can't handle that.
+`out/web-dev`. It runs from any folder. `just run` does the same.
 
 ## Install to a stable path
 
 `tools/install-local` builds the release, then puts the server, `evolanki-admin` and the
-pages in `~/.local/share/evolanki`, and prints the command to run them. It works from a
-checkout whose path has a space, by building a clone of HEAD in `~/.cache/evolanki-build`.
-It touches no collection, and installs no service.
+pages in `~/.local/share/evolanki`, and prints the command to run them. It touches no
+collection, and installs no service.
 
 ## Build by hand
 
 ```
-./ninja web
-CARGO_TARGET_DIR=$PWD/out/rust cargo build --release -p evolanki-server
+just build
+cargo build --release -p evolanki-server
 out/rust/release/evolanki-server --collection /tmp/test/col.anki2 --create --seed-demo
 ```
 

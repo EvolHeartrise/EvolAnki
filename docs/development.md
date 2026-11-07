@@ -2,68 +2,61 @@
 
 ## Requirements
 
-Clone the repo into a folder of your choosing. The path must not contain spaces. This
-is developed and run on Linux.
+Clone the repo into a folder of your choosing. This is developed and run on Linux.
 
 You will need:
 
 - Rustup (https://rustup.rs/). The Rust version pinned in rust-toolchain.toml
   will be automatically downloaded if not yet installed.
-- N2 or Ninja. N2 gives better status output. You can install it with `tools/install-n2`.
-  Ninja can be downloaded from
-  https://github.com/ninja-build/ninja/releases/tag/v1.11.1 and placed on your path, or
-  from your distro if it's 1.10+.
-- rsync, git, and a C compiler for the bundled SQLite and zstd.
-- (Optional) [just](https://just.systems/man/en/packages.html), a command runner.
+- Node 22 or 24, which include corepack. The build runs yarn through corepack, which
+  downloads the version that package.json names.
+- [just](https://just.systems/man/en/packages.html), which runs the build commands.
+- git, and a C compiler for the bundled SQLite and zstd.
 
-Node is downloaded by the build, along with protoc and the JavaScript dependencies.
-Python is not used.
+Python is not used. `cargo build` and `cargo check` work by themselves, as the build
+compiles the protobuf definitions without protoc.
 
 ## Running
 
 ```
-tools/run-web
+just run
 ```
 
 See [web-server.md](web-server.md).
 
 ## Tests and checks
 
-To run all of them, from the top-level folder:
+To format the code, then build and run all the checks:
 
 ```
-./ninja check
+just check
 ```
 
-You can also run specific checks, such as `./ninja check:vitest`, `./ninja check:svelte`
-or `./ninja check:clippy`. Targets are hierarchical, so `./ninja check:format` runs all
-the format checks.
+`just --list` shows the others, such as `just fmt` (format check), `just lint` (clippy,
+eslint and svelte-check), `just test-rust` and `just test-ts`. The Rust tests run with
+[cargo-nextest](https://nexte.st/), which `just test-rust` installs if it's missing.
 
-Don't ask a single ninja invocation for both `check:svelte` and the web build. The
-former regenerates `ts/.svelte-kit`, which has broken the bundle when they overlapped.
+Don't run `just lint` while `just build` is running. svelte-check regenerates
+`ts/.svelte-kit`, which has broken the bundle when they overlapped.
 
 ## Fixing problems
 
 ```
-./ninja format        # formatting
-./ninja fix           # eslint
-tools/update-licenses # cargo/licenses.json, ts/licenses.json
+just fix-fmt          # formatting
+just fix-lint         # eslint
+just update-licenses  # cargo/licenses.json, ts/licenses.json
 cargo clippy --fix    # clippy
 ```
 
 ## Optimized builds
 
-Set RELEASE=1 or RELEASE=2 for an optimized build. The latter will further optimize the
-output, but make the build much slower.
+`tools/run-web --release` builds an optimized server. The pages are always minified.
 
 ## Cleaning up build files
 
-Most build files go into the `out/` folder. You can delete that folder for a clean build, or
-to free space. `tools/clean` keeps downloads, and with `keep-env`, also node_modules.
-
-If you invoke Rust outside of the build scripts (eg by running cargo, or
-with Rust Analyzer), output files will go into `target/` unless you have
-overridden the default output location.
+Build files go into the `out/` folder, including cargo's, and the JavaScript dependencies
+into `node_modules`. `just clean` removes both, and with `keep-env`, keeps
+`node_modules`.
 
 ## Environment variables
 

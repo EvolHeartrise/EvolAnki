@@ -14,8 +14,10 @@ anki_proto_gen.workspace = true
 anyhow.workspace = true
 inflections.workspace = true
 itertools.workspace = true
+prost.workspace = true
 prost-build.workspace = true
 prost-reflect.workspace = true
+protox.workspace = true
 
 [dependencies]
 prost.workspace = true

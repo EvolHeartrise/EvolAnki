@@ -6,23 +6,24 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anki_io::create_dir_all;
-use anki_io::read_file;
 use anki_io::write_file_if_changed;
 use anki_proto_gen::add_must_use_annotations;
 use anki_proto_gen::determine_if_message_is_empty;
 use anyhow::Context;
 use anyhow::Result;
+use prost::Message;
 use prost_reflect::DescriptorPool;
 
 pub fn write_rust_protos(descriptors_path: PathBuf) -> Result<DescriptorPool> {
-    set_protoc_path();
     let proto_dir = PathBuf::from("../../proto");
     let paths = gather_proto_paths(&proto_dir)?;
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let tmp_descriptors = out_dir.join("descriptors.tmp");
+    // protox is a protobuf compiler in Rust, so no protoc is needed. Like
+    // protoc, it keeps the comments, which the generated code uses.
+    let file_descriptors = protox::compile(&paths, [&proto_dir]).context("compile protos")?;
+    let descriptors = file_descriptors.encode_to_vec();
     prost_build::Config::new()
         .out_dir(&out_dir)
-        .file_descriptor_set_path(&tmp_descriptors)
         .type_attribute(
             "Deck.Filtered.SearchTerm.Order",
             "#[derive(strum::EnumIter)]",
@@ -48,10 +49,9 @@ pub fn write_rust_protos(descriptors_path: PathBuf) -> Result<DescriptorPool> {
             "ImportAnkiPackageUpdateCondition",
             "#[derive(serde::Deserialize, serde::Serialize)]",
         )
-        .compile_protos(paths.as_slice(), &[proto_dir])
+        .compile_fds(file_descriptors)
         .context("prost build")?;
 
-    let descriptors = read_file(&tmp_descriptors)?;
     create_dir_all(
         descriptors_path
             .parent()
@@ -69,6 +69,8 @@ pub fn write_rust_protos(descriptors_path: PathBuf) -> Result<DescriptorPool> {
 }
 
 fn gather_proto_paths(proto_dir: &Path) -> Result<Vec<PathBuf>> {
+    // for new files
+    println!("cargo:rerun-if-changed={}", proto_dir.display());
     let subfolders = &["anki"];
     let mut paths = vec![];
     for subfolder in subfolders {
@@ -89,11 +91,4 @@ fn gather_proto_paths(proto_dir: &Path) -> Result<Vec<PathBuf>> {
     }
     paths.sort();
     Ok(paths)
-}
-
-/// Set PROTOC to the custom path provided by PROTOC_BINARY, if any.
-fn set_protoc_path() {
-    if let Ok(custom_protoc) = env::var("PROTOC_BINARY") {
-        env::set_var("PROTOC", custom_protoc);
-    }
 }

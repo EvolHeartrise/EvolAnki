@@ -19,9 +19,8 @@ if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then
 fi
 
 cd "$(dirname "$0")/.."
-./ninja web
+just build
 
-export CARGO_TARGET_DIR="$PWD/out/rust"
 serve=(cargo run "${profile[@]}" -p evolanki-server --bin evolanki-server -- --web-root "$PWD/out/web")
 if [ -n "$collection" ]; then
     exec "${serve[@]}" --collection "$collection" "$@"

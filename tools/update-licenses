@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Regenerate cargo/licenses.json and ts/licenses.json. Run after changing dependencies.
+# Regenerate cargo/licenses.json and ts/licenses.json. Run after changing dependencies,
+# with `just update-licenses`, which installs node_modules first.
 
 set -e
 cd "$(dirname "$0")/.."
-export PATH="$PWD/out/extracted/node/bin:$PATH"
 
 cargo install cargo-license@0.7.0
 cargo license --json --manifest-path rslib/web-server/Cargo.toml |
