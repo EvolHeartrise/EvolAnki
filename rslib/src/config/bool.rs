@@ -9,35 +9,12 @@ use crate::prelude::*;
 #[strum(serialize_all = "camelCase")]
 pub enum BoolKey {
     ApplyAllParentLimits,
-    BrowserTableShowNotesMode,
     CardCountsSeparateInactive,
-    CollapseCardState,
-    CollapseDecks,
-    CollapseNotetypes,
-    CollapseSavedSearches,
-    CollapseTags,
-    CollapseToday,
     FutureDueShowBacklog,
     HideAudioPlayButtons,
     IgnoreAccentsInSearch,
-    InterruptAudioWhenAnswering,
     NewCardsIgnoreReviewLimit,
-    PasteImagesAsPng,
-    PasteStripsFormatting,
-    RenderLatex,
-    PreviewBothSides,
-    RestorePositionBrowser,
-    RestorePositionReviewer,
-    ResetCountsBrowser,
-    ResetCountsReviewer,
-    RandomOrderReposition,
-    Sched2021,
-    ShiftPositionOfExistingCards,
-    MergeNotetypes,
-    WithScheduling,
-    WithDeckConfigs,
     FsrsHealthCheck,
-    FsrsLegacyEvaluate,
     LoadBalancerEnabled,
     FsrsShortTermWithStepsEnabled,
     #[strum(to_string = "normalize_note_text")]
@@ -50,12 +27,9 @@ impl Collection {
     pub fn get_config_bool(&self, key: BoolKey) -> bool {
         match key {
             // some keys default to true
-            BoolKey::InterruptAudioWhenAnswering
-            | BoolKey::AddingDefaultsToCurrentDeck
+            BoolKey::AddingDefaultsToCurrentDeck
             | BoolKey::FutureDueShowBacklog
             | BoolKey::CardCountsSeparateInactive
-            | BoolKey::RestorePositionBrowser
-            | BoolKey::RestorePositionReviewer
             | BoolKey::LoadBalancerEnabled
             | BoolKey::FsrsHealthCheck
             | BoolKey::NormalizeNoteText => self.get_config_optional(key).unwrap_or(true),

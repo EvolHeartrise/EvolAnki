@@ -166,14 +166,10 @@ message DeckTreeNode {
 }
 
 message SetDeckCollapsedRequest {
-  enum Scope {
-    REVIEWER = 0;
-    BROWSER = 1;
-  }
-
   int64 deck_id = 1;
   bool collapsed = 2;
-  Scope scope = 3;
+  // 3 chose between the deck list and desktop Anki's card browser.
+  reserved 3;
 }
 
 message RenameDeckRequest {

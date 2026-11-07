@@ -128,7 +128,6 @@ impl From<anki_proto::deck_config::UpdateDeckConfigsRequest> for UpdateDeckConfi
             target_deck_id: c.target_deck_id.into(),
             config: c.config.map(Into::into).unwrap_or_default(),
             mode,
-            card_state_customizer: c.card_state_customizer,
             limits: c.limits.unwrap_or_default(),
             new_cards_ignore_review_limit: c.new_cards_ignore_review_limit,
             apply_all_parent_limits: c.apply_all_parent_limits,

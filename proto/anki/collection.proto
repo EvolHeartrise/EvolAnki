@@ -13,7 +13,6 @@ service CollectionService {
   rpc CheckDatabase(generic.Empty) returns (CheckDatabaseResponse);
   rpc GetUndoStatus(generic.Empty) returns (UndoStatus);
   rpc Undo(generic.Empty) returns (OpChangesAfterUndo);
-  rpc Redo(generic.Empty) returns (OpChangesAfterUndo);
 }
 
 // Implemented on the Backend, as these work without an open collection.
@@ -46,10 +45,8 @@ message OpChanges {
   bool deck_config = 11;
   bool mtime = 12;
 
-  bool browser_table = 7;
-  bool browser_sidebar = 8;
-  // editor and displayed card in review screen
-  bool note_text = 9;
+  // 7-9 told desktop Anki's browser and editor to redraw.
+  reserved 7 to 9;
   // whether to call .reset() and getCard()
   bool study_queues = 10;
 }
@@ -66,31 +63,24 @@ message OpChangesWithId {
 
 message UndoStatus {
   string undo = 1;
-  string redo = 2;
-  uint32 last_step = 3;
+  // 2 was redo, which is gone; 3 a step counter desktop Anki used.
+  reserved 2, 3;
 }
 
 message OpChangesAfterUndo {
   OpChanges changes = 1;
   string operation = 2;
-  int64 reverted_to_timestamp = 3;
-  UndoStatus new_status = 4;
-  uint32 counter = 5;
+  // Desktop Anki's: the time reverted to, the new undo status and a counter.
+  reserved 3 to 5;
 }
 
 message Progress {
-  message DatabaseCheck {
-    string stage = 1;
-    uint32 stage_total = 2;
-    uint32 stage_current = 3;
-  }
+  // 3 and 6-8 reported media and database checks, imports and exports, which
+  // only evolanki-admin runs, and it doesn't poll.
+  reserved 3, 6 to 8;
 
   oneof value {
     generic.Empty none = 1;
-    string media_check = 3;
-    DatabaseCheck database_check = 6;
-    string importing = 7;
-    string exporting = 8;
     ComputeParamsProgress compute_params = 9;
     ComputeRetentionProgress compute_retention = 10;
     ComputeMemoryProgress compute_memory = 11;

@@ -122,10 +122,9 @@ impl ProgressState {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Progress {
-    MediaCheck(MediaCheckProgress),
-    DatabaseCheck(DatabaseCheckProgress),
-    Import(ImportProgress),
-    Export(ExportProgress),
+    /// A media or database check, import or export. Nothing displays their
+    /// progress, but they can still be aborted.
+    Unreported,
     ComputeParams(ComputeParamsProgress),
     ComputeRetention(ComputeRetentionProgress),
     ComputeMemory(ComputeMemoryProgress),
@@ -135,77 +134,32 @@ pub(crate) fn progress_to_proto(
     progress: Option<Progress>,
     tr: &I18n,
 ) -> anki_proto::collection::Progress {
-    let progress = if let Some(progress) = progress {
-        match progress {
-            Progress::MediaCheck(n) => Value::MediaCheck(tr.media_check_checked(n.checked).into()),
-            Progress::DatabaseCheck(p) => {
-                let mut stage_total = 0;
-                let mut stage_current = 0;
-                let stage = match p {
-                    DatabaseCheckProgress::Integrity => tr.database_check_checking_integrity(),
-                    DatabaseCheckProgress::Optimize => tr.database_check_rebuilding(),
-                    DatabaseCheckProgress::Cards => tr.database_check_checking_cards(),
-                    DatabaseCheckProgress::Notes { current, total } => {
-                        stage_total = total;
-                        stage_current = current;
-                        tr.database_check_checking_notes()
-                    }
-                    DatabaseCheckProgress::History => tr.database_check_checking_history(),
-                }
-                .to_string();
-                Value::DatabaseCheck(anki_proto::collection::progress::DatabaseCheck {
-                    stage,
-                    stage_total: stage_total as u32,
-                    stage_current: stage_current as u32,
-                })
-            }
-            Progress::Import(progress) => Value::Importing(
-                match progress {
-                    ImportProgress::File => tr.importing_importing_file(),
-                    ImportProgress::Media(n) => tr.importing_processed_media_file(n),
-                    ImportProgress::MediaCheck(n) => tr.media_check_checked(n),
-                    ImportProgress::Notes(n) => tr.importing_processed_notes(n),
-                    ImportProgress::Extracting => tr.importing_extracting(),
-                    ImportProgress::Gathering => tr.importing_gathering(),
-                }
-                .into(),
-            ),
-            Progress::Export(progress) => Value::Exporting(
-                match progress {
-                    ExportProgress::File => tr.exporting_exporting_file(),
-                    ExportProgress::Media(n) => tr.exporting_processed_media_files(n),
-                    ExportProgress::Notes(n) => tr.importing_processed_notes(n),
-                    ExportProgress::Gathering => tr.importing_gathering(),
-                }
-                .into(),
-            ),
-            Progress::ComputeParams(progress) => {
-                Value::ComputeParams(anki_proto::collection::ComputeParamsProgress {
-                    current: progress.current_iteration,
-                    total: progress.total_iterations,
-                    reviews: progress.reviews,
-                    current_deck: progress.current_deck,
-                    total_decks: progress.total_decks,
-                })
-            }
-            Progress::ComputeRetention(progress) => {
-                Value::ComputeRetention(anki_proto::collection::ComputeRetentionProgress {
-                    current: progress.current,
-                    total: progress.total,
-                })
-            }
-            Progress::ComputeMemory(progress) => {
-                Value::ComputeMemory(anki_proto::collection::ComputeMemoryProgress {
-                    current_cards: progress.current_cards,
-                    total_cards: progress.total_cards,
-                    label: tr
-                        .deck_config_updating_cards(progress.current_cards, progress.total_cards)
-                        .into(),
-                })
-            }
+    let progress = match progress {
+        None | Some(Progress::Unreported) => Value::None(anki_proto::generic::Empty {}),
+        Some(Progress::ComputeParams(progress)) => {
+            Value::ComputeParams(anki_proto::collection::ComputeParamsProgress {
+                current: progress.current_iteration,
+                total: progress.total_iterations,
+                reviews: progress.reviews,
+                current_deck: progress.current_deck,
+                total_decks: progress.total_decks,
+            })
         }
-    } else {
-        Value::None(anki_proto::generic::Empty {})
+        Some(Progress::ComputeRetention(progress)) => {
+            Value::ComputeRetention(anki_proto::collection::ComputeRetentionProgress {
+                current: progress.current,
+                total: progress.total,
+            })
+        }
+        Some(Progress::ComputeMemory(progress)) => {
+            Value::ComputeMemory(anki_proto::collection::ComputeMemoryProgress {
+                current_cards: progress.current_cards,
+                total_cards: progress.total_cards,
+                label: tr
+                    .deck_config_updating_cards(progress.current_cards, progress.total_cards)
+                    .into(),
+            })
+        }
     };
     anki_proto::collection::Progress {
         value: Some(progress),
@@ -213,26 +167,26 @@ pub(crate) fn progress_to_proto(
 }
 
 impl From<MediaCheckProgress> for Progress {
-    fn from(p: MediaCheckProgress) -> Self {
-        Progress::MediaCheck(p)
+    fn from(_: MediaCheckProgress) -> Self {
+        Progress::Unreported
     }
 }
 
 impl From<DatabaseCheckProgress> for Progress {
-    fn from(p: DatabaseCheckProgress) -> Self {
-        Progress::DatabaseCheck(p)
+    fn from(_: DatabaseCheckProgress) -> Self {
+        Progress::Unreported
     }
 }
 
 impl From<ImportProgress> for Progress {
-    fn from(p: ImportProgress) -> Self {
-        Progress::Import(p)
+    fn from(_: ImportProgress) -> Self {
+        Progress::Unreported
     }
 }
 
 impl From<ExportProgress> for Progress {
-    fn from(p: ExportProgress) -> Self {
-        Progress::Export(p)
+    fn from(_: ExportProgress) -> Self {
+        Progress::Unreported
     }
 }
 

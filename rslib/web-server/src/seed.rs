@@ -187,7 +187,6 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
                 &SetDueDateRequest {
                     card_ids: cards.cids,
                     days: "0".into(),
-                    config_key: None,
                 },
             )?;
         }

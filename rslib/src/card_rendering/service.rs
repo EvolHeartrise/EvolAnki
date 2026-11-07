@@ -55,7 +55,7 @@ impl crate::services::CardRenderingService for Collection {
         &mut self,
         input: anki_proto::card_rendering::RenderExistingCardRequest,
     ) -> Result<anki_proto::card_rendering::RenderCardResponse> {
-        self.render_existing_card(CardId(input.card_id), input.browser, input.partial_render)
+        self.render_existing_card(CardId(input.card_id), input.partial_render)
             .map(Into::into)
     }
 
@@ -182,7 +182,6 @@ mod test {
             &mut col,
             RenderExistingCardRequest {
                 card_id,
-                browser: false,
                 partial_render: false,
             },
         )
@@ -216,7 +215,6 @@ mod test {
             &mut col,
             RenderExistingCardRequest {
                 card_id,
-                browser: false,
                 partial_render: false,
             },
         )
@@ -235,7 +233,6 @@ mod test {
             &mut col,
             RenderExistingCardRequest {
                 card_id: 12345,
-                browser: false,
                 partial_render: false,
             },
         )

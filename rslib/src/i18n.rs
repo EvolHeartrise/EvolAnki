@@ -162,14 +162,6 @@ impl I18n {
         "Back template has a problem:".into()
     }
 
-    pub fn card_template_rendering_browser_front_side_problem(&self) -> Cow<'static, str> {
-        "Browser-specific front template has a problem:".into()
-    }
-
-    pub fn card_template_rendering_browser_back_side_problem(&self) -> Cow<'static, str> {
-        "Browser-specific back template has a problem:".into()
-    }
-
     pub fn card_template_rendering_conditional_not_closed(
         &self,
         missing: impl Display,
@@ -372,26 +364,6 @@ impl I18n {
         "One or more note types were missing. The notes that used them have been given new note types starting with \"db-check\", but field names and card design have been lost, so you may be better off restoring from an automatic backup.".into()
     }
 
-    pub fn database_check_checking_integrity(&self) -> Cow<'static, str> {
-        "Checking collection...".into()
-    }
-
-    pub fn database_check_rebuilding(&self) -> Cow<'static, str> {
-        "Rebuilding...".into()
-    }
-
-    pub fn database_check_checking_cards(&self) -> Cow<'static, str> {
-        "Checking cards...".into()
-    }
-
-    pub fn database_check_checking_notes(&self) -> Cow<'static, str> {
-        "Checking notes...".into()
-    }
-
-    pub fn database_check_checking_history(&self) -> Cow<'static, str> {
-        "Checking history...".into()
-    }
-
     pub fn deck_config_default_name(&self) -> Cow<'static, str> {
         "Default".into()
     }
@@ -483,19 +455,6 @@ impl I18n {
         "Your database appears to be in an inconsistent state. Please use the Check Database action.".into()
     }
 
-    pub fn exporting_exporting_file(&self) -> Cow<'static, str> {
-        "Exporting file...".into()
-    }
-
-    pub fn exporting_processed_media_files(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        if count.is_one() {
-            format!("Processed {count} media file...").into()
-        } else {
-            format!("Processed {count} media files...").into()
-        }
-    }
-
     pub fn importing_cannot_merge_notetypes_of_different_kinds(&self) -> Cow<'static, str> {
         "Cloze note types cannot be merged with regular note types.\nYou may still import the file with 'Merge note types' disabled.".into()
     }
@@ -508,41 +467,11 @@ impl I18n {
         "The provided file is not a valid .apkg file.".into()
     }
 
-    pub fn importing_processed_media_file(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        if count.is_one() {
-            format!("Imported {count} media file").into()
-        } else {
-            format!("Imported {count} media files").into()
-        }
-    }
-
-    pub fn importing_importing_file(&self) -> Cow<'static, str> {
-        "Importing file...".into()
-    }
-
-    pub fn importing_extracting(&self) -> Cow<'static, str> {
-        "Extracting data...".into()
-    }
-
-    pub fn importing_gathering(&self) -> Cow<'static, str> {
-        "Gathering data...".into()
-    }
-
     pub fn importing_failed_to_import_media_file(
         &self,
         debuginfo: impl Display,
     ) -> Cow<'static, str> {
         format!("Failed to import media file: {debuginfo}").into()
-    }
-
-    pub fn importing_processed_notes(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        if count.is_one() {
-            format!("Processed {count} note...").into()
-        } else {
-            format!("Processed {count} notes...").into()
-        }
     }
 
     pub fn importing_file_empty(&self) -> Cow<'static, str> {
@@ -635,11 +564,6 @@ impl I18n {
         side: impl Display,
     ) -> Cow<'static, str> {
         format!("{notetype}: {card_type} ({side})").into()
-    }
-
-    pub fn media_check_checked(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        format!("Checked {count}...").into()
     }
 
     pub fn notetypes_front_field(&self) -> Cow<'static, str> {

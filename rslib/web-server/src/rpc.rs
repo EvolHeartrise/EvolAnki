@@ -45,7 +45,6 @@ pub const ALLOWED: &[&str] = &[
     // SchedulerService: FSRS tools on the deck options page
     "computeFsrsParams",
     "computeOptimalRetention",
-    "evaluateParamsLegacy",
     "simulateFsrsReview",
     "simulateFsrsWorkload",
     // DeckConfigService

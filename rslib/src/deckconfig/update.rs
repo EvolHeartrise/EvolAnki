@@ -12,7 +12,6 @@ use fsrs::FSRS;
 use tracing::warn;
 
 use crate::config::I32ConfigKey;
-use crate::config::StringKey;
 use crate::decks::NormalDeck;
 use crate::prelude::*;
 use crate::scheduler::fsrs::memory_state::UpdateMemoryStateEntry;
@@ -31,7 +30,6 @@ pub struct UpdateDeckConfigsRequest {
     /// The settings of the target deck. Its id is ignored.
     pub config: DeckConfig,
     pub mode: UpdateDeckConfigsMode,
-    pub card_state_customizer: String,
     pub limits: Limits,
     pub new_cards_ignore_review_limit: bool,
     pub apply_all_parent_limits: bool,
@@ -59,11 +57,9 @@ impl Collection {
             current_deck: Some(self.get_current_deck_for_update(deck)?),
             config: Some(self.get_deck_settings_for_update(deck)?.into()),
             defaults: Some(defaults.into()),
-            card_state_customizer: self.get_config_string(StringKey::CardStateCustomizer),
             new_cards_ignore_review_limit: self.get_config_bool(BoolKey::NewCardsIgnoreReviewLimit),
             apply_all_parent_limits: self.get_config_bool(BoolKey::ApplyAllParentLimits),
             fsrs_health_check: self.get_config_bool(BoolKey::FsrsHealthCheck),
-            fsrs_legacy_evaluate: self.get_config_bool(BoolKey::FsrsLegacyEvaluate),
             days_since_last_fsrs_optimize,
         })
     }
@@ -222,7 +218,6 @@ impl Collection {
             self.update_memory_state(input)?;
         }
 
-        self.set_config_string_inner(StringKey::CardStateCustomizer, &req.card_state_customizer)?;
         self.set_config_bool_inner(
             BoolKey::NewCardsIgnoreReviewLimit,
             req.new_cards_ignore_review_limit,
@@ -370,7 +365,6 @@ mod test {
             target_deck_id: deck,
             config: output.config.unwrap().into(),
             mode: UpdateDeckConfigsMode::Normal,
-            card_state_customizer: "".to_string(),
             limits: Limits::default(),
             new_cards_ignore_review_limit: false,
             apply_all_parent_limits: false,
@@ -392,7 +386,6 @@ mod test {
         }
 
         // add the keys so it doesn't trigger a change below
-        col.set_config_string_inner(StringKey::CardStateCustomizer, "")?;
         col.set_config_bool_inner(BoolKey::NewCardsIgnoreReviewLimit, false)?;
         col.set_config_bool_inner(BoolKey::ApplyAllParentLimits, false)?;
         col.set_config_bool_inner(BoolKey::FsrsHealthCheck, true)?;

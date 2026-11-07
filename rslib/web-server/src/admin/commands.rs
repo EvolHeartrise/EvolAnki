@@ -416,7 +416,6 @@ fn card_show(admin: &Admin, args: &Value) -> Result<Value> {
             "renderExistingCard",
             &RenderExistingCardRequest {
                 card_id: cid,
-                browser: false,
                 partial_render: false,
             },
         )?;
@@ -642,7 +641,6 @@ fn card_set_due(admin: &Admin, args: &Value) -> Result<Value> {
         &SetDueDateRequest {
             card_ids,
             days: string(args, "days")?.to_string(),
-            config_key: None,
         },
     )?;
     Ok(json!({"changed": count}))
@@ -1331,7 +1329,7 @@ fn stats_summary(admin: &Admin, _args: &Value) -> Result<Value> {
 
 fn undo_status(admin: &Admin, _args: &Value) -> Result<Value> {
     let status: UndoStatus = call_typed(&admin.backend, "getUndoStatus", &generic::Empty {})?;
-    Ok(json!({"undo": status.undo, "redo": status.redo}))
+    Ok(json!({"undo": status.undo}))
 }
 
 fn undo(admin: &Admin, _args: &Value) -> Result<Value> {

@@ -251,17 +251,11 @@ fn parse_inner<'a, I: Iterator<Item = TemplateResult<Token<'a>>>>(
     }
 }
 
-fn template_error_to_anki_error(
-    err: TemplateError,
-    q_side: bool,
-    browser: bool,
-    tr: &I18n,
-) -> AnkiError {
-    let header = match (q_side, browser) {
-        (true, false) => tr.card_template_rendering_front_side_problem(),
-        (false, false) => tr.card_template_rendering_back_side_problem(),
-        (true, true) => tr.card_template_rendering_browser_front_side_problem(),
-        (false, true) => tr.card_template_rendering_browser_back_side_problem(),
+fn template_error_to_anki_error(err: TemplateError, q_side: bool, tr: &I18n) -> AnkiError {
+    let header = if q_side {
+        tr.card_template_rendering_front_side_problem()
+    } else {
+        tr.card_template_rendering_back_side_problem()
     };
     let details = htmlescape::encode_minimal(&localized_template_error(tr, err));
     let more_info = tr.card_template_rendering_more_info();
@@ -579,7 +573,6 @@ pub struct RenderCardRequest<'a> {
     pub field_map: &'a HashMap<&'a str, Cow<'a, str>>,
     pub card_ord: u16,
     pub is_cloze: bool,
-    pub browser: bool,
     pub tr: &'a I18n,
     pub partial_render: bool,
 }
@@ -598,7 +591,6 @@ pub fn render_card(
         field_map,
         card_ord,
         is_cloze,
-        browser,
         tr,
         partial_render: partial_for_python,
     }: RenderCardRequest<'_>,
@@ -615,7 +607,7 @@ pub fn render_card(
     // question side
     let (mut qnodes, qtmpl) = ParsedTemplate::from_text(qfmt)
         .and_then(|tmpl| Ok((tmpl.render(&context, tr)?, tmpl)))
-        .map_err(|e| template_error_to_anki_error(e, true, browser, tr))?;
+        .map_err(|e| template_error_to_anki_error(e, true, tr))?;
 
     // check if the front side was empty
     let empty_message = if is_cloze && cloze_is_empty(field_map, card_ord) {
@@ -625,7 +617,7 @@ pub fn render_card(
             TEMPLATE_BLANK_CLOZE_LINK,
             tr.card_template_rendering_more_info()
         ))
-    } else if !is_cloze && !browser && !qtmpl.renders_with_fields(context.nonempty_fields) {
+    } else if !is_cloze && !qtmpl.renders_with_fields(context.nonempty_fields) {
         Some(format!(
             "<div>{}<br><a href='{}'>{}</a></div>",
             tr.card_template_rendering_empty_front(),
@@ -655,7 +647,7 @@ pub fn render_card(
     };
     let anodes = ParsedTemplate::from_text(afmt)
         .and_then(|tmpl| tmpl.render(&context, tr))
-        .map_err(|e| template_error_to_anki_error(e, false, browser, tr))?;
+        .map_err(|e| template_error_to_anki_error(e, false, tr))?;
 
     Ok(RenderCardResponse {
         qnodes,
@@ -1331,7 +1323,6 @@ mod test {
             field_map: &map,
             card_ord: 1,
             is_cloze: false,
-            browser: false,
             tr: &tr,
             partial_render: true,
         };
