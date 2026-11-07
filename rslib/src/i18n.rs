@@ -90,20 +90,8 @@ impl I18n {
         "Remove Tag".into()
     }
 
-    pub fn actions_reposition(&self) -> Cow<'static, str> {
-        "Reposition".into()
-    }
-
     pub fn actions_set_due_date(&self) -> Cow<'static, str> {
         "Set Due Date".into()
-    }
-
-    pub fn actions_toggle_load_balancer(&self) -> Cow<'static, str> {
-        "Toggle Load Balancer".into()
-    }
-
-    pub fn actions_grade_now(&self) -> Cow<'static, str> {
-        "Grade Now".into()
     }
 
     pub fn actions_answer_card(&self) -> Cow<'static, str> {
@@ -132,10 +120,6 @@ impl I18n {
 
     pub fn actions_update_deck(&self) -> Cow<'static, str> {
         "Update Deck".into()
-    }
-
-    pub fn actions_forget_card(&self) -> Cow<'static, str> {
-        "Reset Card".into()
     }
 
     pub fn actions_build_filtered_deck(&self) -> Cow<'static, str> {
