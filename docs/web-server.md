@@ -220,10 +220,7 @@ your tap on Study Now also starts its audio element, which then may play freely.
 it's refused anyway, such as after reloading the reviewer, a **Tap to play sound** button
 appears and plays what was held back.
 
-`ts/tests/web/mobile.spec.ts` runs all this in Playwright's Chromium, with Chrome's
-real autoplay policy, and its WebKit, with emulated devices. WebKit on Linux has no
-autoplay policy to speak of, so that one is acted out with a stand-in that refuses
-until a tap. **None of this has been on an actual phone.** Things to check on one: that
+**None of this has been tested on an actual phone.** Things to check on one: that
 autoplay works after Study Now on iOS Safari in particular (it depends on the one-tap
 "unlock" above), the on-screen keyboard over type-in answers, safe-area insets on a notch, and how your audio formats play. iOS has no `.ogg`/`.opus` support before
 Safari 18.4. A file that can't play is skipped.
@@ -283,9 +280,6 @@ Safari 18.4. A file that can't play is skipped.
 
 ```
 CARGO_TARGET_DIR=$PWD/out/rust cargo test -p evolanki-server
-out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts
 ```
 
-Both create throwaway collections in temporary folders. The Playwright tests need the
-assets from above, a debug server binary, and Chromium and WebKit
-(`playwright install chromium webkit`).
+These create throwaway collections in temporary folders.

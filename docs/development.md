@@ -42,14 +42,6 @@ the format checks.
 Don't ask a single ninja invocation for both `check:svelte` and the web build. The
 former regenerates `ts/.svelte-kit`, which has broken the bundle when they overlapped.
 
-The browser tests are separate:
-
-```
-./ninja web
-CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
-out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts
-```
-
 ## Fixing problems
 
 ```

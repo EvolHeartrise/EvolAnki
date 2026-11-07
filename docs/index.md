@@ -6,4 +6,3 @@
 - [The build system](build.md)
 - [Protocol buffers](protobuf.md)
 - [Writing unit tests](unit-testing.md)
-- [End-to-end testing](e2e-testing.md)

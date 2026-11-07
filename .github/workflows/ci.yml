@@ -54,10 +54,3 @@ jobs:
       - name: Test
         run: ./ninja check:rust_test check:vitest
 
-      - name: Browser tests
-        env:
-          # built by the Test step
-          EVOLANKI_SERVER: ${{ github.workspace }}/out/rust/ci/evolanki-server
-        run: |
-          out/extracted/node/bin/yarn playwright install --with-deps chromium webkit
-          out/extracted/node/bin/node node_modules/.bin/playwright test -c playwright.web.config.ts

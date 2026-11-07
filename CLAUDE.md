@@ -41,10 +41,6 @@ Language-specific tests are also available: `just test-rust`, `just test-ts`.
 Use `just fmt` / `just fix-fmt` for formatting and `just fix-lint` to auto-fix
 lint issues.
 
-Browser e2e tests live in `ts/tests/web/` and run with `just test-e2e`. Each test
-starts evolanki-server on a temporary collection, and drives it with Playwright's
-Chromium, and WebKit for phones.
-
 Be mindful that some changes (such as modifications to .proto files) may
 need a full build with `just check` first.
 

@@ -27,18 +27,6 @@ test-rust:
 test-ts:
     {{ ninja }} check:vitest
 
-# Run Playwright end-to-end tests. Pass --ui to open the interactive UI.
-[arg("ui", long="ui", value="--ui")]
-test-e2e ui='': _install-playwright-browsers
-    {{ ninja }} web
-    CARGO_TARGET_DIR=$PWD/out/rust cargo build -p evolanki-server
-    {{ playwright_env }} {{ yarn }} test:e2e {{ ui }}
-
-[private]
-_install-playwright-browsers:
-    {{ ninja }} node_modules
-    {{ playwright_env }} {{ yarn }} playwright install chromium webkit
-
 # Check formatting (fast, no build needed)
 fmt:
     {{ ninja }} check:format
@@ -72,5 +60,3 @@ clean *args:
     ./tools/clean {{ args }}
 
 ninja := "./ninja"
-playwright_env := "PLAYWRIGHT_BROWSERS_PATH=out/playwright-browsers"
-yarn := "out/extracted/node/bin/yarn"

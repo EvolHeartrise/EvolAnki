@@ -315,8 +315,7 @@ mod tests {
 ### Svelte, TypeScript, and JavaScript
 
 Web unit tests use Vitest. The current configuration discovers colocated
-`*.test.ts`, `*.spec.ts`, `*.test.js`, and `*.spec.js` files, excluding
-`ts/tests/web/`.
+`*.test.ts`, `*.spec.ts`, `*.test.js`, and `*.spec.js` files.
 
 - Test TypeScript/JavaScript logic and Svelte stores without a DOM unless rendering
   and interaction prove an additional contract.
@@ -331,9 +330,8 @@ Web unit tests use Vitest. The current configuration discovers colocated
   whose entire structure is intentionally reviewed.
 - The repository does not currently configure a dedicated Svelte component-rendering
   harness in the unit suite. If a behavior cannot be tested through extracted logic
-  or the existing DOM setup, agree on the appropriate harness or place the essential
-  browser contract in the existing Playwright suite rather than inventing a private
-  test setup.
+  or the existing DOM setup, agree on the appropriate harness rather than inventing a
+  private test setup.
 
 Generic TypeScript example:
 
@@ -368,8 +366,7 @@ just check      # required final formatting, build, lint, and test validation
 ```
 
 During development, run the relevant stack frequently. Before considering a code
-change complete, run `just check`. See [End-to-End Testing](e2e-testing.md) when the
-selected boundary requires Playwright.
+change complete, run `just check`.
 
 ## Review checklist
 

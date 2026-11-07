@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 export PATH="$PWD/out/extracted/node/bin:$PATH"
 
 cargo install cargo-license@0.7.0
-cargo-license --json --manifest-path rslib/web-server/Cargo.toml |
+cargo license --json --manifest-path rslib/web-server/Cargo.toml |
     python3 -c '
 import json, sys
 crates = json.load(sys.stdin)
