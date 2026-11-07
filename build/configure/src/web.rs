@@ -293,8 +293,8 @@ fn build_web_root(build: &mut Build) -> Result<()> {
     build.add_action(
         "web:css",
         CompileSass {
-            input: inputs!["ts/lib/sass/webview.scss"],
-            output: "web/css/webview.css",
+            input: inputs!["ts/lib/sass/card.scss"],
+            output: "web/css/card.css",
             deps: inputs![":sass"],
             load_paths: vec![".", "node_modules"],
         },

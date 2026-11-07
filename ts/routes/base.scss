@@ -36,8 +36,7 @@ html {
     margin: -1rem auto -1rem -1rem !important;
 }
 
-// Qt injects these into its webviews, after this file. In the web app they're
-// all there is. :where() keeps them from outranking anything else.
+// Page-wide defaults. :where() keeps them from outranking anything else.
 :where(html) {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     color-scheme: light;

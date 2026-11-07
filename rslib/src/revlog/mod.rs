@@ -94,8 +94,8 @@ impl RevlogEntry {
     }
 
     /// Returns true if this entry represents a reset operation.
-    /// These entries are created when a card is reset using
-    /// [`Collection::reschedule_cards_as_new`].
+    /// These entries are created when a card is reset (forgotten), which a
+    /// collection from a stock client may contain.
     /// The 0 value of `ease_factor` differentiates it
     /// from entry created by [`Collection::set_due_date`] that has
     /// `RevlogReviewKind::Manual` but non-zero `ease_factor`.

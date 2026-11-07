@@ -290,7 +290,6 @@ fn capture(harness: &mut Harness) -> Result<Value> {
             label(harness, *cid),
             json!({
                 "card": harness.card(*cid),
-                "next": harness.card_states(*cid),
                 "stats": harness.record("CardStats", json!({ "cid": cid })),
             }),
         );
@@ -315,28 +314,39 @@ fn capture(harness: &mut Harness) -> Result<Value> {
     Ok(Value::Object(out))
 }
 
-/// Answer each card once, without the queue being involved, and again to see
-/// the state the first answer left behind.
+/// Answer each card once, in the order the queue offers them, until it's
+/// empty or offers a card again. Cards it doesn't hold, such as suspended
+/// ones, are left as they are.
 fn answer_all(harness: &mut Harness, rating: usize) -> Result<Value> {
     let mut out = Map::new();
-    let cids = harness.search("")?;
-    for cid in &cids {
-        let name = label(harness, *cid);
-        let states = harness.rpc("GetSchedulingStates", json!({ "cid": cid }));
-        let entry = match states {
-            Err(err) => json!({ "states_error": err }),
-            Ok(states) => {
-                let result = harness.answer(*cid, &states, rating, 4000);
-                json!({
-                    "error": result.err(),
-                    "after": harness.card(*cid),
-                    "revlog": harness.latest_revlog(*cid),
-                    "then": harness.card_states(*cid),
-                })
-            }
+    loop {
+        let queued = harness.must(
+            "GetQueuedCards",
+            json!({ "fetch_limit": 1, "intraday_learning_only": false }),
+        )?;
+        let Some(item) = queued["cards"].get(0).cloned() else {
+            break;
         };
-        out.insert(name, entry);
+        let cid = item["card"]["id"].as_i64().unwrap_or(0);
+        let name = label(harness, cid);
+        if out.contains_key(&name) {
+            break;
+        }
+        let result = harness.answer(cid, &item["states"], rating, 4000);
+        out.insert(
+            name,
+            json!({
+                "error": result.err(),
+                "after": harness.card(cid),
+                "revlog": harness.latest_revlog(cid),
+            }),
+        );
         clock::advance_ms(1000);
+    }
+    for cid in harness.search("")? {
+        let name = label(harness, cid);
+        out.entry(name)
+            .or_insert_with(|| json!({ "queued": false }));
     }
     Ok(Value::Object(out))
 }

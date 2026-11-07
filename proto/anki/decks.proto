@@ -17,7 +17,6 @@ service DecksService {
   rpc GetDeckIdByName(generic.String) returns (DeckId);
   rpc GetDeck(DeckId) returns (Deck);
   rpc SetDeckCollapsed(SetDeckCollapsedRequest) returns (collection.OpChanges);
-  rpc GetDeckNames(GetDeckNamesRequest) returns (DeckNames);
   rpc RemoveDecks(DeckIds) returns (collection.OpChangesWithCount);
   rpc RenameDeck(RenameDeckRequest) returns (collection.OpChanges);
   rpc GetOrCreateFilteredDeck(DeckId) returns (FilteredDeckForUpdate);
@@ -175,21 +174,6 @@ message SetDeckCollapsedRequest {
   int64 deck_id = 1;
   bool collapsed = 2;
   Scope scope = 3;
-}
-
-message GetDeckNamesRequest {
-  bool skip_empty_default = 1;
-  // if unset, implies skip_empty_default
-  bool include_filtered = 2;
-}
-
-message DeckNames {
-  repeated DeckNameId entries = 1;
-}
-
-message DeckNameId {
-  int64 id = 1;
-  string name = 2;
 }
 
 message RenameDeckRequest {

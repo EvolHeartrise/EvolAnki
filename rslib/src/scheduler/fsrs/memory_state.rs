@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 
-use anki_proto::scheduler::ComputeMemoryStateResponse;
 use fsrs::FSRSItem;
 use fsrs::MemoryState;
 use fsrs::FSRS;
@@ -17,6 +16,7 @@ use super::params::ignore_revlogs_before_ms_from_config;
 use super::rescheduler::Rescheduler;
 use crate::card::CardQueue;
 use crate::card::CardType;
+use crate::card::FsrsMemoryState;
 use crate::prelude::*;
 use crate::revlog::RevlogEntry;
 use crate::scheduler::answering::get_fuzz_seed;
@@ -300,7 +300,7 @@ impl Collection {
         Ok(())
     }
 
-    pub fn compute_memory_state(&mut self, card_id: CardId) -> Result<ComputeMemoryStateResponse> {
+    fn compute_memory_state(&mut self, card_id: CardId) -> Result<ComputedMemoryState> {
         let mut card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
         let deck_id = card.original_deck_id.or(card.deck_id);
         let deck = self.get_deck(deck_id)?.or_not_found(card.deck_id)?;
@@ -323,20 +323,17 @@ impl Collection {
             historical_retention,
             ignore_revlogs_before_ms_from_config(&config)?,
         )?;
-        if item.is_some() {
+        let state = if item.is_some() {
             card.set_memory_state(&fsrs, item, historical_retention)?;
-            Ok(ComputeMemoryStateResponse {
-                state: card.memory_state.map(Into::into),
-                desired_retention,
-                decay,
-            })
+            card.memory_state
         } else {
-            Ok(ComputeMemoryStateResponse {
-                state: None,
-                desired_retention,
-                decay,
-            })
-        }
+            None
+        };
+        Ok(ComputedMemoryState {
+            state,
+            desired_retention,
+            decay,
+        })
     }
 
     // Used for extra-ordinary circumstances where a memory state is needed but is
@@ -344,12 +341,18 @@ impl Collection {
     // Try to use update_memory_state where you can.
     pub fn compute_and_update_memory_state(&mut self, card: &mut Card) -> Result<()> {
         let fsrs_data = self.compute_memory_state(card.id)?;
-        card.memory_state = fsrs_data.state.map(Into::into);
+        card.memory_state = fsrs_data.state;
         card.desired_retention = Some(fsrs_data.desired_retention);
         card.decay = Some(fsrs_data.decay);
         self.storage.update_card(card)?;
         Ok(())
     }
+}
+
+struct ComputedMemoryState {
+    state: Option<FsrsMemoryState>,
+    desired_retention: f32,
+    decay: f32,
 }
 
 /// In a stock client's file this key turned FSRS on or off. Here it's only true
@@ -636,7 +639,6 @@ mod tests {
     use fsrs::MemoryState;
 
     use super::*;
-    use crate::card::FsrsMemoryState;
     use crate::revlog::RevlogReviewKind;
     use crate::scheduler::fsrs::params::tests::convert;
     use crate::scheduler::fsrs::params::tests::revlog;

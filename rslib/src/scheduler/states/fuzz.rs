@@ -2,8 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use super::StateContext;
-use crate::collection::Collection;
-use crate::prelude::*;
 
 /// Describes a range of days for which a certain amount of fuzz is applied to
 /// the new interval.
@@ -40,25 +38,6 @@ impl StateContext<'_> {
                 load_balancer_ctx.find_interval(interval, minimum, maximum)
             })
             .unwrap_or_else(|| with_review_fuzz(self.fuzz_factor, interval, minimum, maximum))
-    }
-}
-
-impl Collection {
-    /// Used for FSRS add-on.
-    pub(crate) fn get_fuzz_delta(&self, card_id: CardId, interval: u32) -> Result<i32> {
-        let card = self.storage.get_card(card_id)?.or_not_found(card_id)?;
-        let deck = self
-            .storage
-            .get_deck(card.deck_id)?
-            .or_not_found(card.deck_id)?;
-        let config = self.home_deck_config(deck.config_id(), card.original_deck_id)?;
-        let fuzzed = with_review_fuzz(
-            card.get_fuzz_factor(true),
-            interval as f32,
-            1,
-            config.inner.maximum_review_interval,
-        );
-        Ok((fuzzed as i32) - (interval as i32))
     }
 }
 

@@ -23,8 +23,6 @@ service ImportExportService {
 service BackendImportExportService {
   rpc ImportCollectionPackage(ImportCollectionPackageRequest)
       returns (generic.Empty);
-  rpc ExportCollectionPackage(ExportCollectionPackageRequest)
-      returns (generic.Empty);
 }
 
 message ImportCollectionPackageRequest {
@@ -32,11 +30,6 @@ message ImportCollectionPackageRequest {
   string backup_path = 2;
   string media_folder = 3;
   string media_db = 4;
-}
-
-message ExportCollectionPackageRequest {
-  string out_path = 1;
-  bool include_media = 2;
 }
 
 enum ImportAnkiPackageUpdateCondition {

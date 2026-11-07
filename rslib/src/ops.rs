@@ -20,13 +20,9 @@ pub enum Op {
     RemoveTag,
     RenameDeck,
     RenameTag,
-    ScheduleAsNew,
     SetCardDeck,
     SetDueDate,
-    GradeNow,
-    SortCards,
     Suspend,
-    ToggleLoadBalancer,
     Unsuspend,
     UpdateConfig,
     UpdateDeck,
@@ -52,10 +48,7 @@ impl Op {
             Op::RemoveDeck => tr.decks_delete_deck(),
             Op::RemoveNote => tr.studying_delete_note(),
             Op::RenameDeck => tr.actions_rename_deck(),
-            Op::ScheduleAsNew => tr.actions_forget_card(),
             Op::SetDueDate => tr.actions_set_due_date(),
-            Op::ToggleLoadBalancer => tr.actions_toggle_load_balancer(),
-            Op::GradeNow => tr.actions_grade_now(),
             Op::Suspend => tr.studying_suspend(),
             Op::Unsuspend => tr.actions_unsuspend(),
             Op::UpdateConfig => tr.actions_update_config(),
@@ -63,7 +56,6 @@ impl Op {
             Op::UpdateNote => tr.actions_update_note(),
             Op::UpdateTag => tr.actions_update_tag(),
             Op::SetCardDeck => tr.browsing_change_deck(),
-            Op::SortCards => tr.actions_reposition(),
             Op::RenameTag => tr.actions_rename_tag(),
             Op::RemoveTag => tr.actions_remove_tag(),
             Op::BuildFilteredDeck => tr.actions_build_filtered_deck(),
@@ -145,11 +137,7 @@ impl OpChanges {
         let c = &self.changes;
         c.card
             || c.deck
-            || (c.config
-                && matches!(
-                    self.op,
-                    Op::SetCurrentDeck | Op::UpdateDeckConfig | Op::ToggleLoadBalancer
-                ))
+            || (c.config && matches!(self.op, Op::SetCurrentDeck | Op::UpdateDeckConfig))
             || c.deck_config
     }
 }

@@ -10,7 +10,7 @@ interface ModalClosingHandler {
 
 /**
  * Register a keydown handler on the document that can optionally stop propagation to other handlers if Escape is pressed and the associated flag is set.
- * Intended to override the general handler in webview.py when a modal is open.
+ * Lets a modal take Escape for itself, before the page's own Escape handlers see it.
  */
 function registerModalClosingHandler(callback?: () => void): ModalClosingHandler {
     let modalIsOpen = false;

@@ -12,14 +12,9 @@ import "anki/cards.proto";
 
 service StatsService {
   rpc CardStats(cards.CardId) returns (CardStatsResponse);
-  rpc GetReviewLogs(cards.CardId) returns (ReviewLogs);
   rpc Graphs(GraphsRequest) returns (GraphsResponse);
   rpc GetGraphPreferences(generic.Empty) returns (GraphPreferences);
   rpc SetGraphPreferences(GraphPreferences) returns (generic.Empty);
-}
-
-message ReviewLogs {
-  repeated CardStatsResponse.StatsRevlogEntry entries = 1;
 }
 
 message CardStatsResponse {
