@@ -44,24 +44,12 @@ function _containsMathjax(html: string): boolean {
 
 type Callback = () => void | Promise<void>;
 
-const onUpdateHook: Array<Callback> = [];
-const onShownHook: Array<Callback> = [];
-
-function _runHook(
-    hooks: Array<Callback>,
-): Promise<PromiseSettledResult<void | Promise<void>>[]> {
-    const promises: (Promise<void> | void)[] = [];
-
-    for (const hook of hooks) {
-        try {
-            const result = hook();
-            promises.push(result);
-        } catch (error) {
-            console.log("Hook failed: ", error);
-        }
+async function runCallback(callback: Callback): Promise<void> {
+    try {
+        await callback();
+    } catch (error) {
+        console.log("Callback failed: ", error);
     }
-
-    return Promise.allSettled(promises);
 }
 
 let _updatingQueue: Promise<void> = Promise.resolve();
@@ -86,16 +74,9 @@ const renderError = (type: string) => (error: unknown): string => {
 
 export async function _updateQA(
     html: string,
-    _unusused: unknown,
     onupdate: Callback,
     onshown: Callback,
 ): Promise<void> {
-    onUpdateHook.length = 0;
-    onUpdateHook.push(onupdate);
-
-    onShownHook.length = 0;
-    onShownHook.push(onshown);
-
     const qa = document.getElementById("qa")!;
 
     const containsMathJax = _containsMathjax(html);
@@ -116,7 +97,7 @@ export async function _updateQA(
         qa.innerHTML = renderError("html")(error);
     }
 
-    await _runHook(onUpdateHook);
+    await runCallback(onupdate);
 
     if (containsMathJax && typeof MathJax !== "undefined" && MathJax.startup) {
         // wait for mathjax to ready
@@ -132,14 +113,13 @@ export async function _updateQA(
 
     qa.style.opacity = "1";
 
-    await _runHook(onShownHook);
+    await runCallback(onshown);
 }
 
 export function _showQuestion(q: string, a: string, bodyclass: string): void {
     _queueAction(() =>
         _updateQA(
             q,
-            null,
             function() {
                 // return to top of window
                 window.scrollTo(0, 0);
@@ -167,7 +147,6 @@ export function _showAnswer(a: string, bodyclass: string): void {
     _queueAction(() =>
         _updateQA(
             a,
-            null,
             function() {
                 if (bodyclass) {
                     //  when previewing

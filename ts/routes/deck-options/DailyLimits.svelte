@@ -5,13 +5,10 @@
 <script lang="ts">
     import * as tr from "@tslib/tr";
     import { HelpPage } from "@tslib/help-page";
-    import type Carousel from "bootstrap/js/dist/carousel";
-    import type Modal from "bootstrap/js/dist/modal";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import SwitchRow from "$lib/components/SwitchRow.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import type { HelpItem } from "$lib/components/types";
 
     import GlobalLabel from "./GlobalLabel.svelte";
     import type { DeckOptionsState } from "./lib";
@@ -125,15 +122,8 @@
             global: true,
         },
     };
-    const helpSections: HelpItem[] = Object.values(settings);
 
-    let modal: Modal;
-    let carousel: Carousel;
-
-    function openHelpModal(index: number): void {
-        modal.show();
-        carousel.to(index);
-    }
+    let helpModal: HelpModal;
 </script>
 
 <TitledContainer title={tr.deckConfigDailyLimits()}>
@@ -141,44 +131,29 @@
         title={tr.deckConfigDailyLimits()}
         url={HelpPage.DeckOptions.dailyLimits}
         slot="tooltip"
-        {helpSections}
-        on:mount={(e) => {
-            modal = e.detail.modal;
-            carousel = e.detail.carousel;
-        }}
+        sections={settings}
+        bind:this={helpModal}
     />
     <SpinBoxRow bind:value={newValue} defaultValue={defaults.newPerDay}>
         <TabbedValue slot="tabs" tabs={newTabs} bind:value={newValue} />
-        <SettingTitle
-            on:click={() => openHelpModal(Object.keys(settings).indexOf("newLimit"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("newLimit")}>
             {settings.newLimit.title}
         </SettingTitle>
     </SpinBoxRow>
     <SpinBoxRow bind:value={reviewsValue} defaultValue={defaults.reviewsPerDay}>
         <TabbedValue slot="tabs" tabs={reviewTabs} bind:value={reviewsValue} />
-        <SettingTitle
-            on:click={() => openHelpModal(Object.keys(settings).indexOf("reviewLimit"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("reviewLimit")}>
             {settings.reviewLimit.title}
         </SettingTitle>
     </SpinBoxRow>
     <Warning warning={reviewsTooLow} />
     <SwitchRow bind:value={$newCardsIgnoreReviewLimit} defaultValue={false}>
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(
-                    Object.keys(settings).indexOf("newCardsIgnoreReviewLimit"),
-                )}
-        >
+        <SettingTitle on:click={() => helpModal.open("newCardsIgnoreReviewLimit")}>
             <GlobalLabel title={settings.newCardsIgnoreReviewLimit.title} />
         </SettingTitle>
     </SwitchRow>
     <SwitchRow bind:value={$applyAllParentLimits} defaultValue={false}>
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("applyAllParentLimits"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("applyAllParentLimits")}>
             <GlobalLabel title={settings.applyAllParentLimits.title} />
         </SettingTitle>
     </SwitchRow>

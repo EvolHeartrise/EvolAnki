@@ -9,13 +9,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     } from "@generated/anki/deck_config_pb";
     import * as tr from "@tslib/tr";
     import { HelpPage } from "@tslib/help-page";
-    import type Carousel from "bootstrap/js/dist/carousel";
-    import type Modal from "bootstrap/js/dist/modal";
     import EnumSelectorRow from "$lib/components/EnumSelectorRow.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import type { HelpItem } from "$lib/components/types";
 
     import {
         newGatherPriorityChoices,
@@ -92,15 +89,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             help: tr.deckConfigReviewSortOrderTooltip() + currentDeck,
         },
     };
-    const helpSections: HelpItem[] = Object.values(settings);
 
-    let modal: Modal;
-    let carousel: Carousel;
-
-    function openHelpModal(index: number): void {
-        modal.show();
-        carousel.to(index);
-    }
+    let helpModal: HelpModal;
 </script>
 
 <TitledContainer title={tr.deckConfigOrderingTitle()}>
@@ -108,21 +98,15 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         title={tr.deckConfigOrderingTitle()}
         url={HelpPage.DeckOptions.displayOrder}
         slot="tooltip"
-        {helpSections}
-        on:mount={(e) => {
-            modal = e.detail.modal;
-            carousel = e.detail.carousel;
-        }}
+        sections={settings}
+        bind:this={helpModal}
     />
     <EnumSelectorRow
         bind:value={$config.newCardGatherPriority}
         defaultValue={defaults.newCardGatherPriority}
         choices={newGatherPriorityChoices()}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("newGatherPriority"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("newGatherPriority")}>
             {settings.newGatherPriority.title}
         </SettingTitle>
     </EnumSelectorRow>
@@ -132,10 +116,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         choices={newSortOrderChoices()}
         disabledChoices={disabledNewSortOrders}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("newCardSortOrder"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("newCardSortOrder")}>
             {settings.newCardSortOrder.title}
         </SettingTitle>
     </EnumSelectorRow>
@@ -144,10 +125,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         defaultValue={defaults.newMix}
         choices={reviewMixChoices()}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("newReviewPriority"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("newReviewPriority")}>
             {settings.newReviewPriority.title}
         </SettingTitle>
     </EnumSelectorRow>
@@ -156,10 +134,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         defaultValue={defaults.interdayLearningMix}
         choices={reviewMixChoices()}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("interdayStepPriority"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("interdayStepPriority")}>
             {settings.interdayStepPriority.title}
         </SettingTitle>
     </EnumSelectorRow>
@@ -168,10 +143,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         defaultValue={defaults.reviewOrder}
         choices={reviewOrderChoices()}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("reviewSortOrder"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("reviewSortOrder")}>
             {settings.reviewSortOrder.title}
         </SettingTitle>
     </EnumSelectorRow>

@@ -12,7 +12,7 @@ import * as tr from "@tslib/tr";
 import type { Bin } from "d3";
 import { bin, extent, interpolateBlues, quantile, scaleLinear, scaleSequential, sum } from "d3";
 
-import type { SearchDispatch, TableDatum } from "./graph-helpers";
+import type { TableDatum } from "./graph-helpers";
 import { numericMap } from "./graph-helpers";
 import type { HistogramData } from "./histogram-graph";
 
@@ -67,30 +67,9 @@ export function intervalLabel(
     }
 }
 
-function makeIntervalQuery(start: number, end: number): string {
-    if (start === end) {
-        return `"prop:ivl=${start}"`;
-    }
-
-    const fromQuery = `"prop:ivl>=${start}"`;
-    const tillQuery = `"prop:ivl<=${end}"`;
-    return `${fromQuery} ${tillQuery}`;
-}
-
-function makeStabilityQuery(start: number, end: number): string {
-    if (start === 0) {
-        start = 0.5;
-    }
-    const fromQuery = `"prop:s>=${start - 0.5}"`;
-    const tillQuery = `"prop:s<${end + 0.5}"`;
-    return `${fromQuery} ${tillQuery}`;
-}
-
 export function prepareIntervalData(
     data: IntervalGraphData,
     range: IntervalRange,
-    dispatch: SearchDispatch,
-    browserLinksSupported: boolean,
     stability: boolean,
 ): [HistogramData | null, TableDatum[]] {
     // get min/max
@@ -161,13 +140,6 @@ export function prepareIntervalData(
         return `${interval}<br>${total}: \u200e${localizedNumber(percent, 1)}%`;
     }
 
-    function onClick(bin: Bin<number, number>): void {
-        const start = bin.x0!;
-        const end = bin.x1! - 1;
-        const query = (stability ? makeStabilityQuery : makeIntervalQuery)(start, end);
-        dispatch("search", { query });
-    }
-
     const medianInterval = Math.round(quantile(allIntervals, 0.5) ?? 0);
     const medianIntervalString = timeSpan(medianInterval * 86400, false);
     const tableData = [
@@ -183,7 +155,6 @@ export function prepareIntervalData(
             bins,
             total: totalInPeriod,
             hoverText,
-            onClick: browserLinksSupported ? onClick : null,
             colourScale,
             showArea: true,
         },

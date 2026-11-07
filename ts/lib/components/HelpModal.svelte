@@ -6,7 +6,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import * as tr from "@tslib/tr";
     import { renderMarkdown } from "@tslib/helpers";
     import Carousel from "bootstrap/js/dist/carousel";
-    import { createEventDispatcher, onMount } from "svelte";
+    import { onMount } from "svelte";
     import Modal from "./Modal.svelte";
 
     import { infoCircle } from "$lib/components/icons";
@@ -22,15 +22,26 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let title: string;
     export let url: string;
     export let linkLabel: string | undefined = undefined;
-    export let startIndex = 0;
-    export let helpSections: HelpItem[];
+    /** Help items keyed by setting name; open() takes one of these keys. */
+    export let sections: Record<string, HelpItem>;
+
+    $: helpSections = Object.values(sections);
 
     let carousel: Carousel;
 
     let modal: Modal;
     let carouselRef: HTMLDivElement;
 
-    const dispatch = createEventDispatcher();
+    let activeIndex = 0;
+
+    /** Show the modal, at the section with this key if there is one. */
+    export function open(key: string): void {
+        modal.show();
+        const index = Object.keys(sections).indexOf(key);
+        if (index >= 0) {
+            carousel.to(index);
+        }
+    }
 
     onMount(() => {
         carousel = new Carousel(carouselRef, { interval: false, ride: false });
@@ -38,10 +49,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         carouselRef.addEventListener("slide.bs.carousel", (e: any) => {
             activeIndex = e.to;
         });
-        dispatch("mount", { modal: modal, carousel: carousel });
     });
-
-    let activeIndex = startIndex;
 </script>
 
 <Badge on:click={() => modal.show()} iconSize={125}>
@@ -103,7 +111,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 >
                     <div class="carousel-inner">
                         {#each helpSections as item, i}
-                            <div class="carousel-item" class:active={i == startIndex}>
+                            <div class="carousel-item" class:active={i == 0}>
                                 <HelpSection {item} />
                             </div>
                         {/each}
@@ -113,7 +121,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         </Row>
     </div>
     <div slot="footer" class="modal-footer">
-        <button type="button" class="btn btn-primary" on:click={modal.acceptHandler}>
+        <button type="button" class="btn btn-primary" on:click={() => modal.hide()}>
             {tr.helpOk()}
         </button>
     </div>

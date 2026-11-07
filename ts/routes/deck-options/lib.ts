@@ -12,26 +12,12 @@ import type { DeckConfig, DeckConfig_Config } from "@generated/anki/deck_config_
 import { DeckConfigsForUpdate_CurrentDeck_Limits } from "@generated/anki/deck_config_pb";
 import { updateDeckConfigs } from "@generated/backend";
 import { runWithBackendProgress } from "@tslib/progress";
-import { promiseWithResolver } from "@tslib/promise";
-import { cloneDeep, isEqual, isEqualWith } from "lodash-es";
+import { cloneDeep, isEqual } from "lodash-es";
 import { tick } from "svelte";
 import type { Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
 
 export type DeckOptionsId = bigint;
-
-type AllConfigs =
-    & Required<
-        Pick<
-            PlainMessage<UpdateDeckConfigsRequest>,
-            | "cardStateCustomizer"
-            | "limits"
-            | "newCardsIgnoreReviewLimit"
-            | "applyAllParentLimits"
-            | "fsrsReschedule"
-        >
-    >
-    & { config: DeckConfig; currentConfig: DeckConfig_Config };
 
 export class DeckOptionsState {
     readonly currentConfig: Writable<DeckConfig_Config>;
@@ -45,9 +31,6 @@ export class DeckOptionsState {
     readonly fsrsHealthCheck: Writable<boolean>;
     readonly legacyEvaluate: boolean;
     readonly daysSinceLastOptimization: Writable<number>;
-    /** Used to detect if there are any pending changes */
-    originalConfigsPromise: Promise<AllConfigs>;
-    readonly originalConfigsResolve: (value: AllConfigs) => void;
 
     readonly targetDeckId: DeckOptionsId;
     private config: DeckConfig;
@@ -69,10 +52,6 @@ export class DeckOptionsState {
 
         // update our state when the current config is changed
         this.currentConfig.subscribe((val) => this.onCurrentConfigChanged(val));
-
-        // Must be resolved after all components are mounted, as some components
-        // may modify the config during their initialization.
-        [this.originalConfigsPromise, this.originalConfigsResolve] = promiseWithResolver<AllConfigs>();
     }
 
     /** The search that shows what this deck's FSRS tools look at by default. */
@@ -100,45 +79,12 @@ export class DeckOptionsState {
         await updateDeckConfigs(
             this.dataForSaving(mode),
         );
-        // what's now saved is what later changes should be compared with
-        this.originalConfigsPromise = Promise.resolve(cloneDeep(this.getAllConfigs()));
     }
 
     private onCurrentConfigChanged(config: DeckConfig_Config): void {
         if (!isEqual(config, this.config.config)) {
             this.config.config = config;
         }
-    }
-
-    private getAllConfigs(): AllConfigs {
-        return cloneDeep({
-            config: this.config,
-            cardStateCustomizer: get(this.cardStateCustomizer),
-            limits: get(this.deckLimits),
-            newCardsIgnoreReviewLimit: get(this.newCardsIgnoreReviewLimit),
-            applyAllParentLimits: get(this.applyAllParentLimits),
-            fsrsReschedule: get(this.fsrsReschedule),
-            currentConfig: get(this.currentConfig),
-        });
-    }
-
-    async isModified(): Promise<boolean> {
-        const original = await this.originalConfigsPromise;
-        const current = this.getAllConfigs();
-        return !isEqualWith(original, current, (lhs, rhs) => {
-            if (typeof lhs === "number" && typeof rhs === "number") {
-                // rslib hands us 32-bit floats (f32), while ts uses 64-bit floats
-                // SpinBox and ParamsInput both round their values as f64 on blur
-                // while the original config's corresponding value remains an f32
-                // so we convert both to f32 before checking for equality
-                return Math.fround(lhs) === Math.fround(rhs);
-            }
-            // undefined means fallback to isEqual
-        });
-    }
-
-    resolveOriginalConfigs(): void {
-        this.originalConfigsResolve(this.getAllConfigs());
     }
 }
 

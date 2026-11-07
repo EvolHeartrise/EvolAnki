@@ -4,33 +4,14 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
     import Modal from "bootstrap/js/dist/modal";
-    import { getContext, onDestroy, onMount } from "svelte";
+    import { onDestroy, onMount } from "svelte";
 
     import { registerModalClosingHandler } from "$lib/sveltelib/modal-closing";
 
-    import { modalsKey } from "./context-keys";
-
-    export let modalKey: string = Math.random().toString(36).substring(2);
     export let dialogClass: string = "";
-    export let onOkClicked: (() => void) | undefined = undefined;
-    export let onCancelClicked: (() => void) | undefined = undefined;
-    export let onShown: (() => void) | undefined = undefined;
-    export let onHidden: (() => void) | undefined = undefined;
-
-    const modals = getContext<Map<string, Modal>>(modalsKey);
 
     let modal: Modal;
     let modalRef: HTMLDivElement;
-
-    function onOkClicked_(): void {
-        modal.hide();
-        onOkClicked?.();
-    }
-
-    function onCancelClicked_(): void {
-        modal.hide();
-        onCancelClicked?.();
-    }
 
     export function show(): void {
         modal.show();
@@ -40,36 +21,27 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         modal.hide();
     }
 
-    export function toggle(): void {
-        modal.toggle();
-    }
-
-    export { onOkClicked_ as acceptHandler, onCancelClicked_ as cancelHandler };
-
     const { set: setModalOpen, remove: removeModalClosingHandler } =
-        registerModalClosingHandler(onOkClicked_);
+        registerModalClosingHandler(hide);
 
-    function onShown_() {
+    function onShown() {
         setModalOpen(true);
-        onShown?.();
     }
 
-    function onHidden_() {
+    function onHidden() {
         setModalOpen(false);
-        onHidden?.();
     }
 
     onMount(() => {
-        modalRef.addEventListener("shown.bs.modal", onShown_);
-        modalRef.addEventListener("hidden.bs.modal", onHidden_);
+        modalRef.addEventListener("shown.bs.modal", onShown);
+        modalRef.addEventListener("hidden.bs.modal", onHidden);
         modal = new Modal(modalRef, { keyboard: false });
-        modals.set(modalKey, modal);
     });
 
     onDestroy(() => {
         removeModalClosingHandler();
-        modalRef.removeEventListener("shown.bs.modal", onShown_);
-        modalRef.removeEventListener("hidden.bs.modal", onHidden_);
+        modalRef.removeEventListener("shown.bs.modal", onShown);
+        modalRef.removeEventListener("hidden.bs.modal", onHidden);
     });
 </script>
 

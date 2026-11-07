@@ -11,7 +11,7 @@ import * as tr from "@tslib/tr";
 import type { Bin } from "d3";
 import { bin, interpolateBlues, min, scaleLinear, scaleSequential, sum } from "d3";
 
-import type { SearchDispatch, TableDatum } from "./graph-helpers";
+import type { TableDatum } from "./graph-helpers";
 import { getNumericMapBinValue, GraphRange, numericMap } from "./graph-helpers";
 import type { HistogramData } from "./histogram-graph";
 
@@ -23,22 +23,9 @@ export function gatherData(data: GraphsResponse): GraphData {
     return { daysAdded: numericMap(data.added!.added) };
 }
 
-function makeQuery(start: number, end: number): string {
-    const include = `"added:${start}"`;
-
-    if (start === 1) {
-        return include;
-    }
-
-    const exclude = `-"added:${end}"`;
-    return `${include} AND ${exclude}`;
-}
-
 export function buildHistogram(
     data: GraphData,
     range: GraphRange,
-    dispatch: SearchDispatch,
-    browserLinksSupported: boolean,
 ): [HistogramData | null, TableDatum[]] {
     // get min/max
     const total = data.daysAdded.size;
@@ -109,20 +96,12 @@ export function buildHistogram(
         return `${day}:<br>${cards}<br>${total}: ${totalCards}`;
     }
 
-    function onClick(bin: Bin<number, number>): void {
-        const start = Math.abs(bin.x0!) + 1;
-        const end = Math.abs(bin.x1!) + 1;
-        const query = makeQuery(start, end);
-        dispatch("search", { query });
-    }
-
     return [
         {
             scale,
             bins,
             total: totalInPeriod,
             hoverText,
-            onClick: browserLinksSupported ? onClick : null,
             colourScale,
             binValue: getNumericMapBinValue,
             showArea: true,

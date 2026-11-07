@@ -5,20 +5,16 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import type { GraphsResponse } from "@generated/anki/stats_pb";
     import * as tr2 from "@tslib/tr";
-    import { createEventDispatcher } from "svelte";
 
     import type { GraphData, TableDatum } from "./card-counts";
     import { gatherData, renderCards } from "./card-counts";
     import Graph from "./Graph.svelte";
     import type { GraphPrefs } from "./graph-helpers";
-    import type { SearchEventMap } from "./graph-helpers";
     import { defaultGraphBounds } from "./graph-helpers";
     import InputBox from "./InputBox.svelte";
 
     export let sourceData: GraphsResponse;
     export let prefs: GraphPrefs;
-
-    const dispatch = createEventDispatcher<SearchEventMap>();
 
     let svg: HTMLElement | SVGElement | null = null;
 
@@ -64,11 +60,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                             <!-- prettier-ignore -->
                             <td>
                             <span style="color: {d.colour};">■&nbsp;</span>
-                            {#if $prefs.browserLinksSupported}
-                                <button class="search-link" on:click={() => dispatch('search', { query: d.query })}>{d.label}</button>
-                            {:else}
-                                <span>{d.label}</span>
-                            {/if}
+                            <span>{d.label}</span>
                         </td>
                             <td class="right">{d.count}</td>
                             <td class="right">{d.percent}</td>
@@ -124,19 +116,5 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 }
             }
         }
-    }
-
-    .search-link {
-        border: 1px transparent solid;
-        background: transparent;
-        cursor: pointer;
-        box-shadow: none;
-        padding: 0 2px;
-        margin-bottom: 0px;
-    }
-
-    .search-link:hover {
-        color: var(--fg-link);
-        text-decoration: underline;
     }
 </style>

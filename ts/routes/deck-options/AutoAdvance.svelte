@@ -5,14 +5,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import * as tr from "@tslib/tr";
     import { HelpPage } from "@tslib/help-page";
-    import type Carousel from "bootstrap/js/dist/carousel";
-    import type Modal from "bootstrap/js/dist/modal";
     import EnumSelectorRow from "$lib/components/EnumSelectorRow.svelte";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import SwitchRow from "$lib/components/SwitchRow.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import type { HelpItem } from "$lib/components/types";
 
     import { answerChoices, questionActionChoices } from "./choices";
     import type { DeckOptionsState } from "./lib";
@@ -45,15 +42,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             help: tr.deckConfigAnswerActionTooltip2(),
         },
     };
-    const helpSections: HelpItem[] = Object.values(settings);
 
-    let modal: Modal;
-    let carousel: Carousel;
-
-    function openHelpModal(index: number): void {
-        modal.show();
-        carousel.to(index);
-    }
+    let helpModal: HelpModal;
 </script>
 
 <TitledContainer title={tr.actionsAutoAdvance()}>
@@ -61,21 +51,15 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         title={tr.actionsAutoAdvance()}
         url={HelpPage.DeckOptions.autoAdvance}
         slot="tooltip"
-        {helpSections}
-        on:mount={(e) => {
-            modal = e.detail.modal;
-            carousel = e.detail.carousel;
-        }}
+        sections={settings}
+        bind:this={helpModal}
     />
     <SpinBoxFloatRow
         bind:value={$config.secondsToShowQuestion}
         defaultValue={defaults.secondsToShowQuestion}
         step={0.1}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("secondsToShowQuestion"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("secondsToShowQuestion")}>
             {settings.secondsToShowQuestion.title}
         </SettingTitle>
     </SpinBoxFloatRow>
@@ -84,18 +68,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         defaultValue={defaults.secondsToShowAnswer}
         step={0.1}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("secondsToShowAnswer"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("secondsToShowAnswer")}>
             {settings.secondsToShowAnswer.title}
         </SettingTitle>
     </SpinBoxFloatRow>
     <SwitchRow bind:value={$config.waitForAudio} defaultValue={defaults.waitForAudio}>
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("waitForAudio"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("waitForAudio")}>
             {settings.waitForAudio.title}
         </SettingTitle>
     </SwitchRow>
@@ -104,10 +82,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         defaultValue={defaults.questionAction}
         choices={questionActionChoices()}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("questionAction"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("questionAction")}>
             {settings.questionAction.title}
         </SettingTitle>
     </EnumSelectorRow>
@@ -116,10 +91,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         defaultValue={defaults.answerAction}
         choices={answerChoices()}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("answerAction"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("answerAction")}>
             {settings.answerAction.title}
         </SettingTitle>
     </EnumSelectorRow>
