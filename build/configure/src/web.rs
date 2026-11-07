@@ -107,11 +107,10 @@ fn build_and_check_reviewer(build: &mut Build) -> Result<()> {
     build.add_action(
         "ts:reviewer:reviewer.js",
         EsbuildScript {
-            script: inputs!["ts/bundle_ts.mjs"],
             entrypoint: "ts/reviewer/index_wrapper.ts".into(),
             output_stem: "ts/reviewer/reviewer",
             deps: reviewer_deps.clone(),
-            extra_exts: &[],
+            bundle: true,
         },
     )?;
     build.add_action(
@@ -231,11 +230,10 @@ fn build_and_check_mathjax(build: &mut Build) -> Result<()> {
     build.add_action(
         "ts:mathjax",
         EsbuildScript {
-            script: "ts/transform_ts.mjs".into(),
             entrypoint: "ts/mathjax/index.ts".into(),
             deps: files.clone(),
             output_stem: "ts/mathjax/mathjax",
-            extra_exts: &[],
+            bundle: false,
         },
     )
 }

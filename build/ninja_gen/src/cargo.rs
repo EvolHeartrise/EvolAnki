@@ -3,10 +3,8 @@
 
 use anyhow::Result;
 use camino::Utf8Path;
-use camino::Utf8PathBuf;
 
 use crate::action::BuildAction;
-use crate::archives::with_exe;
 use crate::build::BuildProfile;
 use crate::build::FilesHandle;
 use crate::input::BuildInput;
@@ -30,18 +28,13 @@ impl RustOutput<'_> {
 
     pub fn path(&self, rust_base: &Utf8Path, build_profile: BuildProfile) -> String {
         let filename = match *self {
-            RustOutput::Binary(package) => {
-                if cfg!(windows) {
-                    format!("{package}.exe")
-                } else {
-                    package.into()
-                }
-            }
+            RustOutput::Binary(package) => package,
             RustOutput::Data(_, path) => return path.to_string(),
         };
-        let mut path: Utf8PathBuf = rust_base.into();
-        path = path.join(profile_output_dir(build_profile)).join(filename);
-        path.to_string()
+        rust_base
+            .join(profile_output_dir(build_profile))
+            .join(filename)
+            .to_string()
     }
 }
 
@@ -212,7 +205,7 @@ impl BuildAction for CargoInstall {
 
     fn files(&mut self, build: &mut impl FilesHandle) {
         build.add_variable("args", self.args);
-        build.add_outputs("", vec![with_exe(&format!("bin/{}", self.binary_name))])
+        build.add_outputs("", vec![format!("bin/{}", self.binary_name)])
     }
 
     fn check_output_timestamps(&self) -> bool {

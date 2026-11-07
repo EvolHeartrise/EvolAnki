@@ -3,15 +3,7 @@ rustc-wrapper = "tools/sccache"
 
 [env]
 DESCRIPTORS_BIN = { value = "out/rslib/proto/descriptors.bin", relative = true }
-# build script will append .exe if necessary
 PROTOC = { value = "out/extracted/protoc/bin/protoc", relative = true }
-MACOSX_DEPLOYMENT_TARGET = "11"
 
 [term]
 color = "always"
-
-[target.'cfg(all(target_env = "msvc", target_os = "windows"))']
-rustflags = ["-C", "target-feature=+crt-static"]
-
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld"

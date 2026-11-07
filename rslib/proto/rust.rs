@@ -91,14 +91,9 @@ fn gather_proto_paths(proto_dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
-/// Set PROTOC to the custom path provided by PROTOC_BINARY, or add .exe to
-/// the standard path if on Windows.
+/// Set PROTOC to the custom path provided by PROTOC_BINARY, if any.
 fn set_protoc_path() {
     if let Ok(custom_protoc) = env::var("PROTOC_BINARY") {
         env::set_var("PROTOC", custom_protoc);
-    } else if let Ok(bundled_protoc) = env::var("PROTOC") {
-        if cfg!(windows) && !bundled_protoc.ends_with(".exe") {
-            env::set_var("PROTOC", format!("{bundled_protoc}.exe"));
-        }
     }
 }

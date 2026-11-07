@@ -21,8 +21,10 @@ The build/ folder is made up of 3 packages:
       if they exit successfully
     - it provides a few helpers for multi-step processes.
 
-Node and protoc are downloaded as part of the build. To use your own, define
-NODE_BINARY, YARN_BINARY and/or PROTOC_BINARY.
+The build supports Linux only, on x86-64 or arm64. Node and protoc are
+downloaded as part of the build. To use your own, define NODE_BINARY,
+YARN_BINARY and/or PROTOC_BINARY. To update the pinned versions, change the
+URLs and SHA-256 checksums in build/ninja_gen/src/node.rs and protobuf.rs.
 
 `rslib/proto` generates the Rust and TypeScript interfaces to the backend,
 which `./ninja` writes to `out/`. The default target,

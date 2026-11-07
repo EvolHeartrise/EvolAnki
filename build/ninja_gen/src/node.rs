@@ -26,22 +26,6 @@ pub fn node_archive(platform: Platform) -> OnlineArchive {
             url: "https://nodejs.org/dist/v22.17.0/node-v22.17.0-linux-arm64.tar.xz",
             sha256: "140aee84be6774f5fb3f404be72adbe8420b523f824de82daeb5ab218dab7b18",
         },
-        Platform::MacX64 => OnlineArchive {
-            url: "https://nodejs.org/dist/v22.17.0/node-v22.17.0-darwin-x64.tar.xz",
-            sha256: "f79de1f64df4ac68493a344bb5ab7d289d0275271e87b543d1278392c9de778a",
-        },
-        Platform::MacArm => OnlineArchive {
-            url: "https://nodejs.org/dist/v22.17.0/node-v22.17.0-darwin-arm64.tar.xz",
-            sha256: "cc9cc294eaf782dd93c8c51f460da610cc35753c6a9947411731524d16e97914",
-        },
-        Platform::WindowsX64 => OnlineArchive {
-            url: "https://nodejs.org/dist/v22.17.0/node-v22.17.0-win-x64.zip",
-            sha256: "721ab118a3aac8584348b132767eadf51379e0616f0db802cc1e66d7f0d98f85",
-        },
-        Platform::WindowsArm => OnlineArchive {
-            url: "https://nodejs.org/dist/v22.17.0/node-v22.17.0-win-arm64.zip",
-            sha256: "78355dc9ca117bb71d3f081e4b1b281855e2b134f3939bb0ca314f7567b0e621",
-        },
     }
 }
 
@@ -49,24 +33,12 @@ pub struct YarnSetup {}
 
 impl BuildAction for YarnSetup {
     fn command(&self) -> &str {
-        if cfg!(windows) {
-            "corepack.cmd enable yarn"
-        } else {
-            "corepack enable yarn"
-        }
+        "corepack enable yarn"
     }
 
     fn files(&mut self, build: &mut impl build::FilesHandle) {
         build.add_inputs("", inputs![":node_binary"]);
-        build.add_outputs_ext(
-            "bin",
-            vec![if cfg!(windows) {
-                "extracted/node/yarn.cmd"
-            } else {
-                "extracted/node/bin/yarn"
-            }],
-            true,
-        );
+        build.add_outputs_ext("bin", vec!["extracted/node/bin/yarn"], true);
     }
 
     fn check_output_timestamps(&self) -> bool {
@@ -98,14 +70,6 @@ impl BuildAction for YarnInstall<'_> {
     }
 }
 
-fn with_cmd_ext(bin: &str) -> Cow<'_, str> {
-    if cfg!(windows) {
-        format!("{bin}.cmd").into()
-    } else {
-        bin.into()
-    }
-}
-
 pub fn setup_node(
     build: &mut Build,
     archive: OnlineArchive,
@@ -126,8 +90,8 @@ pub fn setup_node(
                 "node",
                 archive,
                 hashmap! {
-                    "bin" => vec![if cfg!(windows) { "node.exe" } else { "bin/node" }],
-                    "npm" => vec![if cfg!(windows) { "npm.cmd " } else { "bin/npm" }]
+                    "bin" => vec!["bin/node"],
+                    "npm" => vec!["bin/npm"]
                 },
             )?;
             inputs![":extract:node:bin"]
@@ -149,10 +113,7 @@ pub fn setup_node(
     };
 
     for binary in binary_exports {
-        data_exports.insert(
-            *binary,
-            vec![format!(".bin/{}", with_cmd_ext(binary)).into()],
-        );
+        data_exports.insert(*binary, vec![format!(".bin/{binary}").into()]);
     }
     build.add_action(
         "node_modules",
@@ -164,31 +125,29 @@ pub fn setup_node(
     Ok(())
 }
 
+/// Runs ts/esbuild.mjs on one entrypoint.
 pub struct EsbuildScript<'a> {
-    pub script: BuildInput,
     pub entrypoint: BuildInput,
     pub deps: BuildInput,
-    /// .js will be appended, and any extra extensions
+    /// .js will be appended
     pub output_stem: &'a str,
-    /// eg ['.css', '.html']
-    pub extra_exts: &'a [&'a str],
+    /// Bundle the entrypoint's imports, rather than only transforming it.
+    pub bundle: bool,
 }
 
 impl BuildAction for EsbuildScript<'_> {
     fn command(&self) -> &str {
-        "$node_bin $script $entrypoint $out"
+        "$node_bin $script $entrypoint $out $mode"
     }
 
     fn files(&mut self, build: &mut impl build::FilesHandle) {
         build.add_inputs("node_bin", inputs![":node_binary"]);
-        build.add_inputs("script", &self.script);
+        build.add_inputs("script", inputs!["ts/esbuild.mjs"]);
         build.add_inputs("entrypoint", &self.entrypoint);
         build.add_inputs("", inputs!["yarn.lock", ":node_modules", &self.deps]);
         build.add_inputs("", inputs!["out/env"]);
-        let stem = self.output_stem;
-        let mut outs = vec![format!("{stem}.js")];
-        outs.extend(self.extra_exts.iter().map(|ext| format!("{stem}.{ext}")));
-        build.add_outputs("out", outs);
+        build.add_variable("mode", if self.bundle { "bundle" } else { "transform" });
+        build.add_outputs("out", vec![format!("{}.js", self.output_stem)]);
     }
 }
 

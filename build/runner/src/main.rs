@@ -1,13 +1,12 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-//! A helper for invoking one or more commands in a cross-platform way,
-//! silencing their output when they succeed. Most build actions implicitly use
-//! the 'run' command; we define separate commands for more complicated actions.
+//! A helper for invoking one or more commands, silencing their output when
+//! they succeed. Most build actions implicitly use the 'run' command; we
+//! define separate commands for more complicated actions.
 
 mod archive;
 mod build;
-mod paths;
 mod rsync;
 mod run;
 mod yarn;

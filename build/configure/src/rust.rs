@@ -60,9 +60,8 @@ pub fn check_rust(build: &mut Build) -> Result<()> {
         inputs,
         // generated files the crates need; ensure re-run on changes
         ":rslib:proto",
-        // when env vars change the build hash gets updated
+        // re-run when the watched env vars change
         "$builddir/env",
-        "$builddir/buildhash",
     ];
 
     build.add_action(

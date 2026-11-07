@@ -40,7 +40,6 @@ pub fn setup_yarn(args: YarnArgs) {
 
 /// Unfortunately a lot of the node ecosystem expects the output folder to
 /// reside in the repo root, so we need to link in our output folder.
-#[cfg(not(windows))]
 fn link_node_modules() {
     let target = Path::new("node_modules");
     if target.exists() {
@@ -49,20 +48,5 @@ fn link_node_modules() {
         }
     } else {
         std::os::unix::fs::symlink("out/node_modules", target).unwrap();
-    }
-}
-
-/// Things are more complicated on Windows - having $root/node_modules point to
-/// $root/out/node_modules breaks our globs for some reason, so we create the
-/// junction in the opposite direction instead. Ninja will have already created
-/// some empty folders based on our declared outputs, so we move the
-/// created folder into the root.
-#[cfg(windows)]
-fn link_node_modules() {
-    let target = Path::new("out/node_modules");
-    let source = Path::new("node_modules");
-    if !source.exists() {
-        std::fs::rename(target, source).unwrap();
-        junction::create(source, target).unwrap()
     }
 }
