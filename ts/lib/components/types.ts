@@ -1,6 +1,9 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+import type { Component } from "svelte";
+import type { SVGAttributes } from "svelte/elements";
+
 export type Breakpoint = "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
 
 export type HelpItem = {
@@ -11,5 +14,5 @@ export type HelpItem = {
 };
 
 export type IconData = {
-    url: string;
+    component: Component<SVGAttributes<SVGSVGElement>>;
 };

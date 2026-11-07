@@ -2,11 +2,9 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 import {
-    DeckConfig_Config_AnswerAction,
     DeckConfig_Config_NewCardGatherPriority,
     DeckConfig_Config_NewCardInsertOrder,
     DeckConfig_Config_NewCardSortOrder,
-    DeckConfig_Config_QuestionAction,
     DeckConfig_Config_ReviewCardOrder,
     DeckConfig_Config_ReviewMix,
 } from "@generated/anki/deck_config_pb";
@@ -141,39 +139,6 @@ export function newInsertOrderChoices(): Choice<DeckConfig_Config_NewCardInsertO
         {
             label: tr.deckConfigNewInsertionOrderRandom(),
             value: DeckConfig_Config_NewCardInsertOrder.RANDOM,
-        },
-    ];
-}
-
-export function answerChoices(): Choice<DeckConfig_Config_AnswerAction>[] {
-    return [
-        {
-            label: tr.deckConfigAnswerAgain(),
-            value: DeckConfig_Config_AnswerAction.ANSWER_AGAIN,
-        },
-        {
-            label: tr.deckConfigAnswerGood(),
-            value: DeckConfig_Config_AnswerAction.ANSWER_GOOD,
-        },
-        {
-            label: tr.deckConfigAnswerHard(),
-            value: DeckConfig_Config_AnswerAction.ANSWER_HARD,
-        },
-        {
-            label: tr.deckConfigShowReminder(),
-            value: DeckConfig_Config_AnswerAction.SHOW_REMINDER,
-        },
-    ];
-}
-export function questionActionChoices(): Choice<DeckConfig_Config_QuestionAction>[] {
-    return [
-        {
-            label: tr.deckConfigQuestionActionShowAnswer(),
-            value: DeckConfig_Config_QuestionAction.SHOW_ANSWER,
-        },
-        {
-            label: tr.deckConfigQuestionActionShowReminder(),
-            value: DeckConfig_Config_QuestionAction.SHOW_REMINDER,
         },
     ];
 }

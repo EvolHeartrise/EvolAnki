@@ -267,6 +267,9 @@ Safari 18.4. A file that can't play is skipped.
 - Deck options has no easy days section. Stored values are used as before; with none,
   every day counts as normal. The load balancer has no control either, and stays on
   unless the collection's config says otherwise.
+- Deck options has no auto advance section, and its timer section has only the maximum
+  answer seconds, since the reviewer has neither auto advance nor an on-screen timer.
+  Their stored values are kept, unchanged.
 
 ## Differences from desktop Anki's media server
 
