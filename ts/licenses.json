@@ -26,14 +26,6 @@
         "path": "node_modules/@floating-ui/utils",
         "licenseFile": "node_modules/@floating-ui/utils/LICENSE"
     },
-    "@fluent/bundle@0.19.1": {
-        "licenses": "Apache-2.0",
-        "repository": "https://github.com/projectfluent/fluent.js",
-        "publisher": "Mozilla",
-        "email": "l10n-drivers@mozilla.org",
-        "path": "node_modules/@fluent/bundle",
-        "licenseFile": "node_modules/@fluent/bundle/README.md"
-    },
     "@mdi/svg@7.4.47": {
         "licenses": "Apache-2.0",
         "repository": "https://github.com/Templarian/MaterialDesign-SVG",

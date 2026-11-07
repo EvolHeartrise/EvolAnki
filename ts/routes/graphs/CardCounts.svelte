@@ -4,7 +4,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
     import type { GraphsResponse } from "@generated/anki/stats_pb";
-    import * as tr2 from "@generated/ftl";
+    import * as tr2 from "@tslib/tr";
     import { createEventDispatcher } from "svelte";
 
     import type { GraphData, TableDatum } from "./card-counts";

@@ -62,13 +62,13 @@ Before adding or changing unit or component tests, read and follow
 care of downloading required deps and invoking our build steps. See the
 project `justfile` for the full set of recipes.
 
-## Translations
+## User-visible strings
 
-ftl/ contains our Fluent translation files. We have scripts in rslib/i18n
-to auto-generate an API for Rust and TypeScript so that our code can
-access the translations in a type-safe manner. Changes should be made to
-ftl/core. When adding new strings, confirm the appropriate ftl file
-first, and try to match the existing style.
+The app is English-only. Strings are plain hand-written functions: in Rust,
+methods on `I18n` in rslib/src/i18n.rs (called as `tr.some_string(args)`); in
+TypeScript, functions in ts/lib/tslib/tr.ts (imported as
+`import * as tr from "@tslib/tr"`). Add new strings there, matching the
+existing style.
 
 ## Protobuf and IPC
 

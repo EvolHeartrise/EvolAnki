@@ -22,7 +22,6 @@ syn.workspace = true
 
 [dependencies]
 ammonia.workspace = true
-anki_i18n.workspace = true
 anki_io.workspace = true
 anki_proto.workspace = true
 bitflags.workspace = true

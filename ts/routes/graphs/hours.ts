@@ -7,8 +7,8 @@
 
 import type { GraphsResponse } from "@generated/anki/stats_pb";
 import type { GraphsResponse_Hours_Hour } from "@generated/anki/stats_pb";
-import * as tr from "@generated/ftl";
 import { localizedNumber } from "@tslib/i18n";
+import * as tr from "@tslib/tr";
 import {
     area,
     axisBottom,

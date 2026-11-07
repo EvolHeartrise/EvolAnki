@@ -8,7 +8,6 @@ use std::fmt::Write;
 use std::iter;
 use std::sync::LazyLock;
 
-use anki_i18n::I18n;
 use nom::bytes::complete::tag;
 use nom::bytes::complete::take_until;
 use nom::combinator::map;
@@ -20,6 +19,7 @@ use crate::cloze::cloze_number_in_fields;
 use crate::error::AnkiError;
 use crate::error::Result;
 use crate::error::TemplateError;
+use crate::i18n::I18n;
 use crate::invalid_input;
 use crate::template_filters::apply_filters;
 
@@ -912,12 +912,11 @@ fn is_cloze_conditional(key: &str) -> bool {
 mod test {
     use std::collections::HashMap;
 
-    use anki_i18n::I18n;
-
     use super::FieldMap;
     use super::ParsedNode::*;
     use super::ParsedTemplate as PT;
     use crate::error::TemplateError;
+    use crate::i18n::I18n;
     use crate::template::field_is_empty;
     use crate::template::nonempty_fields;
     use crate::template::FieldRequirements;
@@ -1197,7 +1196,7 @@ mod test {
 
         use crate::template::RenderedNode as FN;
         let mut tmpl = PT::from_text("{{B}}A{{F}}").unwrap();
-        let tr = I18n::template_only();
+        let tr = I18n::new();
         assert_eq!(
             tmpl.render(&ctx, &tr).unwrap(),
             vec![FN::Text {
@@ -1323,7 +1322,7 @@ mod test {
             .map(|r| (r.0, r.1.into()))
             .collect();
 
-        let tr = I18n::template_only();
+        let tr = I18n::new();
         use crate::template::RenderedNode as FN;
 
         let mut req = RenderCardRequest {

@@ -10,7 +10,7 @@ import {
     DeckConfig_Config_ReviewCardOrder,
     DeckConfig_Config_ReviewMix,
 } from "@generated/anki/deck_config_pb";
-import * as tr from "@generated/ftl";
+import * as tr from "@tslib/tr";
 
 import type { Choice } from "$lib/components/EnumSelector.svelte";
 

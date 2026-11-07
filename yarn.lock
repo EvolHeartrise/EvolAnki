@@ -811,13 +811,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fluent/bundle@npm:^0.19.1":
-  version: 0.19.1
-  resolution: "@fluent/bundle@npm:0.19.1"
-  checksum: 10c0/87ed606b47c37fe722b0c07808344115e51720bc3e33e1661d4b8e21ca629761592bac96af27c7cb5be0dd03ec6175207019c387f2a37c42c58aa56feb857cc0
-  languageName: node
-  linkType: hard
-
 "@humanwhocodes/config-array@npm:^0.13.0":
   version: 0.13.0
   resolution: "@humanwhocodes/config-array@npm:0.13.0"
@@ -2151,7 +2144,6 @@ __metadata:
     "@bufbuild/protobuf": "npm:^1.2.1"
     "@bufbuild/protoc-gen-es": "npm:^1.8.0"
     "@floating-ui/dom": "npm:^1.8.0"
-    "@fluent/bundle": "npm:^0.19.1"
     "@mdi/svg": "npm:^7.0.96"
     "@playwright/test": "npm:^1.62.1"
     "@poppanator/sveltekit-svg": "npm:^5.0.0"

@@ -21,7 +21,6 @@ protobuf!(config, "config");
 protobuf!(deck_config, "deck_config");
 protobuf!(decks, "decks");
 protobuf!(generic, "generic");
-protobuf!(i18n, "i18n");
 protobuf!(import_export, "import_export");
 protobuf!(media, "media");
 protobuf!(notes, "notes");

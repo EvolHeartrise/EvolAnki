@@ -29,8 +29,6 @@ pub const ALLOWED: &[&str] = &[
     "getCurrentDeck",
     "setCurrentDeck",
     "setDeckCollapsed",
-    // I18nService
-    "i18nResources",
     // NotesService
     "getNote",
     // NotetypesService

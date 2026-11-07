@@ -6,9 +6,9 @@
  */
 
 import type { GraphsResponse_Intervals } from "@generated/anki/stats_pb";
-import * as tr from "@generated/ftl";
 import { localizedNumber } from "@tslib/i18n";
 import { timeSpan } from "@tslib/time";
+import * as tr from "@tslib/tr";
 import type { Bin } from "d3";
 import { bin, extent, interpolateBlues, quantile, scaleLinear, scaleSequential, sum } from "d3";
 

@@ -1,8 +1,0 @@
-card-templates-front-template = Front Template
-card-templates-back-template = Back Template
-card-templates-invalid-template-number = Card template { $number } in note type '{ $notetype }' has a problem.
-card-templates-identical-front = The front side is identical to card template { $number }.
-card-templates-no-front-field = Expected to find a field replacement on the front of the card template.
-card-templates-missing-cloze = Expected to find '{ "{{" }cloze:Text{ "}}" }' or similar on the front and back of the card template.
-card-templates-see-preview = See the preview for more information.
-card-templates-field-not-found = Field '{ $field }' not found.

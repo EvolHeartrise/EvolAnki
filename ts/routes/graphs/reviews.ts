@@ -6,9 +6,9 @@
  */
 
 import type { GraphsResponse } from "@generated/anki/stats_pb";
-import * as tr from "@generated/ftl";
 import { localizedNumber } from "@tslib/i18n";
 import { dayLabel, timeSpan, TimespanUnit } from "@tslib/time";
+import * as tr from "@tslib/tr";
 import type { Bin, ScaleSequential } from "d3";
 import {
     area,

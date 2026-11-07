@@ -57,7 +57,6 @@
     "dependencies": {
         "@bufbuild/protobuf": "^1.2.1",
         "@floating-ui/dom": "^1.8.0",
-        "@fluent/bundle": "^0.19.1",
         "@mdi/svg": "^7.0.96",
         "bootstrap": "^5.3.8",
         "bootstrap-icons": "^1.13.1",

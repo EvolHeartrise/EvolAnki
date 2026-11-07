@@ -3,12 +3,12 @@
 
 use std::num::ParseIntError;
 
-use anki_i18n::I18n;
 use nom::error::ErrorKind as NomErrorKind;
 use nom::error::ParseError as NomParseError;
 use snafu::Snafu;
 
 use super::AnkiError;
+use crate::i18n::I18n;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError<'a> {

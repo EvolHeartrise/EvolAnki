@@ -70,7 +70,6 @@ fn setup_node(build: &mut Build) -> Result<()> {
 }
 
 fn build_and_check_tslib(build: &mut Build) -> Result<()> {
-    build.add_dependency("ts:generated:i18n", ":rslib:i18n:ts".into());
     build.add_action(
         "ts:generated:proto",
         GenTypescriptProto {

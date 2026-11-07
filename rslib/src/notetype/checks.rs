@@ -6,7 +6,6 @@ use std::fmt::Write;
 use std::ops::Deref;
 use std::sync::LazyLock;
 
-use anki_i18n::without_unicode_isolation;
 use regex::Captures;
 use regex::Match;
 use regex::Regex;
@@ -98,11 +97,8 @@ impl<'a> Template<'a> {
     }
 
     fn as_str(&self, tr: &I18n) -> String {
-        without_unicode_isolation(&tr.media_check_notetype_template(
-            self.notetype,
-            self.card_type,
-            self.side_name(tr),
-        ))
+        tr.media_check_notetype_template(self.notetype, self.card_type, self.side_name(tr))
+            .into_owned()
     }
 
     fn side_name<'tr>(&self, tr: &'tr I18n) -> Cow<'tr, str> {

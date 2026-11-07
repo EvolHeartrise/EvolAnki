@@ -1,7 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use anki_i18n::I18n;
+use crate::i18n::I18n;
 
 /// Short string like '4d' to place above answer buttons.
 pub fn answer_button_time(seconds: f32, tr: &I18n) -> String {
@@ -140,14 +140,13 @@ impl Timespan {
 
 #[cfg(test)]
 mod test {
-    use anki_i18n::I18n;
-
+    use crate::i18n::I18n;
     use crate::scheduler::timespan::answer_button_time;
     use crate::scheduler::timespan::MONTH;
 
     #[test]
     fn answer_buttons() {
-        let tr = I18n::template_only();
+        let tr = I18n::new();
         assert_eq!(answer_button_time(30.0, &tr), "30s");
         assert_eq!(answer_button_time(70.0, &tr), "1m");
         assert_eq!(answer_button_time(1.1 * MONTH, &tr), "1.1mo");

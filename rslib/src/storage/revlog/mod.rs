@@ -204,13 +204,12 @@ impl SqliteStorage {
 mod test {
     use std::path::Path;
 
-    use anki_i18n::I18n;
-
     use super::*;
     use crate::card::Card;
+    use crate::i18n::I18n;
 
     fn create_test_storage() -> SqliteStorage {
-        SqliteStorage::open_or_create(Path::new(":memory:"), &I18n::template_only(), false).unwrap()
+        SqliteStorage::open_or_create(Path::new(":memory:"), &I18n::new(), false).unwrap()
     }
 
     /// A revlog entry with a fixed card id, used where the card is irrelevant.

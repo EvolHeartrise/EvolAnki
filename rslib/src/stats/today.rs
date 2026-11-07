@@ -1,8 +1,7 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use anki_i18n::I18n;
-
+use crate::i18n::I18n;
 use crate::prelude::*;
 use crate::scheduler::timespan::Timespan;
 use crate::scheduler::timespan::TimespanUnit;
@@ -30,14 +29,13 @@ impl Collection {
 
 #[cfg(test)]
 mod test {
-    use anki_i18n::I18n;
-
     use super::studied_today;
+    use crate::i18n::I18n;
 
     #[test]
     fn today() {
         // temporary test of fluent term handling
-        let tr = I18n::template_only();
+        let tr = I18n::new();
         assert_eq!(
             &studied_today(3, 13.0, &tr).replace('\n', " "),
             "Studied 3 cards in 13 seconds today (4.33s/card)"
