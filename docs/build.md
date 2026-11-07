@@ -4,38 +4,31 @@
 
 See [development.md](development.md).
 
-## Architecture
+## How it fits together
 
-The build/ folder is made up of 3 packages:
+The `justfile` holds the build: each recipe is a few plain commands, so `just --dry-run
+build` shows what a build runs. Cargo builds the Rust, and yarn installs the JavaScript
+dependencies and runs Vite. Build outputs go into `out/`.
 
-- build/configure defines the actions and inputs/outputs of the build graph -
-  this is where you add new build steps or modify existing ones. The defined
-  actions are converted at build time to a build.ninja file that Ninja executes.
-- build/ninja_gen is a library for writing a build.ninja file, and includes
-  various rules like "build a Rust crate". It also downloads, checksums and
-  extracts dependencies as part of the build.
-- build/runner serves a number of purposes:
-    - it's the entrypoint to the build process, taking care of generating
-      the build file and then invoking Ninja
-    - it wraps executable invocations in the build file, swallowing their output
-      if they exit successfully
-    - it provides a few helpers for multi-step processes.
+- `deps` runs `yarn install` when `package.json` or `yarn.lock` is newer than the last
+  install. Yarn comes from Node's corepack, at the version `package.json` names.
+- `gen` builds `rslib/proto` with cargo. Its build script compiles `proto/` with
+  [protox](https://github.com/andrewhickman/protox), a protobuf compiler in Rust, so no
+  protoc is needed. It writes `out/rslib/proto/descriptors.bin`, which the other crates
+  read through `DESCRIPTORS_BIN` in `.cargo/config.toml`, and the pages' backend calls,
+  `out/ts/lib/generated/backend.ts`. Then `ts/tools/genproto.mjs` passes the descriptors
+  to protoc-gen-es for the TypeScript messages. `@generated` in the pages' imports is
+  `out/ts/lib/generated`.
+- `build` makes `out/web`, the folder the server serves: Vite builds the SvelteKit pages
+  into `out/web/sveltekit`, esbuild bundles the reviewer's script and MathJax setup, Sass
+  compiles the card and reviewer CSS, and the MathJax files the cards use are copied in.
 
-The build supports Linux only, on x86-64 or arm64. Node and protoc are
-downloaded as part of the build. To use your own, define NODE_BINARY,
-YARN_BINARY and/or PROTOC_BINARY. To update the pinned versions, change the
-URLs and SHA-256 checksums in build/ninja_gen/src/node.rs and protobuf.rs.
+Cargo's target directory is `out/rust`, set in `.cargo/config.toml`, so plain `cargo`
+commands share it with the recipes.
 
-`rslib/proto` generates the Rust and TypeScript interfaces to the backend,
-which `./ninja` writes to `out/`. The default target,
-`web`, builds the folder that the server serves, `out/web`.
+The build supports Linux only, on x86-64 or arm64.
 
 ## Tracing build problems
 
-If you run into trouble with the build process:
-
-- You can see the executed commands with e.g. `./ninja web -v`
-- You can see the output of successful commands by defining N2_OUTPUT_SUCCESS=1
-- You can see what's triggering a rebuild of a target with e.g.
-  `./ninja web -d explain`.
-- You can browse the build graph via e.g. `./ninja -- -t browse web`
+- `just --dry-run RECIPE` prints the commands a recipe would run.
+- `just clean` removes `out/` and `node_modules`, for a clean build.

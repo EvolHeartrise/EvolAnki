@@ -1,9 +1,11 @@
 [build]
 rustc-wrapper = "tools/sccache"
+# One build tree for plain cargo, the just recipes and tools/.
+target-dir = "out/rust"
 
 [env]
+# rslib/proto's build script writes this, and the crates using the protos read it.
 DESCRIPTORS_BIN = { value = "out/rslib/proto/descriptors.bin", relative = true }
-PROTOC = { value = "out/extracted/protoc/bin/protoc", relative = true }
 
 [term]
 color = "always"

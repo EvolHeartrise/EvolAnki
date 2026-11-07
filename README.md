@@ -10,8 +10,8 @@ network, with no login, by `evolanki-server`. It is a modified version of
 tools/run-web
 ```
 
-That needs Rust and Ninja or N2, and downloads Node. It builds the pages and server, then
-serves a demo collection, and prints the addresses to open it at. Use
+That needs Rust, Node 22 or 24, and [just](https://just.systems). It builds the pages
+and server, then serves a demo collection, and prints the addresses to open it at. Use
 `tools/run-web --release path/to/col.anki2` for real. Anyone on your network can reach
 it, so read [what that means](./docs/web-server.md#no-login-what-that-means). See
 [the server docs](./docs/web-server.md) and [Development](./docs/development.md).

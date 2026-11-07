@@ -2,7 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 import svg from "@poppanator/sveltekit-svg";
 import { sveltekit } from "@sveltejs/kit/vite";
-import { realpathSync } from "fs";
 import { defineConfig as defineViteConfig, mergeConfig } from "vite";
 import { defineConfig as defineVitestConfig } from "vitest/config";
 
@@ -32,17 +31,14 @@ const viteConfig = defineViteConfig({
     server: {
         host: "127.0.0.1",
         fs: {
-            // Allow serving files project root and out dir
-            allow: [
-                // realpathSync(".."),
-                // "/home/dae/Local/build/anki/node_modules",
-                realpathSync("../out"),
-                // realpathSync("../out/node_modules"),
-            ],
+            // the repo root, for node_modules and out/
+            allow: [".."],
         },
+        // `yarn dev` serves the pages with hot reloading; their backend calls
+        // go to an evolanki-server running on the default port.
         proxy: {
             "/_anki": {
-                target: "http://127.0.0.1:40000",
+                target: "http://127.0.0.1:8765",
                 changeOrigin: true,
                 autoRewrite: true,
                 configure,

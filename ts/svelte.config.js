@@ -15,7 +15,7 @@ const config = {
 
     kit: {
         adapter: adapter(
-            { pages: "../out/sveltekit", fallback: "index.html", precompress: false },
+            { pages: "../out/web/sveltekit", fallback: "index.html", precompress: false },
         ),
         alias: {
             "@tslib": join(tsFolder, "lib/tslib"),

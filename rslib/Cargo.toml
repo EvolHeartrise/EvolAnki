@@ -15,7 +15,6 @@ anki_proto.workspace = true
 anki_proto_gen.workspace = true
 anyhow.workspace = true
 inflections.workspace = true
-itertools.workspace = true
 prettyplease.workspace = true
 prost-reflect.workspace = true
 syn.workspace = true

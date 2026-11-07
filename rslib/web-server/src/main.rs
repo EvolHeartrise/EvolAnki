@@ -255,7 +255,7 @@ fn check_web_root(web_root: &Path) -> Result<()> {
     let index = web_root.join("sveltekit/index.html");
     if !index.exists() {
         bail!(
-            "{} not found. Build the pages with `./ninja web`, or \
+            "{} not found. Build the pages with `just build`, or \
              pass --web-root.",
             index.display()
         );

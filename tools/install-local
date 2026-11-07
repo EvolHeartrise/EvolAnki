@@ -2,44 +2,15 @@
 # Build the release server, admin tool and web pages, and install them under
 # ~/.local/share/evolanki, to run from a stable path. Only touches bin/ and web/
 # there, never a collection. Set EVOLANKI_HOME to install elsewhere.
-#
-# ./ninja can't build in a path with a space, so a checkout in one is cloned to
-# ~/.cache/evolanki-build and built there. That builds what's committed in HEAD.
 set -euo pipefail
 
 home=${EVOLANKI_HOME:-$HOME/.local/share/evolanki}
-repo=$(cd "$(dirname "$0")/.." && pwd)
 
-case "$repo" in
-*" "*)
-    build=${XDG_CACHE_HOME:-$HOME/.cache}/evolanki-build
-    case "$build" in
-    *" "*)
-        echo "$build has a space too; set XDG_CACHE_HOME to somewhere without one" >&2
-        exit 1
-        ;;
-    esac
-    echo "This checkout's path has a space, so building HEAD in $build."
-    if ! git -C "$repo" diff --quiet HEAD; then
-        echo "Note: uncommitted changes in $repo are left out."
-    fi
-    if [ -d "$build/.git" ]; then
-        git -C "$build" fetch --quiet "$repo" HEAD
-        git -C "$build" reset --quiet --hard FETCH_HEAD
-    else
-        mkdir -p "$(dirname "$build")"
-        git clone --quiet --no-hardlinks "$repo" "$build"
-        git -C "$build" reset --quiet --hard "$(git -C "$repo" rev-parse HEAD)"
-    fi
-    ;;
-*)
-    build=$repo
-    ;;
-esac
-
-cd "$build"
-./ninja web
-CARGO_TARGET_DIR=$PWD/out/rust cargo build --release -p evolanki-server
+cd "$(dirname "$0")/.."
+just build
+# in case CARGO_TARGET_DIR is set elsewhere, as the paths below expect out/rust
+export CARGO_TARGET_DIR="$PWD/out/rust"
+cargo build --release --locked -p evolanki-server
 
 mkdir -p "$home/bin"
 chmod 700 "$home"

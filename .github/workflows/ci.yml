@@ -11,17 +11,17 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  N2_OUTPUT_PROGRESS: "1"
-
 jobs:
   check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v4
 
-      - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ninja-build rsync
+      # Includes corepack, which provides yarn.
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #v4.4.0
+        with:
+          node-version: 22
 
       # Reads the version from rust-toolchain.toml.
       - name: Install Rust
@@ -29,28 +29,29 @@ jobs:
         with:
           components: clippy
           cache: true
-          # ninja builds here, not in the default target/
+          # .cargo/config.toml builds here, not in the default target/
           cache-workspaces: ". -> out/rust"
-          # a new key, as main already has a cache without compiled code under the old one
           cache-key: out-rust
-          rustflags: "" # don't inject -D warnings; the build handles that
+          rustflags: "" # don't inject -D warnings; the lint recipe handles that
 
-      - name: Install cargo-nextest
+      - name: Install cargo-nextest and just
         uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 #v2.85.7
         with:
-          tool: cargo-nextest@0.9.99
+          tool: cargo-nextest@0.9.99,just
 
-      # check:format needs the nightly in cargo/format, which rustup installs by itself.
+      # Rust formatting needs the nightly in cargo/format, which rustup installs by itself.
       - name: Check formatting
-        run: ./ninja check:format
+        run: just fmt
 
-      # Separately from the checks, as check:svelte can break a web build it overlaps.
-      - name: Build
-        run: ./ninja web
+      # Separately from the lint, as svelte-check can break a web build it overlaps.
+      - name: Build the pages
+        run: just build
+
+      - name: Build the server
+        run: cargo build --locked -p evolanki-server
 
       - name: Lint
-        run: ./ninja check:clippy check:eslint check:svelte
+        run: just lint
 
       - name: Test
-        run: ./ninja check:rust_test check:vitest
-
+        run: just test

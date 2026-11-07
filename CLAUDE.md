@@ -41,10 +41,10 @@ Language-specific tests are also available: `just test-rust`, `just test-ts`.
 Use `just fmt` / `just fix-fmt` for formatting and `just fix-lint` to auto-fix
 lint issues.
 
-Be mindful that some changes (such as modifications to .proto files) may
-need a full build with `just check` first.
+Changes to .proto files reach TypeScript once `just gen` (run by `just build`,
+`just lint` and `just test-ts`) regenerates out/ts/lib/generated.
 
-Don't run `check:svelte` in the same ninja invocation as a web build, as that
+Don't run `just lint` (svelte-check) while `just build` is running, as that
 has caused a broken bundle.
 
 ## Testing guidance
@@ -54,9 +54,8 @@ Before adding or changing unit or component tests, read and follow
 
 ## Build tooling
 
-`just` recipes wrap our build system (implemented in build/), which takes
-care of downloading required deps and invoking our build steps. See the
-project `justfile` for the full set of recipes.
+The `justfile` is the build: its recipes run cargo, yarn (through corepack),
+esbuild and Sass. Node 22 or 24 must be installed. See docs/build.md.
 
 ## User-visible strings
 
