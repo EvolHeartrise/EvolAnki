@@ -8,7 +8,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     import AdvancedOptions from "./AdvancedOptions.svelte";
     import AudioOptions from "./AudioOptions.svelte";
-    import AutoAdvance from "./AutoAdvance.svelte";
     import DailyLimits from "./DailyLimits.svelte";
     import DeckOptionsHeader from "./DeckOptionsHeader.svelte";
     import DisplayOrder from "./DisplayOrder.svelte";
@@ -59,10 +58,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
             <Row class="row-columns">
                 <TimerOptions {state} />
-            </Row>
-
-            <Row class="row-columns">
-                <AutoAdvance {state} />
             </Row>
 
             <Row class="row-columns">

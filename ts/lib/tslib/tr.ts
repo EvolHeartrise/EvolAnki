@@ -48,10 +48,6 @@ export function actionsReplayAudio(): string {
     return "Replay Audio";
 }
 
-export function actionsAutoAdvance(): string {
-    return "Auto Advance";
-}
-
 export function actionsProcessing(): string {
     return "Processing...";
 }
@@ -296,62 +292,6 @@ export function deckConfigMaximumAnswerSecsTooltip(): string {
     return "The maximum number of seconds to record for a single review. If an answer\nexceeds this time (because you stepped away from the screen for example),\nthe time taken will be recorded as the limit you have set.";
 }
 
-export function deckConfigShowAnswerTimerTooltip(): string {
-    return "On the Study screen, show a timer that counts the time you're\ntaking to study each card.";
-}
-
-export function deckConfigStopTimerOnAnswer(): string {
-    return "Stop on-screen timer on answer";
-}
-
-export function deckConfigStopTimerOnAnswerTooltip(): string {
-    return "Whether to stop the on-screen timer when the answer is revealed.\nThis doesn't affect statistics.";
-}
-
-export function deckConfigSecondsToShowQuestion(): string {
-    return "Seconds to show question for";
-}
-
-export function deckConfigSecondsToShowQuestionTooltip3(): string {
-    return "When auto advance is activated, the number of seconds to wait before applying the question action. Set to 0 to disable.";
-}
-
-export function deckConfigSecondsToShowAnswer(): string {
-    return "Seconds to show answer for";
-}
-
-export function deckConfigSecondsToShowAnswerTooltip2(): string {
-    return "When auto advance is activated, the number of seconds to wait before applying the answer action. Set to 0 to disable.";
-}
-
-export function deckConfigQuestionActionShowAnswer(): string {
-    return "Show Answer";
-}
-
-export function deckConfigQuestionActionShowReminder(): string {
-    return "Show Reminder";
-}
-
-export function deckConfigQuestionAction(): string {
-    return "Question action";
-}
-
-export function deckConfigQuestionActionToolTip(): string {
-    return "The action to perform after the question is shown, and time has elapsed.";
-}
-
-export function deckConfigAnswerAction(): string {
-    return "Answer action";
-}
-
-export function deckConfigAnswerActionTooltip2(): string {
-    return "The action to perform after the answer is shown, and time has elapsed.";
-}
-
-export function deckConfigWaitForAudioTooltip2(): string {
-    return "Wait for audio to finish before automatically applying the question action or answer action.";
-}
-
 export function deckConfigAudioTitle(): string {
     return "Audio";
 }
@@ -554,26 +494,6 @@ export function deckConfigFsrsParamsNoReviews(): string {
     return "No reviews found in this deck or its subdecks.";
 }
 
-export function deckConfigWaitForAudio(): string {
-    return "Wait for audio";
-}
-
-export function deckConfigShowReminder(): string {
-    return "Show Reminder";
-}
-
-export function deckConfigAnswerAgain(): string {
-    return "Answer Again";
-}
-
-export function deckConfigAnswerHard(): string {
-    return "Answer Hard";
-}
-
-export function deckConfigAnswerGood(): string {
-    return "Answer Good";
-}
-
 export function deckConfigDaysToSimulate(): string {
     return "Days to simulate";
 }
@@ -756,10 +676,6 @@ export function schedulingNewCards(): string {
 
 export function schedulingNewCardsday(): string {
     return "New cards/day";
-}
-
-export function schedulingShowAnswerTimer(): string {
-    return "Show on-screen timer";
 }
 
 export function statisticsDueCount(): string {
