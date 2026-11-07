@@ -98,20 +98,3 @@
         }
     }
 }
-
-$focus-color: var(--shadow-focus);
-
-@mixin select($with-disabled: true) {
-    width: 100%;
-
-    pointer-events: all;
-    cursor: pointer;
-
-    @include base($with-disabled: $with-disabled);
-
-    border-radius: var(--border-radius);
-
-    &.rtl {
-        direction: rtl;
-    }
-}
