@@ -139,17 +139,21 @@ mod test {
         for method in [
             "closeCollection",
             "openCollection",
-            "createBackup",
             "checkDatabase",
+            "checkMedia",
             "importAnkiPackage",
-            "addMediaFromPath",
-            "getAbsoluteMediaPath",
+            "importCollectionPackage",
             "exportAnkiPackage",
+            "removeNotes",
+            "removeCards",
+            "removeDecks",
             "suspendCards",
-            "changeNotetype",
-            "getConfigJson",
-            "setConfigJson",
         ] {
+            // so the list can't go stale as methods are removed
+            assert!(
+                Backend::METHODS.contains(&method),
+                "unknown method {method}"
+            );
             assert!(!ALLOWED.contains(&method), "{method}");
         }
     }

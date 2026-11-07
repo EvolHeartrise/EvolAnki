@@ -156,7 +156,6 @@ impl ColumnContext {
             tags: self.gather_tags(record),
             deck: name_or_id_from_record_column(self.deck_column, record),
             guid: str_from_record_column(self.guid_column, record),
-            ..Default::default()
         }
     }
 

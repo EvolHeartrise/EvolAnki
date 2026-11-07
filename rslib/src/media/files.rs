@@ -6,11 +6,9 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::Path;
-use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::time;
 
-use anki_io::create_dir;
 use anki_io::open_file;
 use anki_io::write_file;
 use anki_io::FileIoError;
@@ -333,20 +331,6 @@ pub(crate) fn mtime_as_i64<P: AsRef<Path>>(path: P) -> io::Result<i64> {
         .duration_since(time::UNIX_EPOCH)
         .unwrap()
         .as_millis() as i64)
-}
-
-pub(super) fn trash_folder(media_folder: &Path) -> Result<PathBuf> {
-    let trash_folder = media_folder.with_file_name("media.trash");
-    match create_dir(&trash_folder) {
-        Ok(()) => Ok(trash_folder),
-        Err(e) => {
-            if e.source.kind() == io::ErrorKind::AlreadyExists {
-                Ok(trash_folder)
-            } else {
-                Err(e.into())
-            }
-        }
-    }
 }
 
 pub(crate) fn data_for_file(media_folder: &Path, fname: &str) -> Result<Option<Vec<u8>>> {

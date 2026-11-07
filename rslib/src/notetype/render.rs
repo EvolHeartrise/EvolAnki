@@ -17,11 +17,8 @@ pub struct RenderCardOutput {
     pub qnodes: Vec<RenderedNode>,
     pub anodes: Vec<RenderedNode>,
     pub css: String,
-    pub latex_svg: bool,
     pub is_empty: bool,
 }
-
-impl RenderCardOutput {}
 
 impl Collection {
     /// Render an existing card saved in the database.
@@ -90,7 +87,6 @@ impl Collection {
             qnodes: response.qnodes,
             anodes: response.anodes,
             css: nt.config.css.clone(),
-            latex_svg: nt.config.latex_svg,
             is_empty: response.is_empty,
         })
     }

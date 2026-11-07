@@ -773,7 +773,7 @@ mod test {
 
     fn create_test_storage() -> SqliteStorage {
         let tr: I18n = I18n::new();
-        SqliteStorage::open_or_create(Path::new(":memory:"), &tr, false).unwrap()
+        SqliteStorage::open_or_create(Path::new(":memory:"), &tr).unwrap()
     }
 
     #[test]

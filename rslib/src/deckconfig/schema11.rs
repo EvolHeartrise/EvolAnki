@@ -251,45 +251,6 @@ impl Default for LapseConfSchema11 {
     }
 }
 
-impl Default for DeckConfSchema11 {
-    fn default() -> Self {
-        DeckConfSchema11 {
-            id: DeckConfigId(0),
-            mtime: TimestampSecs(0),
-            name: "Default".to_string(),
-            max_taken: 60,
-            autoplay: true,
-            timer: 0,
-            stop_timer_on_answer: false,
-            seconds_to_show_question: 0.0,
-            seconds_to_show_answer: 0.0,
-            question_action: QuestionAction::ShowAnswer,
-            answer_action: AnswerAction::ShowReminder,
-            wait_for_audio: true,
-            replayq: true,
-            dynamic: false,
-            new: Default::default(),
-            rev: Default::default(),
-            lapse: Default::default(),
-            other: Default::default(),
-            new_mix: 0,
-            new_per_day_minimum: 0,
-            interday_learning_mix: 0,
-            review_order: 0,
-            new_sort_order: 0,
-            new_gather_priority: 0,
-            fsrs_params_4: vec![],
-            fsrs_params_5: vec![],
-            fsrs_params_6: vec![],
-            desired_retention: 0.9,
-            sm2_retention: 0.9,
-            param_search: "".to_string(),
-            ignore_revlogs_before_date: "".to_string(),
-            easy_days_percentages: vec![1.0; 7],
-        }
-    }
-}
-
 // schema11 -> schema15
 
 impl From<DeckConfSchema11> for DeckConfig {

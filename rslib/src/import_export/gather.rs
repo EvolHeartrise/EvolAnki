@@ -10,7 +10,7 @@ use itertools::Itertools;
 use super::ExportProgress;
 use crate::decks::immediate_parent_name;
 use crate::decks::NormalDeck;
-use crate::latex::extract_latex;
+use crate::latex::latex_filenames;
 use crate::prelude::*;
 use crate::progress::ThrottlingProgressHandler;
 use crate::revlog::RevlogEntry;
@@ -206,8 +206,8 @@ fn gather_media_names_from_note(
             inserter(media_ref.fname_decoded.to_string());
         }
 
-        for latex in extract_latex(field, svg_getter(note.notetype_id)).1 {
-            inserter(latex.fname);
+        for fname in latex_filenames(field, svg_getter(note.notetype_id)) {
+            inserter(fname);
         }
     }
 }

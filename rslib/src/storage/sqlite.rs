@@ -64,9 +64,6 @@ fn open_or_create_collection_db(path: &Path) -> Result<Connection> {
     db.pragma_update(None, "cache_size", -40 * 1024)?;
     db.pragma_update(None, "legacy_file_format", false)?;
     db.pragma_update(None, "journal_mode", "wal")?;
-    // Android has no /tmp folder, and fails in the default config.
-    #[cfg(target_os = "android")]
-    db.pragma_update(None, "temp_store", &"memory")?;
 
     db.set_prepared_statement_cache_capacity(50);
 
@@ -76,7 +73,6 @@ fn open_or_create_collection_db(path: &Path) -> Result<Connection> {
     add_regexp_tags_function(&db)?;
     add_process_text_function(&db)?;
     add_fnvhash_function(&db)?;
-    add_extract_original_position_function(&db)?;
     add_extract_custom_data_function(&db)?;
     add_extract_fsrs_variable(&db)?;
     add_extract_fsrs_retrievability(&db)?;
@@ -219,29 +215,6 @@ fn add_regexp_tags_function(db: &Connection) -> rusqlite::Result<()> {
             let mut tags = ctx.get_raw(1).as_str()?.split(' ');
 
             Ok(tags.any(|tag| re.is_match(tag)))
-        },
-    )
-}
-
-/// eg. extract_original_position(c.data) -> number | null
-/// Parse original card position from c.data (this is only populated after card
-/// has been reviewed)
-fn add_extract_original_position_function(db: &Connection) -> rusqlite::Result<()> {
-    db.create_scalar_function(
-        "extract_original_position",
-        1,
-        FunctionFlags::SQLITE_DETERMINISTIC,
-        move |ctx| {
-            assert_eq!(ctx.len(), 1, "called with unexpected number of arguments");
-
-            let Ok(card_data) = ctx.get_raw(0).as_str() else {
-                return Ok(None);
-            };
-
-            match &CardData::from_str(card_data).original_position {
-                Some(position) => Ok(Some(*position as i64)),
-                None => Ok(None),
-            }
         },
     )
 }
@@ -471,7 +444,7 @@ fn trace(event: TraceEvent) {
 }
 
 impl SqliteStorage {
-    pub(crate) fn open_or_create(path: &Path, tr: &I18n, check_integrity: bool) -> Result<Self> {
+    pub(crate) fn open_or_create(path: &Path, tr: &I18n) -> Result<Self> {
         let db = open_or_create_collection_db(path)?;
         let (create, ver) = schema_version(&db)?;
 
@@ -487,12 +460,6 @@ impl SqliteStorage {
         };
         if let Some(kind) = err {
             return Err(AnkiError::db_error("", kind));
-        }
-
-        if check_integrity {
-            let s =
-                db.pragma_query_value(None, "integrity_check", |row| row.get::<_, String>(0))?;
-            require!(s == "ok", "corrupt: {s}");
         }
 
         let upgrade = ver != SCHEMA_MAX_VERSION;
@@ -794,7 +761,7 @@ mod test {
                 .unwrap();
             col.close().unwrap();
         }
-        let err = SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
+        let err = SqliteStorage::open_or_create(tempfile.path(), &test_tr()).unwrap_err();
         match err {
             AnkiError::DbError {
                 source: DbError { kind, .. },
@@ -859,7 +826,7 @@ mod test {
             col.storage.set_modified_time(collection_change).unwrap();
             col.close().unwrap();
 
-            SqliteStorage::open_or_create(tempfile.path(), &test_tr(), false).unwrap_err();
+            SqliteStorage::open_or_create(tempfile.path(), &test_tr()).unwrap_err();
 
             assert_eq!(stored_version(tempfile.path()), ver, "schema {ver}");
             // A rejected open must be side-effect free, so the modification time

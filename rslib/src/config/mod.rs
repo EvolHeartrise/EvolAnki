@@ -68,8 +68,6 @@ pub enum SchedulerVersion {
     V2 = 2,
 }
 
-impl Collection {}
-
 impl Collection {
     /// Get config item, returning None if missing/invalid.
     pub(crate) fn get_config_optional<'a, T, K>(&self, key: K) -> Option<T>
