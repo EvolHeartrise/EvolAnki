@@ -814,13 +814,13 @@ fn answer_next(server: &Server) -> bool {
     let Some(queued) = queued.cards.into_iter().next() else {
         return false;
     };
-    let states = queued.states.unwrap();
+    let card = queued.card.unwrap();
     let _: OpChanges = server.rpc(
         "answerCard",
         &CardAnswer {
-            card_id: queued.card.unwrap().id,
-            current_state: states.current,
-            new_state: states.easy,
+            card_id: card.id,
+            card_mtime_secs: card.mtime_secs,
+            card_reps: card.reps,
             rating: Rating::Easy as i32,
             answered_at_millis: 1_700_000_000_000,
             milliseconds_taken: 1000,
@@ -1157,25 +1157,29 @@ fn reviewer_rpcs_work() {
     );
     assert!(!compared.val.is_empty());
 
-    let states = queued.states.unwrap();
-    let described: generic::StringList = server.rpc("describeNextStates", &states);
-    assert_eq!(described.vals.len(), 4);
+    assert_eq!(queued.labels.len(), 4);
 
-    let _: OpChanges = server.rpc(
-        "answerCard",
-        &CardAnswer {
-            card_id,
-            current_state: states.current,
-            new_state: states.good,
-            rating: Rating::Good as i32,
-            answered_at_millis: 1_700_000_000_000,
-            milliseconds_taken: 1000,
-        },
-    );
+    let card = queued.card.unwrap();
+    let answer = CardAnswer {
+        card_id,
+        card_mtime_secs: card.mtime_secs,
+        card_reps: card.reps,
+        rating: Rating::Good as i32,
+        answered_at_millis: 1_700_000_000_000,
+        milliseconds_taken: 1000,
+    };
+    let _: OpChanges = server.rpc("answerCard", &answer);
     let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
     assert!(!status.undo.is_empty());
     let undone: OpChangesAfterUndo = server.rpc("undo", &generic::Empty {});
     assert_eq!(undone.operation, status.undo);
+
+    // undoing put the card back as it was shown, so it can be answered again,
+    // but only once: the second is eg the same card answered from another tab
+    let _: OpChanges = server.rpc("answerCard", &answer);
+    let reply = server.rpc_raw("answerCard", &answer.encode_to_vec());
+    assert_eq!(reply.status, 500);
+    assert!(reply.text().contains("changed while it was showing"));
 
     server.stop();
 }

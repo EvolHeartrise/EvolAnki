@@ -123,27 +123,25 @@ impl Collection {
     /// by tests to give cards a review history.
     #[cfg(test)]
     pub(crate) fn grade_now(&mut self, cids: &[CardId], rating: i32) -> Result<OpOutput<()>> {
+        use super::answering::Rating;
         self.transact(Op::AnswerCard, |col| {
             for &card_id in cids {
-                let states = col.get_scheduling_states(card_id)?;
-                let new_state = match rating {
-                    0 => states.again,
-                    1 => states.hard,
-                    2 => states.good,
-                    3 => states.easy,
+                let rating = match rating {
+                    0 => Rating::Again,
+                    1 => Rating::Hard,
+                    2 => Rating::Good,
+                    3 => Rating::Easy,
                     _ => invalid_input!("invalid rating"),
                 };
-                let mut answer: CardAnswer = anki_proto::scheduler::CardAnswer {
-                    card_id: card_id.into(),
-                    current_state: Some(states.current.into()),
-                    new_state: Some(new_state.into()),
-                    rating,
-                    milliseconds_taken: 0,
-                    answered_at_millis: TimestampMillis::now().into(),
-                }
-                .into();
                 // Process the card without updating queues yet
-                answer.from_queue = false;
+                let mut answer = CardAnswer {
+                    card_id,
+                    rating,
+                    answered_at: TimestampMillis::now(),
+                    milliseconds_taken: 0,
+                    shown_as: None,
+                    from_queue: false,
+                };
                 col.answer_card_inner(&mut answer)?;
             }
             Ok(())

@@ -1,8 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::mem;
-
 use crate::prelude::*;
 use crate::scheduler::answering::CardAnswer;
 use crate::scheduler::answering::Rating;
@@ -10,17 +8,13 @@ use crate::scheduler::queue::QueuedCard;
 use crate::scheduler::queue::QueuedCards;
 
 impl From<anki_proto::scheduler::CardAnswer> for CardAnswer {
-    fn from(mut answer: anki_proto::scheduler::CardAnswer) -> Self {
-        let mut new_state = mem::take(&mut answer.new_state).unwrap_or_default();
-        let custom_data = mem::take(&mut new_state.custom_data);
+    fn from(answer: anki_proto::scheduler::CardAnswer) -> Self {
         CardAnswer {
             card_id: CardId(answer.card_id),
             rating: answer.rating().into(),
-            current_state: answer.current_state.unwrap_or_default().into(),
-            new_state: new_state.into(),
             answered_at: TimestampMillis(answer.answered_at_millis),
             milliseconds_taken: answer.milliseconds_taken,
-            custom_data,
+            shown_as: Some((TimestampSecs(answer.card_mtime_secs), answer.card_reps)),
             from_queue: true,
         }
     }
@@ -43,6 +37,7 @@ impl From<QueuedCard> for anki_proto::scheduler::queued_cards::QueuedCard {
             card: Some(queued_card.card.into()),
             states: Some(queued_card.states.into()),
             context: Some(queued_card.context),
+            labels: queued_card.labels,
             queue: match queued_card.kind {
                 crate::scheduler::queue::QueueEntryKind::New => {
                     anki_proto::scheduler::queued_cards::Queue::New

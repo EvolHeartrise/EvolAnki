@@ -332,7 +332,7 @@ fn answer_all(harness: &mut Harness, rating: usize) -> Result<Value> {
         if out.contains_key(&name) {
             break;
         }
-        let result = harness.answer(cid, &item["states"], rating, 4000);
+        let result = harness.answer(&item["card"], rating, 4000);
         out.insert(
             name,
             json!({

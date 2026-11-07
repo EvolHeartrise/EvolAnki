@@ -197,20 +197,16 @@ impl Harness {
         json!({ "count": entries.len(), "latest": latest })
     }
 
-    pub fn answer(
-        &mut self,
-        cid: i64,
-        states: &Value,
-        rating: usize,
-        millis: u64,
-    ) -> Result<Value, String> {
-        let (name, key) = RATINGS[rating];
+    /// Answers the card as queued, as the review page does.
+    pub fn answer(&mut self, card: &Value, rating: usize, millis: u64) -> Result<Value, String> {
+        let (name, _) = RATINGS[rating];
         self.rpc(
             "AnswerCard",
             json!({
-                "card_id": cid,
-                "current_state": states["current"],
-                "new_state": states[key],
+                "card_id": card["id"],
+                // zero fields are left out of the card
+                "card_mtime_secs": card["mtime_secs"].as_i64().unwrap_or(0),
+                "card_reps": card["reps"].as_u64().unwrap_or(0),
                 "rating": name,
                 "answered_at_millis": clock::now_ms(),
                 "milliseconds_taken": millis,
