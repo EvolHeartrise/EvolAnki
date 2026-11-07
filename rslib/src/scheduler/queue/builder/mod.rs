@@ -356,7 +356,7 @@ mod test {
     #[test]
     fn should_build_empty_queue_if_limit_is_reached() {
         let mut col = Collection::new();
-        CardAdder::new().due_dates(["0"]).add(&mut col);
+        CardAdder::new().due_today(1).add(&mut col);
         col.set_deck_review_limit(DeckId(1), 0);
         assert_eq!(col.queue_as_deck_and_template(DeckId(1)), vec![]);
     }
@@ -485,7 +485,7 @@ mod test {
     fn cards_of_a_note_are_all_shown_on_the_same_day() {
         let mut col = Collection::new();
         // one review card and two new ones, all of the same note
-        CardAdder::new().siblings(3).due_dates(["0"]).add(&mut col);
+        CardAdder::new().siblings(3).due_today(1).add(&mut col);
         assert_eq!(col.counts(), [2, 0, 1]);
         assert_eq!(col.card_queue_len(), 3);
 
@@ -521,7 +521,7 @@ mod test {
         col.update_default_deck_config(|config| {
             config.new_per_day = 1;
         });
-        CardAdder::new().siblings(2).due_dates(["0"]).add(&mut col);
+        CardAdder::new().siblings(2).due_today(1).add(&mut col);
         assert_eq!(col.card_queue_len(), 2);
     }
 

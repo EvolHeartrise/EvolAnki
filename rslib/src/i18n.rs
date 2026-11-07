@@ -90,10 +90,6 @@ impl I18n {
         "Remove Tag".into()
     }
 
-    pub fn actions_set_due_date(&self) -> Cow<'static, str> {
-        "Set Due Date".into()
-    }
-
     pub fn actions_answer_card(&self) -> Cow<'static, str> {
         "Answer Card".into()
     }

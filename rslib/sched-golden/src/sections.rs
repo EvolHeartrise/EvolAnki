@@ -507,18 +507,6 @@ fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<Stri
     let learn_a = sample(&learning, 10, 3);
     let mixed: Vec<i64> = [&review_a[..], &new_a[..], &learn_a[..]].concat();
     let mut changes = Map::new();
-    for days in ["0", "7", "3-9", "5!", "0!", "1-3!"] {
-        changes.insert(
-            format!("set_due {days}"),
-            change_case(
-                harness,
-                "SetDueDate",
-                json!({ "card_ids": mixed, "days": days }),
-                &mixed,
-            ),
-        );
-        clock::advance_ms(1000);
-    }
     changes.insert(
         "suspend".into(),
         change_case(

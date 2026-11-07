@@ -163,19 +163,12 @@ impl SqliteStorage {
         let start = day_cutoff.adding_secs(-86_400).as_millis();
         self.db
             .prepare_cached(include_str!("studied_today.sql"))?
-            .query_map(
-                [
-                    start.0,
-                    RevlogReviewKind::Manual as i64,
-                    RevlogReviewKind::Rescheduled as i64,
-                ],
-                |row| {
-                    Ok(StudiedToday {
-                        cards: row.get(0)?,
-                        seconds: row.get(1)?,
-                    })
-                },
-            )?
+            .query_map([start.0, RevlogReviewKind::Rescheduled as i64], |row| {
+                Ok(StudiedToday {
+                    cards: row.get(0)?,
+                    seconds: row.get(1)?,
+                })
+            })?
             .next()
             .unwrap()
             .map_err(Into::into)
@@ -271,7 +264,7 @@ mod test {
         let original = revlog(1000, RevlogReviewKind::Review, 5);
         storage.add_revlog_entry(&original, false).unwrap();
 
-        let dup = revlog(1000, RevlogReviewKind::Manual, 9);
+        let dup = revlog(1000, RevlogReviewKind::Rescheduled, 9);
         let added = storage.add_revlog_entry(&dup, false).unwrap();
 
         assert_eq!(added, None);
@@ -347,22 +340,22 @@ mod test {
     fn time_of_last_review_ignores_entries_without_a_rating() {
         let storage = create_test_storage();
         let cid = CardId(7);
-        // a reset entry has ease 0, so it is not a real review
-        let reset = RevlogEntry {
+        // a rescheduled entry has no button, so it is not a real review
+        let rescheduled = RevlogEntry {
             id: RevlogId(5_000_000),
             cid,
             button_chosen: 0,
-            review_kind: RevlogReviewKind::Manual,
+            review_kind: RevlogReviewKind::Rescheduled,
             ..Default::default()
         };
-        storage.add_revlog_entry(&reset, false).unwrap();
+        storage.add_revlog_entry(&rescheduled, false).unwrap();
 
         assert_eq!(storage.time_of_last_review(cid).unwrap(), None);
         assert_eq!(storage.time_of_last_review(CardId(999)).unwrap(), None);
     }
 
     #[test]
-    fn studied_today_counts_reviews_in_window_excluding_manual_and_rescheduled() {
+    fn studied_today_counts_reviews_in_window_excluding_rescheduled() {
         let storage = create_test_storage();
         let day_cutoff = TimestampSecs(1_000_000);
         // window start (in millis) is (1_000_000 - 86_400) * 1000 = 913_600_000
@@ -376,9 +369,6 @@ mod test {
             )
             .unwrap();
         // excluded by kind
-        storage
-            .add_revlog_entry(&revlog(950_000_002, RevlogReviewKind::Manual, 9999), false)
-            .unwrap();
         storage
             .add_revlog_entry(
                 &revlog(950_000_003, RevlogReviewKind::Rescheduled, 9999),
@@ -494,7 +484,6 @@ mod test {
             (RevlogReviewKind::Relearning, 3, 0, true),
             (RevlogReviewKind::Filtered, 3, 0, false),
             (RevlogReviewKind::Filtered, 3, 2500, true),
-            (RevlogReviewKind::Manual, 3, 0, false),
             (RevlogReviewKind::Rescheduled, 3, 0, false),
             (RevlogReviewKind::Review, 0, 2500, false),
         ];

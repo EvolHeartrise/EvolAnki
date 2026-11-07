@@ -177,7 +177,7 @@ message RevlogEntry {
     REVIEW = 1;
     RELEARNING = 2;
     FILTERED = 3;
-    MANUAL = 4;
+    reserved 4;  // MANUAL
     RESCHEDULED = 5;
   }
   int64 id = 1;

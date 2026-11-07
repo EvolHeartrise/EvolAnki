@@ -37,7 +37,7 @@ pub struct RevlogEntry {
     pub id: RevlogId,
     pub cid: CardId,
     /// - In the V1 scheduler, 3 represents easy in the learning case.
-    /// - 0 represents manual rescheduling.
+    /// - 0 represents a rescheduling, not an answer.
     #[serde(rename = "ease")]
     pub button_chosen: u8,
     /// Positive values are in days, negative values in seconds.
@@ -70,7 +70,7 @@ pub enum RevlogReviewKind {
     /// reviewing cards before they're due, or when rescheduling is
     /// disabled.
     Filtered = 3,
-    Manual = 4,
+    // 4 was "Manual", for set due date and reset, which this app doesn't have.
     Rescheduled = 5,
 }
 
@@ -93,16 +93,6 @@ impl RevlogEntry {
         .unwrap()
     }
 
-    /// Returns true if this entry represents a reset operation.
-    /// These entries are created when a card is reset (forgotten), which a
-    /// collection from a stock client may contain.
-    /// The 0 value of `ease_factor` differentiates it
-    /// from entry created by [`Collection::set_due_date`] that has
-    /// `RevlogReviewKind::Manual` but non-zero `ease_factor`.
-    pub(crate) fn is_reset(&self) -> bool {
-        self.review_kind == RevlogReviewKind::Manual && self.ease_factor == 0
-    }
-
     /// Returns true if this entry represents a cramming operation.
     /// These entries are created when a card is reviewed in a
     /// filtered deck with "Reschedule cards based on my answers
@@ -119,11 +109,11 @@ impl RevlogEntry {
         self.button_chosen > 0
     }
 
-    /// Returns true if the review entry is not manually rescheduled and not
-    /// cramming. Used to filter out entries that shouldn't be considered
-    /// for statistics and scheduling.
+    /// Returns true if the entry is an answer that wasn't cramming. Used to
+    /// filter out entries that shouldn't be considered for statistics and
+    /// scheduling.
     pub(crate) fn has_rating_and_affects_scheduling(&self) -> bool {
-        // not rescheduled/set due date/reset
+        // not rescheduled
         self.has_rating()
             // not cramming
             && !self.is_cramming()
@@ -131,29 +121,11 @@ impl RevlogEntry {
 }
 
 impl Collection {
-    // set due date or reset
-    pub(crate) fn log_manually_scheduled_review(
-        &mut self,
-        card: &Card,
-        original_interval: u32,
-    ) -> Result<()> {
-        self.log_scheduled_review(card, original_interval, RevlogReviewKind::Manual)
-    }
-
-    // reschedule cards on change
+    /// Records that FSRS moved a card's due date after its settings changed.
     pub(crate) fn log_rescheduled_review(
         &mut self,
         card: &Card,
         original_interval: u32,
-    ) -> Result<()> {
-        self.log_scheduled_review(card, original_interval, RevlogReviewKind::Rescheduled)
-    }
-
-    fn log_scheduled_review(
-        &mut self,
-        card: &Card,
-        original_interval: u32,
-        review_kind: RevlogReviewKind,
     ) -> Result<()> {
         let ease_factor = u32::from(
             card.memory_state
@@ -168,7 +140,7 @@ impl Collection {
             last_interval: i32::try_from(original_interval).unwrap_or(i32::MAX),
             ease_factor,
             taken_millis: 0,
-            review_kind,
+            review_kind: RevlogReviewKind::Rescheduled,
         };
         self.add_revlog_entry_undoable(entry)?;
         Ok(())

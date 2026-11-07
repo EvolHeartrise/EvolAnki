@@ -63,7 +63,6 @@ use anki_proto::scheduler::custom_study_request::Cram;
 use anki_proto::scheduler::custom_study_request::Value as StudyValue;
 use anki_proto::scheduler::CustomStudyRequest;
 use anki_proto::scheduler::SchedTimingTodayResponse;
-use anki_proto::scheduler::SetDueDateRequest;
 use anki_proto::scheduler::SuspendCardsRequest;
 use anki_proto::search::SearchRequest;
 use anki_proto::search::SearchResponse;
@@ -123,8 +122,6 @@ pub const COMMANDS: &[Command] = &[
         "Overwrite a media file, keeping its name. The old one goes in backups/media-replaced. Browsers may show the old one for up to an hour.", media_replace),
     command!("card.suspend", Effect::Write, IDS, "Suspend cards.", card_suspend),
     command!("card.unsuspend", Effect::Write, IDS, "Unsuspend the suspended ones among these cards.", card_unsuspend),
-    command!("card.set-due", Effect::Write, r#"{"ids":[]|"search":"","days":"0"|"1-7"|"3!"}"#,
-        "Make cards due in this many days, from today. With !, the interval changes to match.", card_set_due),
     command!("tag.list", Read, "{}", "All tags.", tag_list),
     command!("tag.add", Effect::Write, r#"{"ids":[note ids]|"search":"","tags":["t"]}"#, "Add tags to notes.", tag_add),
     command!("tag.remove", Effect::Write, r#"{"ids":[note ids]|"search":"","tags":["t"]}"#, "Remove tags from notes.", tag_remove),
@@ -629,20 +626,6 @@ fn card_unsuspend(admin: &Admin, args: &Value) -> Result<Value> {
         let _: OpChanges = call_typed(&admin.backend, "unsuspendCards", &CardIds { cids })?;
     }
     Ok(json!({"changed": changed}))
-}
-
-fn card_set_due(admin: &Admin, args: &Value) -> Result<Value> {
-    let card_ids = card_targets(admin, args)?;
-    let count = card_ids.len();
-    let _: OpChanges = call_typed(
-        &admin.backend,
-        "setDueDate",
-        &SetDueDateRequest {
-            card_ids,
-            days: string(args, "days")?.to_string(),
-        },
-    )?;
-    Ok(json!({"changed": count}))
 }
 
 // Tags
