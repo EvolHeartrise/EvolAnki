@@ -579,13 +579,13 @@ impl Server {
     }
 
     fn answer(&self, queued: &anki_proto::scheduler::queued_cards::QueuedCard) -> (u16, String) {
-        let states = queued.states.clone().unwrap();
+        let card = queued.card.as_ref().unwrap();
         let (status, body) = self.post(
             "answerCard",
             &anki_proto::scheduler::CardAnswer {
-                card_id: queued.card.as_ref().unwrap().id,
-                current_state: states.current,
-                new_state: states.good,
+                card_id: card.id,
+                card_mtime_secs: card.mtime_secs,
+                card_reps: card.reps,
                 rating: anki_proto::scheduler::card_answer::Rating::Good as i32,
                 answered_at_millis: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)

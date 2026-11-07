@@ -270,7 +270,7 @@ fn answer_next(
     let (name, key) = RATINGS[rating];
     // what's stored, as the queue's copy has its FSRS fields filled in
     let stored = harness.card(cid);
-    let result = harness.answer(cid, &item["states"], rating, millis);
+    let result = harness.answer(&item["card"], rating, millis);
     *coverage
         .entry(format!(
             "type {} queue {} {name}",

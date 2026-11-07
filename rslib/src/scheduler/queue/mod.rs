@@ -61,6 +61,8 @@ pub struct QueuedCard {
     pub kind: QueueEntryKind,
     pub states: SchedulingStates,
     pub context: SchedulingContext,
+    /// What the answer buttons would schedule, for their labels.
+    pub labels: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -112,6 +114,7 @@ impl Collection {
                 let (next_states, card) = self.get_scheduling_states_inner(card)?;
 
                 Ok(QueuedCard {
+                    labels: self.describe_next_states(&next_states)?,
                     context: new_scheduling_context(self, &card)?,
                     card,
                     states: next_states,

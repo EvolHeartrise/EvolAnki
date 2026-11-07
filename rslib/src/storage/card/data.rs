@@ -1,14 +1,11 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::collections::HashMap;
-
 use rusqlite::types::FromSql;
 use rusqlite::types::FromSqlError;
 use rusqlite::types::ValueRef;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
 
 use crate::card::FsrsMemoryState;
 use crate::prelude::*;
@@ -127,42 +124,9 @@ fn meta_is_empty(s: &str) -> bool {
     matches!(s, "" | "{}")
 }
 
-fn validate_custom_data(json_str: &str) -> Result<()> {
-    if !meta_is_empty(json_str) {
-        let object: HashMap<&str, Value> =
-            serde_json::from_str(json_str).or_invalid("custom data not an object")?;
-        require!(
-            object.keys().all(|k| k.len() <= 8),
-            "custom data keys must be <= 8 bytes"
-        );
-        require!(
-            json_str.len() <= 100,
-            "serialized custom data must be under 100 bytes"
-        );
-    }
-    Ok(())
-}
-
-impl Card {
-    pub(crate) fn validate_custom_data(&self) -> Result<()> {
-        validate_custom_data(&self.custom_data)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    #[test]
-    fn validation() {
-        assert!(validate_custom_data("").is_ok());
-        assert!(validate_custom_data("{}").is_ok());
-        assert!(validate_custom_data(r#"{"foo": 5}"#).is_ok());
-        assert!(validate_custom_data(r#"["foo"]"#).is_err());
-        assert!(validate_custom_data(r#"{"日": 5}"#).is_ok());
-        assert!(validate_custom_data(r#"{"日本語": 5}"#).is_err());
-        assert!(validate_custom_data(&format!(r#"{{"foo": "{}"}}"#, "x".repeat(100))).is_err());
-    }
-
     #[test]
     fn compact_floats() {
         let mut data = CardData {

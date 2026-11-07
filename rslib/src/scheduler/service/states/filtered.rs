@@ -19,18 +19,3 @@ impl From<FilteredState> for anki_proto::scheduler::scheduling_state::Filtered {
         }
     }
 }
-
-impl From<anki_proto::scheduler::scheduling_state::Filtered> for FilteredState {
-    fn from(state: anki_proto::scheduler::scheduling_state::Filtered) -> Self {
-        match state.kind.unwrap_or_else(|| {
-            anki_proto::scheduler::scheduling_state::filtered::Kind::Preview(Default::default())
-        }) {
-            anki_proto::scheduler::scheduling_state::filtered::Kind::Preview(state) => {
-                FilteredState::Preview(state.into())
-            }
-            anki_proto::scheduler::scheduling_state::filtered::Kind::Rescheduling(state) => {
-                FilteredState::Rescheduling(state.into())
-            }
-        }
-    }
-}
