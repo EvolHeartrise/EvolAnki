@@ -50,8 +50,6 @@ use crate::prelude::*;
 use crate::template::FieldRequirements;
 use crate::template::ParsedTemplate;
 use crate::text::ensure_string_in_nfc;
-use crate::text::extract_underscored_css_imports;
-use crate::text::extract_underscored_references;
 
 define_newtype!(NotetypeId, i64);
 
@@ -583,19 +581,6 @@ impl Notetype {
                 .collect()
         } else {
             HashSet::new()
-        }
-    }
-
-    pub(crate) fn gather_media_names(&self, inserter: &mut impl FnMut(String)) {
-        for name in extract_underscored_css_imports(&self.config.css) {
-            inserter(name.to_string());
-        }
-        for template in &self.templates {
-            for template_side in [&template.config.q_format, &template.config.a_format] {
-                for name in extract_underscored_references(template_side) {
-                    inserter(name.to_string());
-                }
-            }
         }
     }
 }

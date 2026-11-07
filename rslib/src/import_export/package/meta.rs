@@ -30,9 +30,8 @@ impl VersionExt for Version {
 }
 
 pub(in crate::import_export) trait MetaExt: Sized {
-    fn new() -> Self;
     #[cfg(test)]
-    fn new_legacy() -> Self;
+    fn new() -> Self;
     fn from_archive(archive: &mut ZipArchive<File>) -> Result<Self>;
     fn collection_filename(&self) -> &'static str;
     fn zstd_compressed(&self) -> bool;
@@ -42,16 +41,10 @@ pub(in crate::import_export) trait MetaExt: Sized {
 }
 
 impl MetaExt for Meta {
+    #[cfg(test)]
     fn new() -> Self {
         Self {
             version: Version::Latest as i32,
-        }
-    }
-
-    #[cfg(test)]
-    fn new_legacy() -> Self {
-        Self {
-            version: Version::Legacy2 as i32,
         }
     }
 

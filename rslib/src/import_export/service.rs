@@ -1,11 +1,8 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
-use anki_proto::generic;
 use anki_proto::import_export::import_response::Log as NoteLog;
-use anki_proto::import_export::ExportLimit;
 
 use crate::prelude::*;
-use crate::search::SearchNode;
 
 impl crate::services::ImportExportService for Collection {
     fn import_anki_package(
@@ -14,19 +11,6 @@ impl crate::services::ImportExportService for Collection {
     ) -> Result<anki_proto::import_export::ImportResponse> {
         self.import_apkg(&input.package_path, input.options.unwrap_or_default())
             .map(Into::into)
-    }
-
-    fn export_anki_package(
-        &mut self,
-        input: anki_proto::import_export::ExportAnkiPackageRequest,
-    ) -> Result<generic::UInt32> {
-        self.export_apkg(
-            &input.out_path,
-            input.options.unwrap_or_default(),
-            input.limit.unwrap_or_default(),
-            None,
-        )
-        .map(Into::into)
     }
 
     fn get_csv_metadata(
@@ -62,29 +46,10 @@ impl From<OpOutput<NoteLog>> for anki_proto::import_export::ImportResponse {
     }
 }
 
-impl From<ExportLimit> for SearchNode {
-    fn from(export_limit: ExportLimit) -> Self {
-        use anki_proto::import_export::export_limit::Limit;
-        let limit = export_limit
-            .limit
-            .unwrap_or(Limit::WholeCollection(generic::Empty {}));
-        match limit {
-            Limit::WholeCollection(_) => Self::WholeCollection,
-            Limit::DeckId(did) => Self::from_deck_id(did, true),
-            Limit::NoteIds(nids) => Self::from_note_ids(nids.note_ids),
-            Limit::CardIds(cids) => Self::from_card_ids(cids.cids),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
-    use anki_proto::import_export::export_limit::Limit;
     use anki_proto::import_export::import_response::Log as NoteLog;
     use anki_proto::import_export::CsvMetadataRequest;
-    use anki_proto::import_export::ExportAnkiPackageRequest;
-    use anki_proto::import_export::ExportLimit;
     use anki_proto::import_export::ImportAnkiPackageRequest;
     use anki_proto::import_export::ImportCsvRequest;
     use tempfile::tempdir;
@@ -95,51 +60,6 @@ mod tests {
     use crate::ops::OpOutput;
     use crate::ops::StateChanges;
     use crate::services::ImportExportService;
-
-    // --- From<ExportLimit> for SearchNode ---
-
-    #[test]
-    fn export_limit_none_becomes_whole_collection() {
-        let node = SearchNode::from(ExportLimit { limit: None });
-        assert_eq!(node, SearchNode::WholeCollection);
-    }
-
-    #[test]
-    fn export_limit_note_ids_becomes_note_id_search() {
-        use anki_proto::notes::NoteIds;
-        let node = SearchNode::from(ExportLimit {
-            limit: Some(Limit::NoteIds(NoteIds {
-                note_ids: vec![1, 2, 3],
-            })),
-        });
-        assert!(
-            matches!(node, SearchNode::NoteIds(_)),
-            "expected NoteIds search node, got: {node:?}"
-        );
-    }
-
-    #[test]
-    fn export_limit_card_ids_becomes_card_id_search() {
-        use anki_proto::cards::CardIds;
-        let node = SearchNode::from(ExportLimit {
-            limit: Some(Limit::CardIds(CardIds { cids: vec![10, 20] })),
-        });
-        assert!(
-            matches!(node, SearchNode::CardIds(_)),
-            "expected CardIds search node, got: {node:?}"
-        );
-    }
-
-    #[test]
-    fn export_limit_deck_id_becomes_deck_id_with_children() {
-        let node = SearchNode::from(ExportLimit {
-            limit: Some(Limit::DeckId(42)),
-        });
-        assert!(
-            matches!(node, SearchNode::DeckIdWithChildren(_)),
-            "expected DeckIdWithChildren, got: {node:?}"
-        );
-    }
 
     // --- Service function tests ---
 
@@ -173,39 +93,6 @@ mod tests {
             },
         );
         assert!(result.is_err(), "expected Err for missing .apkg file");
-    }
-
-    #[test]
-    fn export_anki_package_succeeds_with_empty_collection() {
-        let mut col = Collection::new();
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("out.apkg");
-        let result = ImportExportService::export_anki_package(
-            &mut col,
-            ExportAnkiPackageRequest {
-                out_path: path.to_str().unwrap().into(),
-                options: None,
-                limit: None,
-            },
-        );
-        assert!(result.is_ok(), "expected Ok for empty collection export");
-        assert!(path.exists(), "expected .apkg file to be created");
-    }
-
-    #[test]
-    fn export_anki_package_propagates_error_for_invalid_path() {
-        let mut col = Collection::new();
-        let dir = tempdir().unwrap();
-        let bad_path = dir.path().join("no_such_subdir").join("out.apkg");
-        let result = ImportExportService::export_anki_package(
-            &mut col,
-            ExportAnkiPackageRequest {
-                out_path: bad_path.to_str().unwrap().into(),
-                options: None,
-                limit: None,
-            },
-        );
-        assert!(result.is_err(), "expected Err for invalid output path");
     }
 
     #[test]

@@ -35,6 +35,7 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
+    #[cfg(test)]
     pub(crate) fn set_creation_stamp(&self, stamp: TimestampSecs) -> Result<()> {
         self.db
             .prepare("update col set crt = ?")?

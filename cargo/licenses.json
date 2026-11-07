@@ -704,14 +704,6 @@
     "repository": "https://github.com/withoutboats/heck"
   },
   {
-    "authors": "Stefan Lankes",
-    "description": "Hermit system calls definitions.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "hermit-abi",
-    "repository": "https://github.com/hermit-os/hermit-rs"
-  },
-  {
     "authors": "KokaKiwi <kokakiwi@kokakiwi.net>",
     "description": "Encoding and decoding data into/from hexadecimal representation.",
     "license": "Apache-2.0 OR MIT",
@@ -1230,14 +1222,6 @@
     "license_file": null,
     "name": "num-traits",
     "repository": "https://github.com/rust-num/num-traits"
-  },
-  {
-    "authors": "Sean McArthur <sean@seanmonstar.com>",
-    "description": "Get the number of CPUs on a machine.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "num_cpus",
-    "repository": "https://github.com/seanmonstar/num_cpus"
   },
   {
     "authors": "Daniel Wagner-Hall <dawagner@gmail.com>|Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>|Vincent Esche <regexident@gmail.com>",

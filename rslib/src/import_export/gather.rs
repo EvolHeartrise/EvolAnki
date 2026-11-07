@@ -1,22 +1,16 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::collections::HashMap;
 use std::collections::HashSet;
 
-use anki_io::filename_is_safe;
 use itertools::Itertools;
 
-use super::ExportProgress;
 use crate::decks::immediate_parent_name;
 use crate::decks::NormalDeck;
-use crate::latex::latex_filenames;
 use crate::prelude::*;
-use crate::progress::ThrottlingProgressHandler;
 use crate::revlog::RevlogEntry;
 use crate::search::CardTableGuard;
 use crate::search::NoteTableGuard;
-use crate::text::extract_media_refs;
 
 #[derive(Debug, Default)]
 pub(super) struct ExchangeData {
@@ -26,9 +20,7 @@ pub(super) struct ExchangeData {
     pub(super) notetypes: Vec<Notetype>,
     pub(super) revlog: Vec<RevlogEntry>,
     pub(super) deck_configs: Vec<DeckConfig>,
-    pub(super) media_filenames: HashSet<String>,
     pub(super) days_elapsed: u32,
-    pub(super) creation_utc_offset: Option<i32>,
 }
 
 impl ExchangeData {
@@ -40,7 +32,6 @@ impl ExchangeData {
         with_deck_configs: bool,
     ) -> Result<()> {
         self.days_elapsed = col.timing_today()?.days_elapsed;
-        self.creation_utc_offset = col.get_creation_utc_offset();
         let (notes, guard) = col.gather_notes(search)?;
         self.notes = notes;
         let (cards, guard) = guard.col.gather_cards()?;
@@ -67,27 +58,6 @@ impl ExchangeData {
         self.reset_decks(!with_scheduling, allow_filtered);
 
         self.check_ids()
-    }
-
-    pub(super) fn gather_media_names(
-        &mut self,
-        progress: &mut ThrottlingProgressHandler<ExportProgress>,
-    ) -> Result<()> {
-        let mut inserter = |name: String| {
-            if filename_is_safe(&name) {
-                self.media_filenames.insert(name);
-            }
-        };
-        let mut progress = progress.incrementor(ExportProgress::Notes);
-        let svg_getter = svg_getter(&self.notetypes);
-        for note in self.notes.iter() {
-            progress.increment()?;
-            gather_media_names_from_note(note, &mut inserter, &svg_getter);
-        }
-        for notetype in self.notetypes.iter() {
-            notetype.gather_media_names(&mut inserter);
-        }
-        Ok(())
     }
 
     fn reset_cards_and_notes(&mut self, col: &Collection) {
@@ -194,30 +164,6 @@ impl ExchangeData {
             Ok(())
         }
     }
-}
-
-fn gather_media_names_from_note(
-    note: &Note,
-    inserter: &mut impl FnMut(String),
-    svg_getter: &impl Fn(NotetypeId) -> bool,
-) {
-    for field in note.fields() {
-        for media_ref in extract_media_refs(field) {
-            inserter(media_ref.fname_decoded.to_string());
-        }
-
-        for fname in latex_filenames(field, svg_getter(note.notetype_id)) {
-            inserter(fname);
-        }
-    }
-}
-
-fn svg_getter(notetypes: &[Notetype]) -> impl Fn(NotetypeId) -> bool {
-    let svg_map: HashMap<NotetypeId, bool> = notetypes
-        .iter()
-        .map(|nt| (nt.id, nt.config.latex_svg))
-        .collect();
-    move |nt_id| svg_map.get(&nt_id).copied().unwrap_or_default()
 }
 
 impl Collection {

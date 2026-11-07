@@ -42,7 +42,7 @@ fn roundtrip() -> Result<()> {
         let col = collection_with_media(dir, name)?;
         let colpkg_name = dir.join(format!("{name}.colpkg"));
         let progress = col.new_progress_handler();
-        col.export_colpkg(&colpkg_name, true)?;
+        col.export_colpkg(&colpkg_name)?;
 
         // import into a new collection
         let anki2_name = dir
@@ -72,30 +72,6 @@ fn roundtrip() -> Result<()> {
         assert_eq!(read_file(import_media_dir.join("2"))?, b"2");
         assert_eq!(read_file(import_media_dir.join("3"))?, b"3");
     }
-
-    Ok(())
-}
-
-/// Files with an invalid encoding should prevent export, except
-/// on Apple platforms where the encoding is transparently changed.
-#[test]
-#[cfg(not(target_vendor = "apple"))]
-fn normalization_check_on_export() -> Result<()> {
-    use anki_io::write_file;
-
-    let _dir = tempdir()?;
-    let dir = _dir.path();
-
-    let col = collection_with_media(dir, "normalize")?;
-    let colpkg_name = dir.join("normalize.colpkg");
-    // manually write a file in the wrong encoding.
-    write_file(col.media_folder.join("ぱぱ.jpg"), "nfd encoding")?;
-    assert_eq!(
-        col.export_colpkg(&colpkg_name, true).unwrap_err(),
-        AnkiError::MediaCheckRequired
-    );
-    // file should have been cleaned up
-    assert!(!colpkg_name.exists());
 
     Ok(())
 }

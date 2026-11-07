@@ -6,7 +6,7 @@ backend directly, and Svelte pages that talk to it.
 ## Backend
 
 Nearly all logic lives in the Rust library in `rslib/`: collections, the scheduler
-and FSRS, importing and exporting, and so on. Filtered decks and custom study are in
+and FSRS, importing, and so on. Filtered decks and custom study are in
 the backend, and have no UI of their own.
 
 `rslib/web-server` is `evolanki-server`, which serves the pages and exposes an

@@ -8,9 +8,13 @@
 //! same file, including columns it may no longer write itself.
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 
+use anki_proto::import_export::package_metadata::Version;
+use anki_proto::import_export::PackageMetadata;
 use anyhow::Result;
+use prost::Message;
 use serde_json::json;
 use serde_json::Map;
 use serde_json::Value;
@@ -255,23 +259,30 @@ fn build_fixtures(fixtures: &Path, now: i64) -> Result<()> {
 
     clock::set_ms(now * 1000);
     harness.open(&collection)?;
-    harness.must(
-        "ExportAnkiPackage",
-        json!({
-            "out_path": fixtures.join("synthetic.apkg").to_str(),
-            "options": {
-                "with_scheduling": true,
-                "with_deck_configs": true,
-                "with_media": false,
-            },
-            "limit": { "whole_collection": {} },
-        }),
-    )?;
     harness.close()?;
+    write_package(&collection, &fixtures.join("synthetic.apkg"))?;
     fs::remove_dir_all(work)?;
     let media = collection.with_extension("media");
     let _ = fs::remove_dir_all(media);
     let _ = fs::remove_file(collection.with_extension("mdb"));
+    Ok(())
+}
+
+/// The whole collection, without media, in the package format Anki exports.
+fn write_package(collection: &Path, out: &Path) -> Result<()> {
+    let mut zip = zip::ZipWriter::new(fs::File::create(out)?);
+    let stored =
+        zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    zip.start_file("meta", stored)?;
+    let meta = PackageMetadata {
+        version: Version::Latest as i32,
+    };
+    zip.write_all(&meta.encode_to_vec())?;
+    zip.start_file("collection.anki21b", stored)?;
+    zip.write_all(&zstd::encode_all(fs::read(collection)?.as_slice(), 0)?)?;
+    zip.start_file("media", stored)?;
+    zip.write_all(&zstd::encode_all(&[][..], 0)?)?;
+    zip.finish()?;
     Ok(())
 }
 

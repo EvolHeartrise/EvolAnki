@@ -58,7 +58,6 @@ inflections = "1.1.1"
 itertools = "0.14.0"
 maplit = "1.0.2"
 nom = "8.0.0"
-num_cpus = "1.17.0"
 num_enum = "0.7.3"
 once_cell = "1.21.3"
 permutation = "0.4.1"
@@ -97,7 +96,7 @@ walkdir = "2.5.0"
 which = "8.0.0"
 xz2 = "0.1.7"
 zip = { version = "9.0.5", default-features = false, features = ["deflate", "time"] }
-zstd = { version = "0.14.3", features = ["zstdmt"] }
+zstd = "0.14.3"
 
 # Apply mild optimizations to our dependencies in dev mode, which among other things
 # improves sha2 performance by about 21x. Opt 1 chosen due to
