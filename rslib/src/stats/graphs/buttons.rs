@@ -79,7 +79,7 @@ fn interval_bucket(review: &RevlogEntry) -> Option<IntervalBucket> {
         } else {
             IntervalBucket::Mature
         }),
-        RevlogReviewKind::Manual | RevlogReviewKind::Rescheduled => None,
+        RevlogReviewKind::Rescheduled => None,
     }
 }
 

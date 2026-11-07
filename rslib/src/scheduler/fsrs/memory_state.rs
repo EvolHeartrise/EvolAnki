@@ -559,9 +559,6 @@ pub(crate) fn get_last_revlog_info(revlogs: &[RevlogEntry]) -> HashMap<CardId, L
                     } else {
                         None
                     };
-                } else if e.is_reset() {
-                    last_reviewed_at = None;
-                    previous_interval = None;
                 }
             }
             out.insert(
@@ -625,7 +622,7 @@ pub(crate) fn fsrs_item_for_memory_state(
                 starting_state: Some(starting_state),
             }))
         } else {
-            // only manual and rescheduled revlogs; treat like empty
+            // only rescheduled revlogs; treat like empty
             Ok(None)
         }
     } else {

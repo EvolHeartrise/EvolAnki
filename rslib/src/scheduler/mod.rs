@@ -10,7 +10,6 @@ pub(crate) mod filtered;
 pub mod fsrs;
 pub mod new;
 pub(crate) mod queue;
-mod reviews;
 mod service;
 pub mod states;
 pub mod suspend;

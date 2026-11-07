@@ -106,7 +106,8 @@ mod test {
     #[test]
     fn update_revlog_when_fixing_card_ids() {
         let mut col = Collection::new();
-        CardAdder::new().due_dates(["7"]).add(&mut col);
+        let card = CardAdder::new().add(&mut col).remove(0);
+        col.grade_now(&[card.id], 3).unwrap();
         col.storage.fix_invalid_ids(42, 42).unwrap();
         // revlog id was also reset to 42
         let revlog_entry = col.storage.get_revlog_entry(RevlogId(42)).unwrap().unwrap();

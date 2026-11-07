@@ -296,7 +296,7 @@ fn fsrs_items_for_training(
 
 pub(crate) struct ReviewsForFsrs {
     /// The revlog entries that remain after filtering (e.g. excluding
-    /// review entries prior to a card being reset).
+    /// review entries from before the card's last learning steps).
     pub filtered_revlogs: Vec<RevlogEntry>,
     /// FSRS items derived from the filtered revlogs.
     pub fsrs_items: Vec<(RevlogId, FSRSItem)>,
@@ -309,8 +309,7 @@ pub(crate) struct ReviewsForFsrs {
 /// training/memory state calculation.
 ///
 /// Filtering consists of removing revlog entries before the supplied timestamp,
-/// and removing items such as reviews that happened prior to a card being reset
-/// to new.
+/// and removing reviews from before the card's last run of learning steps.
 pub(crate) fn reviews_for_fsrs(
     mut entries: Vec<RevlogEntry>,
     next_day_at: TimestampSecs,
@@ -337,24 +336,6 @@ pub(crate) fn reviews_for_fsrs(
         if user_graded && entry.review_kind == RevlogReviewKind::Learning {
             first_of_last_learn_entries = Some(index);
             revlogs_complete = true;
-        } else if entry.is_reset() {
-            // Ignore entries prior to a `Reset` if a learning step has come after,
-            // but consider revlogs complete.
-            if first_of_last_learn_entries.is_some() {
-                revlogs_complete = true;
-                break;
-            // Ignore entries prior to a `Reset` if the user has graded a card
-            // after the reset.
-            } else if first_user_grade_idx.is_some() {
-                revlogs_complete = false;
-                break;
-            // User has not graded the card since it was reset, so all history
-            // filtered out.
-            } else {
-                return None;
-            }
-        // Previous versions of Anki didn't add a revlog entry when the card was
-        // reset.
         } else if first_of_last_learn_entries.is_some() {
             break;
         }
@@ -612,7 +593,7 @@ pub(crate) mod tests {
 
     pub(crate) fn revlog(review_kind: RevlogReviewKind, days_ago: i64) -> RevlogEntry {
         let button_chosen = match review_kind {
-            RevlogReviewKind::Manual | RevlogReviewKind::Rescheduled => 0,
+            RevlogReviewKind::Rescheduled => 0,
             _ => 3,
         };
         RevlogEntry {
@@ -741,7 +722,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn set_due_date_is_filtered() {
+    fn rescheduled_is_filtered() {
         assert_eq!(
             convert(
                 &[
@@ -749,86 +730,13 @@ pub(crate) mod tests {
                     revlog(RevlogReviewKind::Review, 9),
                     RevlogEntry {
                         ease_factor: 100,
-                        ..revlog(RevlogReviewKind::Manual, 7)
+                        ..revlog(RevlogReviewKind::Rescheduled, 7)
                     },
                     revlog(RevlogReviewKind::Review, 4),
                 ],
                 true,
             ),
             fsrs_items!([review(0), review(1)], [review(0), review(1), review(5)])
-        );
-    }
-
-    #[test]
-    fn card_reset_drops_all_previous_history() {
-        // If Reset comes in between two Learn entries, only the ones after the Reset
-        // are used.
-        assert_eq!(
-            convert(
-                &[
-                    revlog(RevlogReviewKind::Learning, 10),
-                    RevlogEntry {
-                        ease_factor: 0,
-                        ..revlog(RevlogReviewKind::Manual, 7)
-                    },
-                    revlog(RevlogReviewKind::Learning, 4),
-                    revlog(RevlogReviewKind::Review, 0),
-                ],
-                true,
-            ),
-            fsrs_items!([review(0), review(4)])
-        );
-        // Return None if Reset is the last entry or is followed by only manual entries.
-        assert_eq!(
-            convert(
-                &[
-                    revlog(RevlogReviewKind::Learning, 10),
-                    revlog(RevlogReviewKind::Review, 9),
-                    RevlogEntry {
-                        ease_factor: 0,
-                        ..revlog(RevlogReviewKind::Manual, 7)
-                    },
-                    RevlogEntry {
-                        ease_factor: 100,
-                        ..revlog(RevlogReviewKind::Manual, 7)
-                    },
-                ],
-                false,
-            ),
-            None,
-        );
-        // If non-learning user-graded entries are found after Reset, return None during
-        // training but return the remaining entries during memory state calculation.
-        assert_eq!(
-            convert(
-                &[
-                    revlog(RevlogReviewKind::Learning, 10),
-                    revlog(RevlogReviewKind::Review, 9),
-                    RevlogEntry {
-                        ease_factor: 0,
-                        ..revlog(RevlogReviewKind::Manual, 7)
-                    },
-                    revlog(RevlogReviewKind::Review, 1),
-                    revlog(RevlogReviewKind::Relearning, 0),
-                ],
-                true,
-            ),
-            None,
-        );
-        assert_eq!(
-            convert(
-                &[
-                    revlog(RevlogReviewKind::Review, 9),
-                    RevlogEntry {
-                        ease_factor: 0,
-                        ..revlog(RevlogReviewKind::Manual, 7)
-                    },
-                    revlog(RevlogReviewKind::Review, 1),
-                    revlog(RevlogReviewKind::Relearning, 0),
-                ],
-                false,
-            ),
-            fsrs_items!([review(0), review(1)])
         );
     }
 

@@ -8,10 +8,14 @@ use itertools::Itertools;
 use tempfile::tempdir;
 use tempfile::TempDir;
 
+use crate::card::CardQueue;
+use crate::card::CardType;
 use crate::collection::CollectionBuilder;
 use crate::deckconfig::DeckConfigInner;
 use crate::media::MediaManager;
 use crate::prelude::*;
+use crate::scheduler::answering::CardAnswer;
+use crate::scheduler::answering::Rating;
 
 pub(crate) fn open_fs_test_collection(name: &str) -> (Collection, TempDir) {
     let tempdir = tempdir().unwrap();
@@ -48,6 +52,49 @@ pub(crate) fn open_test_collection_with_relearning_card() -> Collection {
 impl Collection {
     pub(crate) fn new() -> Collection {
         CollectionBuilder::default().build().unwrap()
+    }
+
+    /// Makes the cards reviews due today, writing no history. A new card gets
+    /// no interval and the starting ease, as if it had been studied elsewhere.
+    pub(crate) fn make_due_today(&mut self, cids: &[CardId]) {
+        let today = self.timing_today().unwrap().days_elapsed as i32;
+        for &cid in cids {
+            let mut card = self.storage.get_card(cid).unwrap().unwrap();
+            card.ctype = CardType::Review;
+            card.queue = CardQueue::Review;
+            card.due = today;
+            card.set_initial_factor_if_missing();
+            self.storage.update_card(&card).unwrap();
+        }
+        self.clear_study_queues();
+    }
+
+    /// Answers each card as if from the reviewer, without it being queued. Used
+    /// to give cards a review history.
+    pub(crate) fn grade_now(&mut self, cids: &[CardId], rating: i32) -> Result<OpOutput<()>> {
+        // The cards needn't be at the top of the queue, so drop any built
+        // queues rather than updating them.
+        self.clear_study_queues();
+        self.transact(Op::AnswerCard, |col| {
+            for &card_id in cids {
+                let rating = match rating {
+                    0 => Rating::Again,
+                    1 => Rating::Hard,
+                    2 => Rating::Good,
+                    3 => Rating::Easy,
+                    _ => invalid_input!("invalid rating"),
+                };
+                let mut answer = CardAnswer {
+                    card_id,
+                    rating,
+                    answered_at: TimestampMillis::now(),
+                    milliseconds_taken: 0,
+                    shown_as: None,
+                };
+                col.answer_card_inner(&mut answer)?;
+            }
+            Ok(())
+        })
     }
 
     pub(crate) fn add_media(&self, media: &[(&str, &[u8])]) {
@@ -230,7 +277,7 @@ impl NoteAdder {
 pub(crate) struct CardAdder {
     siblings: usize,
     deck: DeckId,
-    due_dates: Vec<&'static str>,
+    due_today: usize,
 }
 
 impl CardAdder {
@@ -238,7 +285,7 @@ impl CardAdder {
         Self {
             siblings: 1,
             deck: DeckId(1),
-            due_dates: Vec::new(),
+            due_today: 0,
         }
     }
 
@@ -252,10 +299,10 @@ impl CardAdder {
         self
     }
 
-    /// Takes an array of strs and sets the due date of the first siblings
-    /// accordingly, skipping siblings if a str is empty.
-    pub(crate) fn due_dates(mut self, due_dates: impl Into<Vec<&'static str>>) -> Self {
-        self.due_dates = due_dates.into();
+    /// Makes the first `count` siblings reviews due today, leaving the rest
+    /// new.
+    pub(crate) fn due_today(mut self, count: usize) -> Self {
+        self.due_today = count;
         self
     }
 
@@ -268,13 +315,9 @@ impl CardAdder {
             .deck(self.deck)
             .add(col);
 
-        if !self.due_dates.is_empty() {
+        if self.due_today > 0 {
             let cids = col.storage.card_ids_of_notes(&[note.id]).unwrap();
-            for (ord, due_date) in self.due_dates.iter().enumerate() {
-                if !due_date.is_empty() {
-                    col.set_due_date(&cids[ord..ord + 1], due_date).unwrap();
-                }
-            }
+            col.make_due_today(&cids[..self.due_today]);
         }
 
         col.storage.all_cards_of_note(note.id).unwrap()

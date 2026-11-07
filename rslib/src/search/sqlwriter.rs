@@ -882,7 +882,7 @@ impl SqlWriter<'_> {
             self.sql,
             concat!(
                 "((SELECT coalesce(min(id) > {cutoff}, false) FROM revlog WHERE cid = c.id ",
-                // Exclude manual reschedulings
+                // Exclude reschedulings
                 "AND ease != 0) ",
                 // Logically redundant, speeds up query
                 "AND c.id IN (SELECT cid FROM revlog WHERE id > {cutoff}))"

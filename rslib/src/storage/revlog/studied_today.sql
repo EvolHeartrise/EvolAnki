@@ -3,4 +3,3 @@ SELECT COUNT(),
 FROM revlog
 WHERE id > ?
   AND type != ?
-  AND type != ?

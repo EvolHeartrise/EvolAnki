@@ -7,7 +7,6 @@
 use std::path::Path;
 
 use anki::backend::Backend;
-use anki_proto::cards::CardIds;
 use anki_proto::collection::OpChangesWithId;
 use anki_proto::decks::deck::Kind;
 use anki_proto::decks::Deck;
@@ -15,7 +14,6 @@ use anki_proto::generic;
 use anki_proto::notes::AddNoteRequest;
 use anki_proto::notes::AddNoteResponse;
 use anki_proto::notes::Note;
-use anki_proto::notes::NoteId;
 use anki_proto::notetypes::notetype;
 use anki_proto::notetypes::Notetype;
 use anki_proto::notetypes::NotetypeId;
@@ -24,7 +22,6 @@ use anki_proto::scheduler::card_answer::Rating;
 use anki_proto::scheduler::CardAnswer;
 use anki_proto::scheduler::GetQueuedCardsRequest;
 use anki_proto::scheduler::QueuedCards;
-use anki_proto::scheduler::SetDueDateRequest;
 use anyhow::Context;
 use anyhow::Result;
 use serde::Deserialize;
@@ -117,9 +114,6 @@ struct SeedNote {
     deck: Option<String>,
     notetype: String,
     fields: Vec<String>,
-    /// Make its cards reviews due today, rather than new.
-    #[serde(default)]
-    due: bool,
 }
 
 pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
@@ -167,7 +161,7 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
         };
         let mut note: Note = call_typed(backend, "newNote", &NotetypeId { ntid: notetype.id })?;
         note.fields = seed_note.fields;
-        let added: AddNoteResponse = call_typed(
+        let _: AddNoteResponse = call_typed(
             backend,
             "addNote",
             &AddNoteRequest {
@@ -175,18 +169,6 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
                 deck_id,
             },
         )?;
-        if seed_note.due {
-            let cards: CardIds =
-                call_typed(backend, "cardsOfNote", &NoteId { nid: added.note_id })?;
-            let _: anki_proto::collection::OpChanges = call_typed(
-                backend,
-                "setDueDate",
-                &SetDueDateRequest {
-                    card_ids: cards.cids,
-                    days: "0".into(),
-                },
-            )?;
-        }
     }
     Ok(())
 }

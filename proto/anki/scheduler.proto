@@ -22,7 +22,6 @@ service SchedulerService {
   rpc SuspendCards(SuspendCardsRequest) returns (collection.OpChangesWithCount);
   rpc EmptyFilteredDeck(decks.DeckId) returns (collection.OpChanges);
   rpc RebuildFilteredDeck(decks.DeckId) returns (collection.OpChangesWithCount);
-  rpc SetDueDate(SetDueDateRequest) returns (collection.OpChanges);
   rpc CustomStudy(CustomStudyRequest) returns (collection.OpChanges);
   rpc ComputeFsrsParams(ComputeFsrsParamsRequest)
       returns (ComputeFsrsParamsResponse);
@@ -121,13 +120,6 @@ message SchedTimingTodayResponse {
 message SuspendCardsRequest {
   repeated int64 card_ids = 1;
   repeated int64 note_ids = 2;
-}
-
-message SetDueDateRequest {
-  repeated int64 card_ids = 1;
-  string days = 2;
-  // 3 named a desktop dialog's setting to remember the days in.
-  reserved 3;
 }
 
 message SchedulingStates {

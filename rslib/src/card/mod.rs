@@ -132,7 +132,7 @@ impl Card {
 
     /// If last_review_date isn't stored in the card, this uses card.due and
     /// card.ivl to infer the elapsed time, which won't be accurate if
-    /// 'set due date' has changed the due date.
+    /// the due date was changed by hand in desktop Anki.
     pub(crate) fn seconds_since_last_review(&self, timing: &SchedTimingToday) -> Option<u32> {
         if let Some(last_review_time) = self.last_review_time {
             Some(timing.now.elapsed_secs_since(last_review_time) as u32)

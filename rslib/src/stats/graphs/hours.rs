@@ -32,9 +32,7 @@ impl GraphsContext {
         'outer: for review in &self.revlog {
             if matches!(
                 review.review_kind,
-                RevlogReviewKind::Filtered
-                    | RevlogReviewKind::Manual
-                    | RevlogReviewKind::Rescheduled
+                RevlogReviewKind::Filtered | RevlogReviewKind::Rescheduled
             ) {
                 continue;
             }

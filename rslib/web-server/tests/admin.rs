@@ -685,7 +685,7 @@ fn exercise_every_command(fx: &Fixture) {
     }
     assert!(!fx.dir.path().join("evil.png").exists());
 
-    // suspend, due
+    // suspend
     assert_eq!(fx.ok("card.suspend", json!({"ids":[card]}))["changed"], 1,);
     assert_eq!(fx.queue_of(card), -1);
     assert_eq!(fx.ok("card.unsuspend", json!({"ids":[card]}))["changed"], 1);
@@ -695,10 +695,6 @@ fn exercise_every_command(fx: &Fixture) {
         0,
         "it isn't suspended"
     );
-    fx.ok("card.set-due", json!({"ids":[card],"days":"5"}));
-    let shown = fx.ok("card.show", json!({"id":card,"render":false}));
-    assert_eq!(shown["queue"], 2);
-    assert!(shown["due"].as_i64().unwrap() >= 5);
     assert!(fx
         .error("card.suspend", json!({"search":""}))
         .contains("selects everything"));
@@ -919,10 +915,7 @@ fn exercise_every_command(fx: &Fixture) {
     // summary and backup
     let summary = fx.ok("stats.summary", json!({}));
     assert!(summary["notes"].as_i64().unwrap() >= 20);
-    assert_eq!(
-        summary["revlog"], 6,
-        "the five, and set-due leaves an entry"
-    );
+    assert_eq!(summary["revlog"], 5, "the five demo reviews");
     assert!(summary["with_memory_state"].as_i64().unwrap() >= 5);
     assert!(summary["due_after_limits"]["new"].is_number());
     let before = fx.backups();

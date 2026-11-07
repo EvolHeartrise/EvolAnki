@@ -59,14 +59,6 @@ impl crate::services::SchedulerService for Collection {
         self.rebuild_filtered_deck(input.did.into()).map(Into::into)
     }
 
-    fn set_due_date(
-        &mut self,
-        input: scheduler::SetDueDateRequest,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        let cids = input.card_ids.into_newtype(CardId);
-        self.set_due_date(&cids, &input.days).map(Into::into)
-    }
-
     fn answer_card(
         &mut self,
         input: scheduler::CardAnswer,
@@ -427,37 +419,6 @@ mod tests {
 
         let card = col.storage.get_card(cid).unwrap().unwrap();
         assert_eq!(card.queue, CardQueue::Suspended);
-    }
-
-    #[test]
-    fn set_due_date_moves_card_to_review_with_given_offset() {
-        let mut col = Collection::new();
-        let cid = add_basic_card(&mut col);
-
-        // schedule the (new) card to be due in 3 days
-        let _ = SchedulerService::set_due_date(
-            &mut col,
-            anki_proto::scheduler::SetDueDateRequest {
-                card_ids: vec![cid.0],
-                days: "3".to_string(),
-            },
-        )
-        .unwrap();
-
-        let card = col.storage.get_card(cid).unwrap().unwrap();
-        assert_eq!(
-            card.ctype,
-            CardType::Review,
-            "set_due_date turns the card into a review card"
-        );
-        assert_eq!(card.queue, CardQueue::Review);
-        // a new card has no review to measure an interval from
-        assert_eq!(
-            card.interval, 0,
-            "FSRS keeps the interval of new cards at 0"
-        );
-        let today = col.timing_today().unwrap().days_elapsed as i32;
-        assert_eq!(card.due, today + 3, "due should match the requested offset");
     }
 
     #[test]

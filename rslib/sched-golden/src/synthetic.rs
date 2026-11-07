@@ -97,18 +97,6 @@ const CASES: &[Case] = &[
         Some("sm2"),
     ),
     (
-        "review_manual_reschedule_history",
-        2,
-        2,
-        0,
-        16,
-        2500,
-        3,
-        0,
-        0,
-        Some("manual"),
-    ),
-    (
         "review_history_only_learning",
         2,
         2,
@@ -230,7 +218,6 @@ fn build_fixtures(fixtures: &Path, now: i64) -> Result<()> {
                 (1, 3, 5, 2, 2150),
                 (1, 4, 16, 5, 2300),
             ],
-            Some("manual") => &[(0, 3, 1, -60, 2500), (4, 0, 7, 1, 0), (1, 3, 16, 7, 2500)],
             Some("learn") => &[(0, 3, -600, -60, 0)],
             _ => &[],
         };
