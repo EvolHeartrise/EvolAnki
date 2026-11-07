@@ -49,14 +49,6 @@
   },
   {
     "authors": "Ankitects Pty Ltd and contributors <https://faqs.ankiweb.net/>",
-    "description": "Anki's Rust library i18n code",
-    "license": "AGPL-3.0-or-later",
-    "license_file": null,
-    "name": "anki_i18n",
-    "repository": null
-  },
-  {
-    "authors": "Ankitects Pty Ltd and contributors <https://faqs.ankiweb.net/>",
     "description": "Utils for better I/O error reporting",
     "license": "AGPL-3.0-or-later",
     "license_file": null,
@@ -592,38 +584,6 @@
     "repository": "https://github.com/rust-lang/flate2-rs"
   },
   {
-    "authors": "Caleb Maclennan <caleb@alerque.com>|Bruce Mitchener <bruce.mitchener@gmail.com|Zibi Braniecki <zibi@unicode.org>|Staś Małolepszy <stas@mozilla.com>",
-    "description": "An umbrella crate exposing the combined features of fluent-rs crates with additional convenience macros for Project Fluent, a localization system designed to unleash the entire expressive power of natural language translations.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "fluent",
-    "repository": "https://github.com/projectfluent/fluent-rs"
-  },
-  {
-    "authors": "Caleb Maclennan <caleb@alerque.com>|Bruce Mitchener <bruce.mitchener@gmail.com|Zibi Braniecki <zibi@unicode.org>|Staś Małolepszy <stas@mozilla.com>",
-    "description": "A low-level implementation of a collection of localization messages for a single locale for Project Fluent, a localization system designed to unleash the entire expressive power of natural language translations.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "fluent-bundle",
-    "repository": "https://github.com/projectfluent/fluent-rs"
-  },
-  {
-    "authors": "Zibi Braniecki <gandalf@mozilla.com>",
-    "description": "A library for language and locale negotiation.",
-    "license": "Apache-2.0",
-    "license_file": null,
-    "name": "fluent-langneg",
-    "repository": "https://github.com/projectfluent/fluent-langneg-rs"
-  },
-  {
-    "authors": "Caleb Maclennan <caleb@alerque.com>|Bruce Mitchener <bruce.mitchener@gmail.com|Zibi Braniecki <zibi@unicode.org>|Staś Małolepszy <stas@mozilla.com>",
-    "description": "A low-level parser, AST, and serializer API for the syntax used by Project Fluent, a localization system designed to unleash the entire expressive power of natural language translations.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "fluent-syntax",
-    "repository": "https://github.com/projectfluent/fluent-rs"
-  },
-  {
     "authors": "Alex Crichton <alex@alexcrichton.com>",
     "description": "Fowler–Noll–Vo hash function",
     "license": "Apache-2.0 OR MIT",
@@ -982,22 +942,6 @@
     "license_file": null,
     "name": "inflections",
     "repository": "https://docs.rs/inflections"
-  },
-  {
-    "authors": "Caleb Maclennan <caleb@alerque.com>|Bruce Mitchener <bruce.mitchener@gmail.com|Zibi Braniecki <zibi@unicode.org>|Staś Małolepszy <stas@mozilla.com>",
-    "description": "A memoizer specifically tailored for storing lazy-initialized intl formatters for Project Fluent, a localization system designed to unleash the entire expressive power of natural language translations.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "intl-memoizer",
-    "repository": "https://github.com/projectfluent/fluent-rs"
-  },
-  {
-    "authors": "Kekoa Riggin <kekoariggin@gmail.com>|Zibi Braniecki <zbraniecki@mozilla.com>",
-    "description": "Unicode Plural Rules categorizer for numeric input.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "intl_pluralrules",
-    "repository": "https://github.com/zbraniecki/pluralrules"
   },
   {
     "authors": "Kris Price <kris@krisprice.nz>",
@@ -1560,14 +1504,6 @@
     "repository": "https://github.com/bkchr/proc-macro-crate"
   },
   {
-    "authors": "David Tolnay <dtolnay@gmail.com>",
-    "description": "Procedural macros in expression position",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "proc-macro-hack",
-    "repository": "https://github.com/dtolnay/proc-macro-hack"
-  },
-  {
     "authors": "David Tolnay <dtolnay@gmail.com>|Alex Crichton <alex@alexcrichton.com>",
     "description": "A substitute implementation of the compiler's `proc_macro` API to decouple token-based libraries from the procedural macro use case.",
     "license": "Apache-2.0 OR MIT",
@@ -1798,14 +1734,6 @@
     "license_file": null,
     "name": "scopeguard",
     "repository": "https://github.com/bluss/scopeguard"
-  },
-  {
-    "authors": "Lukas Bergdoll <lukas.bergdoll@gmail.com>",
-    "description": "Safe-to-use proc-macro-free self-referential structs in stable Rust.",
-    "license": "Apache-2.0",
-    "license_file": null,
-    "name": "self_cell",
-    "repository": "https://github.com/Voultapher/self_cell"
   },
   {
     "authors": "David Tolnay <dtolnay@gmail.com>",
@@ -2352,14 +2280,6 @@
     "repository": "https://github.com/seanmonstar/try-lock"
   },
   {
-    "authors": "Jacob Brown <kardeiz@gmail.com>",
-    "description": "Provides a typemap container with FxHashMap",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "type-map",
-    "repository": "https://github.com/kardeiz/type-map"
-  },
-  {
     "authors": "Chip Senkbeil <chip@senkbeil.org>",
     "description": "Provides typed variants of Path and PathBuf for Unix and Windows",
     "license": "Apache-2.0 OR MIT",
@@ -2398,38 +2318,6 @@
     "license_file": null,
     "name": "unic-common",
     "repository": "https://github.com/open-i18n/rust-unic/"
-  },
-  {
-    "authors": "Zibi Braniecki <gandalf@mozilla.com>",
-    "description": "API for managing Unicode Language Identifiers",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "unic-langid",
-    "repository": "https://github.com/zbraniecki/unic-locale"
-  },
-  {
-    "authors": "Zibi Braniecki <gandalf@mozilla.com>",
-    "description": "API for managing Unicode Language Identifiers",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "unic-langid-impl",
-    "repository": "https://github.com/zbraniecki/unic-locale"
-  },
-  {
-    "authors": "Zibi Braniecki <gandalf@mozilla.com>",
-    "description": "API for managing Unicode Language Identifiers",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "unic-langid-macros",
-    "repository": "https://github.com/zbraniecki/unic-locale"
-  },
-  {
-    "authors": "Zibi Braniecki <gandalf@mozilla.com>",
-    "description": "API for managing Unicode Language Identifiers",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "unic-langid-macros-impl",
-    "repository": "https://github.com/zbraniecki/unic-locale"
   },
   {
     "authors": "The UNIC Project Developers",

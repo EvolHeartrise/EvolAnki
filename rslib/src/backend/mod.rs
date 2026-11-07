@@ -3,7 +3,6 @@
 
 mod collection;
 mod config;
-mod i18n;
 mod import_export;
 mod ops;
 

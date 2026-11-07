@@ -6,7 +6,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { goto } from "$app/navigation";
     import type { DeckTreeNode } from "@generated/anki/decks_pb";
     import { getCurrentDeck, setCurrentDeck } from "@generated/backend";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
 
     import { pendingNotice } from "./review/lib";
     import DeckNode from "./DeckNode.svelte";

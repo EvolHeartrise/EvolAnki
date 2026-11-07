@@ -758,13 +758,13 @@ impl NewCardSorting {
 mod test {
     use std::path::Path;
 
-    use anki_i18n::I18n;
     use rusqlite::params;
 
     use crate::card::Card;
     use crate::card::CardQueue;
     use crate::card::CardType;
     use crate::collection::Collection;
+    use crate::i18n::I18n;
     use crate::revlog::RevlogEntry;
     use crate::revlog::RevlogId;
     use crate::revlog::RevlogReviewKind;
@@ -772,7 +772,7 @@ mod test {
     use crate::timestamp::TimestampSecs;
 
     fn create_test_storage() -> SqliteStorage {
-        let tr: I18n = I18n::template_only();
+        let tr: I18n = I18n::new();
         SqliteStorage::open_or_create(Path::new(":memory:"), &tr, false).unwrap()
     }
 

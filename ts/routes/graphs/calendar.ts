@@ -3,8 +3,8 @@
 
 import type { GraphsResponse } from "@generated/anki/stats_pb";
 import { GraphPreferences_Weekday as Weekday } from "@generated/anki/stats_pb";
-import * as tr from "@generated/ftl";
 import { localizedDate, weekdayLabel } from "@tslib/i18n";
+import * as tr from "@tslib/tr";
 import type { CountableTimeInterval } from "d3";
 import { timeHour } from "d3";
 import {

@@ -14,7 +14,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         getRetentionWorkload,
         setWantsAbort,
     } from "@generated/backend";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
     import { runWithBackendProgress } from "@tslib/progress";
 
     import SettingTitle from "$lib/components/SettingTitle.svelte";

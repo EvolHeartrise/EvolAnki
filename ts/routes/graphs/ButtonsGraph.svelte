@@ -4,7 +4,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
     import type { GraphsResponse } from "@generated/anki/stats_pb";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
 
     import AxisTicks from "./AxisTicks.svelte";
     import { renderButtons } from "./buttons";

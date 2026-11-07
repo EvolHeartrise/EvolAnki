@@ -125,7 +125,7 @@ mod test {
 
     #[test]
     fn merge_new_fields() {
-        let mut basic = stock::basic(&I18n::template_only());
+        let mut basic = stock::basic(&I18n::new());
         let mut other = basic.clone();
         other.add_field("with id");
         other.add_field("without id");
@@ -137,7 +137,7 @@ mod test {
 
     #[test]
     fn skip_merging_field_with_existing_id() {
-        let mut basic = stock::basic(&I18n::template_only());
+        let mut basic = stock::basic(&I18n::new());
         let mut other = basic.clone();
         other.fields[1].name = String::from("renamed");
         basic.merge(&other);
@@ -147,7 +147,7 @@ mod test {
 
     #[test]
     fn align_field_order() {
-        let mut basic = stock::basic(&I18n::template_only());
+        let mut basic = stock::basic(&I18n::new());
         let mut other = basic.clone();
         other.fields.swap(0, 1);
         basic.merge(&other);
@@ -157,7 +157,7 @@ mod test {
 
     #[test]
     fn merge_new_templates() {
-        let mut basic = stock::basic(&I18n::template_only());
+        let mut basic = stock::basic(&I18n::new());
         let mut other = basic.clone();
         other.add_template("with id", "", "");
         other.add_template("without id", "", "");
@@ -169,7 +169,7 @@ mod test {
 
     #[test]
     fn skip_merging_template_with_existing_id() {
-        let mut basic = stock::basic(&I18n::template_only());
+        let mut basic = stock::basic(&I18n::new());
         let mut other = basic.clone();
         other.templates[0].name = String::from("renamed");
         basic.merge(&other);
@@ -182,7 +182,7 @@ mod test {
         // A malformed incoming notetype (e.g. from a corrupt deck) can have more
         // fields than ours, including a field that matches one of ours a second
         // time. Merging it must not panic. See issue #4345.
-        let mut basic = stock::basic(&I18n::template_only());
+        let mut basic = stock::basic(&I18n::new());
         let mut other = basic.clone();
         other.add_field("Extra1");
         other.add_field("Extra2");
@@ -202,7 +202,7 @@ mod test {
 
     #[test]
     fn merge_longer_other_with_duplicate_template() {
-        let mut basic = stock::basic_forward_reverse(&I18n::template_only());
+        let mut basic = stock::basic_forward_reverse(&I18n::new());
         let mut other = basic.clone();
         other.add_template("Extra1", "", "");
         other.add_template("Extra2", "", "");
@@ -219,7 +219,7 @@ mod test {
 
     #[test]
     fn align_template_order() {
-        let mut basic_rev = stock::basic_forward_reverse(&I18n::template_only());
+        let mut basic_rev = stock::basic_forward_reverse(&I18n::new());
         let mut other = basic_rev.clone();
         other.templates.swap(0, 1);
         basic_rev.merge(&other);

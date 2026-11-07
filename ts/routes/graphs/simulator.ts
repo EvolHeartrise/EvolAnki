@@ -20,8 +20,8 @@ import {
     type Selection,
 } from "d3";
 
-import * as tr from "@generated/ftl";
 import { timeSpan } from "@tslib/time";
+import * as tr from "@tslib/tr";
 import { sumBy } from "lodash-es";
 import type { GraphBounds, TableDatum } from "./graph-helpers";
 import { setDataAvailable } from "./graph-helpers";

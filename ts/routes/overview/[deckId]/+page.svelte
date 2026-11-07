@@ -4,7 +4,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
     import { onMount } from "svelte";
 
     import UntrustedHtml from "$lib/components/UntrustedHtml.svelte";

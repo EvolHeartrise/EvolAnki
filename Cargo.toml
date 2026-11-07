@@ -10,9 +10,7 @@ members = [
   "build/configure",
   "build/ninja_gen",
   "build/runner",
-  "ftl",
   "rslib",
-  "rslib/i18n",
   "rslib/io",
   "rslib/process",
   "rslib/proto",
@@ -33,7 +31,6 @@ version = "6.6.2"
 [workspace.dependencies]
 # local
 anki = { path = "rslib" }
-anki_i18n = { path = "rslib/i18n" }
 anki_io = { path = "rslib/io" }
 anki_process = { path = "rslib/process" }
 anki_proto = { path = "rslib/proto" }
@@ -60,16 +57,12 @@ data-encoding = "2.9.0"
 difflib = "0.4.0"
 embed-resource = "3.0.4"
 flate2 = "1.1.2"
-fluent = "0.17.0"
-fluent-bundle = "0.16.0"
-fluent-syntax = "0.12.0"
 fnv = "1.0.7"
 globset = "0.4.16"
 hex = "0.4.3"
 htmlescape = "0.3.1"
 id_tree = "1.8.0"
 inflections = "1.1.1"
-intl-memoizer = "0.5.3"
 itertools = "0.14.0"
 junction = "1.2.0"
 maplit = "1.0.2"
@@ -107,7 +100,6 @@ tokio = { version = "1.51.6", features = ["fs", "rt-multi-thread", "macros", "si
 tower-http = { version = "0.6.6", features = ["trace"] }
 tracing = { version = "0.1.41", features = ["max_level_trace", "release_max_level_debug"] }
 tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter"] }
-unic-langid = { version = "0.9.6", features = ["macros"] }
 unic-ucd-category = "0.9.0"
 unicode-normalization = "0.1.24"
 walkdir = "2.5.0"
@@ -121,10 +113,6 @@ zstd = { version = "0.14.3", features = ["zstdmt"] }
 # https://doc.rust-lang.org/cargo/reference/profiles.html#overrides-and-generics. This
 # applies to the dependencies of unit tests as well.
 [profile.dev.package."*"]
-opt-level = 1
-debug = 0
-
-[profile.dev.package.anki_i18n]
 opt-level = 1
 debug = 0
 

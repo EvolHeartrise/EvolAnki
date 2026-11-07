@@ -24,8 +24,8 @@ The build/ folder is made up of 3 packages:
 Node and protoc are downloaded as part of the build. To use your own, define
 NODE_BINARY, YARN_BINARY and/or PROTOC_BINARY.
 
-`rslib/i18n` and `rslib/proto` generate the Rust and TypeScript interfaces to the
-translations and the backend, which `./ninja` writes to `out/`. The default target,
+`rslib/proto` generates the Rust and TypeScript interfaces to the backend,
+which `./ninja` writes to `out/`. The default target,
 `web`, builds the folder that the server serves, `out/web`.
 
 ## Tracing build problems

@@ -28,7 +28,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         renderExistingCard,
         undo,
     } from "@generated/backend";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
     import type { FrameMessage } from "@tslib/frame-protocol";
     import { onDestroy, onMount } from "svelte";
 

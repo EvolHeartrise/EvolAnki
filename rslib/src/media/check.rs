@@ -7,7 +7,6 @@ use std::collections::HashSet;
 use std::fs;
 use std::sync::LazyLock;
 
-use anki_i18n::without_unicode_isolation;
 use anki_io::write_file;
 use data_encoding::BASE64;
 use regex::Regex;
@@ -193,9 +192,7 @@ impl MediaChecker<'_> {
             buf += &tr.media_check_renamed_header();
             buf.push('\n');
             for (old, new) in &output.renamed {
-                buf += &without_unicode_isolation(
-                    &tr.media_check_renamed_file(old.as_str(), new.as_str()),
-                );
+                buf += &tr.media_check_renamed_file(old.as_str(), new.as_str());
                 buf.push('\n');
             }
             buf.push('\n')
@@ -206,7 +203,7 @@ impl MediaChecker<'_> {
             buf += &tr.media_check_oversize_header();
             buf.push('\n');
             for fname in &output.oversize {
-                buf += &without_unicode_isolation(&tr.media_check_oversize_file(fname.as_str()));
+                buf += &tr.media_check_oversize_file(fname.as_str());
                 buf.push('\n');
             }
             buf.push('\n')
@@ -217,7 +214,7 @@ impl MediaChecker<'_> {
             buf += &tr.media_check_subfolder_header();
             buf.push('\n');
             for fname in &output.dirs {
-                buf += &without_unicode_isolation(&tr.media_check_subfolder_file(fname.as_str()));
+                buf += &tr.media_check_subfolder_file(fname.as_str());
                 buf.push('\n');
             }
             buf.push('\n')
@@ -228,7 +225,7 @@ impl MediaChecker<'_> {
             buf += &tr.media_check_missing_header();
             buf.push('\n');
             for fname in &output.missing {
-                buf += &without_unicode_isolation(&tr.media_check_missing_file(fname.as_str()));
+                buf += &tr.media_check_missing_file(fname.as_str());
                 buf.push('\n');
             }
             buf.push('\n')
@@ -239,7 +236,7 @@ impl MediaChecker<'_> {
             buf += &tr.media_check_unused_header();
             buf.push('\n');
             for fname in &output.unused {
-                buf += &without_unicode_isolation(&tr.media_check_unused_file(fname.as_str()));
+                buf += &tr.media_check_unused_file(fname.as_str());
                 buf.push('\n');
             }
         }

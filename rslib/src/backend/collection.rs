@@ -74,10 +74,10 @@ impl Backend {
 
 #[cfg(test)]
 mod test {
-    use anki_i18n::I18n;
     use tempfile::tempdir;
 
     use super::*;
+    use crate::i18n::I18n;
     use crate::tests::NoteAdder;
 
     #[test]
@@ -97,7 +97,7 @@ mod test {
         assert!(col.get_first_card().memory_state.is_none());
         col.close()?;
 
-        let backend = Backend::new(I18n::template_only());
+        let backend = Backend::new(I18n::new());
         BackendCollectionService::open_collection(
             &backend,
             anki_proto::collection::OpenCollectionRequest {

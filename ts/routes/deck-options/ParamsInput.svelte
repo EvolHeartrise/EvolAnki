@@ -17,7 +17,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 <script lang="ts">
     import { tick } from "svelte";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
     import Warning from "./Warning.svelte";
 
     export let value: number[];

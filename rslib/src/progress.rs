@@ -5,12 +5,12 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use anki_i18n::I18n;
 use anki_proto::collection::progress::Value;
 
 use crate::dbcheck::DatabaseCheckProgress;
 use crate::error::AnkiError;
 use crate::error::Result;
+use crate::i18n::I18n;
 use crate::import_export::ExportProgress;
 use crate::import_export::ImportProgress;
 use crate::media::check::MediaCheckProgress;

@@ -5,7 +5,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import "./base.scss";
 
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
     import { setContext } from "svelte";
 
     import { modalsKey, touchDeviceKey } from "$lib/components/context-keys";

@@ -13,13 +13,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use anki_i18n::I18n;
 #[cfg(test)]
 use anki_io::create_dir_all;
 
 use crate::decks::Deck;
 use crate::decks::DeckId;
 use crate::error::Result;
+use crate::i18n::I18n;
 use crate::notetype::Notetype;
 use crate::notetype::NotetypeId;
 use crate::progress::ProgressState;
@@ -52,7 +52,7 @@ impl CollectionBuilder {
             .collection_path
             .clone()
             .unwrap_or_else(|| PathBuf::from(":memory:"));
-        let tr = self.tr.clone().unwrap_or_else(I18n::template_only);
+        let tr = self.tr.clone().unwrap_or_default();
         let media_folder = self.media_folder.clone().unwrap_or_default();
         let media_db = self.media_db.clone().unwrap_or_default();
         let storage = SqliteStorage::open_or_create(&col_path, &tr, self.check_integrity)?;

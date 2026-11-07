@@ -7,7 +7,6 @@ mod invalid_input;
 mod not_found;
 mod search;
 
-use anki_i18n::I18n;
 use anki_io::FileIoError;
 use anki_io::FileOp;
 pub use db::DbError;
@@ -22,6 +21,7 @@ pub use self::invalid_input::InvalidInputError;
 pub use self::invalid_input::OrInvalid;
 pub use self::not_found::NotFoundError;
 pub use self::not_found::OrNotFound;
+use crate::i18n::I18n;
 use crate::import_export::ImportError;
 
 pub type Result<T, E = AnkiError> = std::result::Result<T, E>;

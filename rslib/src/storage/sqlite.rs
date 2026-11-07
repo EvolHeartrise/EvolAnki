@@ -697,7 +697,7 @@ mod test {
     use crate::tests::NoteAdder;
 
     fn test_tr() -> I18n {
-        I18n::template_only()
+        I18n::new()
     }
 
     #[test]

@@ -5,7 +5,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import InputBox from "./InputBox.svelte";
     import { PercentageRangeEnum } from "./percentageRange";
-    import * as tr from "@generated/ftl";
+    import * as tr from "@tslib/tr";
 
     export let range: PercentageRangeEnum;
 </script>
