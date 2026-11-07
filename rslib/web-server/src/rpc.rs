@@ -141,7 +141,6 @@ mod test {
             "checkMedia",
             "importAnkiPackage",
             "importCollectionPackage",
-            "exportAnkiPackage",
             "removeNotes",
             "removeCards",
             "removeDecks",

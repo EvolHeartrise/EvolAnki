@@ -99,9 +99,4 @@ impl Collection {
     pub fn rollover_for_current_scheduler(&self) -> u8 {
         self.get_v2_rollover().unwrap_or(4)
     }
-
-    pub(crate) fn set_creation_stamp(&mut self, stamp: TimestampSecs) -> Result<()> {
-        self.state.scheduler_info = None;
-        self.storage.set_creation_stamp(stamp)
-    }
 }

@@ -7,14 +7,12 @@ option java_multiple_files = true;
 
 package anki.import_export;
 
-import "anki/cards.proto";
 import "anki/collection.proto";
 import "anki/notes.proto";
 import "anki/generic.proto";
 
 service ImportExportService {
   rpc ImportAnkiPackage(ImportAnkiPackageRequest) returns (ImportResponse);
-  rpc ExportAnkiPackage(ExportAnkiPackageRequest) returns (generic.UInt32);
   rpc GetCsvMetadata(CsvMetadataRequest) returns (CsvMetadata);
   rpc ImportCsv(ImportCsvRequest) returns (ImportResponse);
 }
@@ -70,18 +68,6 @@ message ImportResponse {
   }
   collection.OpChanges changes = 1;
   Log log = 2;
-}
-
-message ExportAnkiPackageRequest {
-  string out_path = 1;
-  ExportAnkiPackageOptions options = 2;
-  ExportLimit limit = 3;
-}
-
-message ExportAnkiPackageOptions {
-  bool with_scheduling = 1;
-  bool with_deck_configs = 2;
-  bool with_media = 3;
 }
 
 message PackageMetadata {
@@ -186,13 +172,4 @@ message CsvMetadata {
   uint32 guid_column = 14;
   DupeResolution dupe_resolution = 15;
   MatchScope match_scope = 16;
-}
-
-message ExportLimit {
-  oneof limit {
-    generic.Empty whole_collection = 1;
-    int64 deck_id = 2;
-    notes.NoteIds note_ids = 3;
-    cards.CardIds card_ids = 4;
-  }
 }

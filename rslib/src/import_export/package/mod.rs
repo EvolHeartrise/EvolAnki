@@ -5,9 +5,10 @@ mod apkg;
 mod colpkg;
 mod media;
 mod meta;
+#[cfg(test)]
+mod test_packages;
 
 use anki_proto::import_export::media_entries::MediaEntry;
-pub use anki_proto::import_export::ExportAnkiPackageOptions;
 pub use anki_proto::import_export::ImportAnkiPackageOptions;
 pub use anki_proto::import_export::ImportAnkiPackageUpdateCondition as UpdateCondition;
 use anki_proto::import_export::MediaEntries;

@@ -12,7 +12,6 @@ use zip::ZipArchive;
 use super::super::super::meta::MetaExt;
 use super::Context;
 use crate::import_export::package::media::extract_media_entries;
-use crate::import_export::package::media::MediaCopier;
 use crate::import_export::package::media::SafeMediaEntry;
 use crate::import_export::ImportProgress;
 use crate::media::files::add_hash_suffix_to_file_stem;
@@ -55,14 +54,12 @@ impl Context<'_> {
 
     pub(super) fn copy_media(&mut self, media_map: &mut MediaUseMap) -> Result<()> {
         let mut incrementor = self.progress.incrementor(ImportProgress::Media);
-        let mut copier = MediaCopier::new(false);
         self.media_manager.transact(|_db| {
             for entry in media_map.used_entries() {
                 incrementor.increment()?;
                 entry.copy_and_ensure_sha1_set(
                     &mut self.archive,
                     &self.target_col.media_folder,
-                    &mut copier,
                     self.meta.zstd_compressed(),
                 )?;
                 self.media_manager

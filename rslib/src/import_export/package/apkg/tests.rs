@@ -12,7 +12,6 @@ use anki_io::read_file;
 use anki_proto::import_export::ImportAnkiPackageOptions;
 
 use crate::card::CardQueue;
-use crate::import_export::package::ExportAnkiPackageOptions;
 use crate::media::files::sha1_of_data;
 use crate::media::MediaManager;
 use crate::prelude::*;
@@ -44,18 +43,7 @@ fn cards_buried_in_a_package_import_as_normal() {
         .fields(&["new", ""])
         .add(&mut src_col)
         .id;
-    src_col
-        .export_apkg(
-            &exported,
-            ExportAnkiPackageOptions {
-                with_scheduling: true,
-                with_deck_configs: false,
-                with_media: false,
-            },
-            "",
-            None,
-        )
-        .unwrap();
+    src_col.export_apkg(&exported, "", false).unwrap();
 
     // change the package's own database, as nothing can bury a card any more
     let mut archive = zip::ZipArchive::new(File::open(&exported).unwrap()).unwrap();
@@ -125,13 +113,8 @@ fn roundtrip() {
     src_col
         .export_apkg(
             &apkg_path,
-            ExportAnkiPackageOptions {
-                with_scheduling: true,
-                with_deck_configs: true,
-                with_media: true,
-            },
             SearchNode::from_deck_name("parent::sample"),
-            None,
+            true,
         )
         .unwrap();
     target_col
@@ -256,7 +239,8 @@ impl Collection {
     }
 }
 
-fn export_and_reimport_with_fsrs_params(with_scheduling: bool) -> DeckConfig {
+#[test]
+fn fsrs_params_in_a_package_are_imported_with_scheduling() {
     let (mut src_col, src_tempdir) = open_fs_test_collection("src");
     let (mut target_col, _target_tempdir) = open_fs_test_collection("target");
     let apkg_path = src_tempdir.path().join("fsrs.apkg");
@@ -273,16 +257,7 @@ fn export_and_reimport_with_fsrs_params(with_scheduling: bool) -> DeckConfig {
         .add(&mut src_col);
 
     src_col
-        .export_apkg(
-            &apkg_path,
-            ExportAnkiPackageOptions {
-                with_scheduling,
-                with_deck_configs: true,
-                with_media: false,
-            },
-            SearchNode::WholeCollection,
-            None,
-        )
+        .export_apkg(&apkg_path, SearchNode::WholeCollection, false)
         .unwrap();
     target_col
         .import_apkg(
@@ -296,10 +271,13 @@ fn export_and_reimport_with_fsrs_params(with_scheduling: bool) -> DeckConfig {
         .unwrap();
 
     let deck = target_col.get_deck_id("fsrs-deck").unwrap().unwrap();
-    target_col
+    let conf = target_col
         .get_deck_config(DeckConfigId(deck.0), false)
         .unwrap()
-        .expect("config should have been imported")
+        .expect("config should have been imported");
+    assert_eq!(conf.inner.fsrs_params_4.len(), 17);
+    assert_eq!(conf.inner.fsrs_params_5.len(), 19);
+    assert_eq!(conf.inner.fsrs_params_6.len(), 21);
 }
 
 /// What an older version or client could have written: `b` uses `a`'s settings,
@@ -321,16 +299,7 @@ fn package_with_shared_settings(path: &std::path::Path, src_col: &mut Collection
     normal.new_limit = Some(7);
     src_col.storage.update_deck(&b).unwrap();
     src_col
-        .export_apkg(
-            path,
-            ExportAnkiPackageOptions {
-                with_scheduling: true,
-                with_deck_configs: true,
-                with_media: false,
-            },
-            SearchNode::WholeCollection,
-            None,
-        )
+        .export_apkg(path, SearchNode::WholeCollection, false)
         .unwrap();
 }
 
@@ -415,22 +384,6 @@ fn a_package_imported_without_settings_gives_built_in_values_or_keeps_the_decks_
     );
 }
 
-#[test]
-fn fsrs_params_preserved_on_export_with_scheduling() {
-    let conf = export_and_reimport_with_fsrs_params(true);
-    assert_eq!(conf.inner.fsrs_params_4.len(), 17);
-    assert_eq!(conf.inner.fsrs_params_5.len(), 19);
-    assert_eq!(conf.inner.fsrs_params_6.len(), 21);
-}
-
-#[test]
-fn fsrs_params_stripped_on_export_without_scheduling() {
-    let conf = export_and_reimport_with_fsrs_params(false);
-    assert!(conf.inner.fsrs_params_4.is_empty());
-    assert!(conf.inner.fsrs_params_5.is_empty());
-    assert!(conf.inner.fsrs_params_6.is_empty());
-}
-
 /// A package in the format of stock Anki's "support older versions" export: no
 /// meta, schema 11.
 #[test]
@@ -476,18 +429,7 @@ fn a_package_with_schema_18_imports() {
         .fields(&["in old package", ""])
         .add(&mut src_col)
         .id;
-    src_col
-        .export_apkg(
-            &exported,
-            ExportAnkiPackageOptions {
-                with_scheduling: true,
-                with_deck_configs: true,
-                with_media: false,
-            },
-            "",
-            None,
-        )
-        .unwrap();
+    src_col.export_apkg(&exported, "", false).unwrap();
 
     let mut archive = zip::ZipArchive::new(File::open(&exported).unwrap()).unwrap();
     let mut writer = zip::ZipWriter::new(File::create(&apkg_path).unwrap());

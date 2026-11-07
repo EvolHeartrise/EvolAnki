@@ -134,46 +134,6 @@ static TYPE_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[\[type:[^]]+\
 pub(crate) static SOUND_TAG: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\[sound:([^]]+)\]").unwrap());
 
-/// Files included in CSS with a leading underscore.
-static UNDERSCORED_CSS_IMPORTS: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r#"(?xi)
-            (?:@import\s+           # import statement with a bare
-                "(_[^"]*.css)"      # double quoted
-                |                   # or
-                '(_[^']*.css)'      # single quoted css filename
-            )
-            |                       # or
-            (?:url\(\s*             # a url function with a
-                "(_[^"]+)"          # double quoted
-                |                   # or
-                '(_[^']+)'          # single quoted
-                |                   # or
-                (_.+?)              # unquoted filename
-            \s*\))
-    "#,
-    )
-    .unwrap()
-});
-
-/// Strings, src and data attributes with a leading underscore.
-static UNDERSCORED_REFERENCES: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r#"(?x)
-                \[sound:(_[^]]+)\]  # a filename in an Anki sound tag
-            |                       # or
-                "(_[^"]+)"          # a double quoted
-            |                       # or
-                '(_[^']+)'          # single quoted string
-            |                       # or
-                \b(?:src|data)      # a 'src' or 'data' attribute
-                =                   # followed by
-                (_[^ >]+)           # an unquoted value
-    "#,
-    )
-    .unwrap()
-});
-
 pub fn is_html(text: impl AsRef<str>) -> bool {
     HTML.is_match(text.as_ref())
 }
@@ -297,27 +257,6 @@ pub fn replace_media_refs(
         .replace_all(text, &mut rep)
         .map_cow(|s| AV_TAGS.replace_all(s, &mut rep))
         .get_owned()
-}
-
-pub(crate) fn extract_underscored_css_imports(text: &str) -> Vec<&str> {
-    UNDERSCORED_CSS_IMPORTS
-        .captures_iter(text)
-        .map(extract_match)
-        .collect()
-}
-
-pub(crate) fn extract_underscored_references(text: &str) -> Vec<&str> {
-    UNDERSCORED_REFERENCES
-        .captures_iter(text)
-        .map(extract_match)
-        .collect()
-}
-
-/// Returns the first matching group as a str. This is intended for regexes
-/// where exactly one group matches, and will panic for matches without matching
-/// groups.
-fn extract_match(caps: Captures<'_>) -> &str {
-    caps.iter().skip(1).find_map(|g| g).unwrap().as_str()
 }
 
 pub fn strip_html_preserving_media_filenames(html: &str) -> Cow<'_, str> {
@@ -585,44 +524,6 @@ mod test {
         assert!(is_glob(r"\\\\_"));
         assert!(!is_glob(r"\\\_"));
         assert!(glob_matcher(r"foo\*bar*")("foo*bar123"));
-    }
-
-    #[test]
-    fn extracting() {
-        assert_eq!(
-            extract_underscored_css_imports(concat!(
-                "@IMPORT '_foo.css'\n",
-                "@import \"_bar.css\"\n",
-                "@import '_baz.css'\n",
-                "@import 'nope.css'\n",
-                "url(_foo.css)\n",
-                "URL(\"_bar.css\")\n",
-                "@import url('_baz.css')\n",
-                "url('nope.css')\n",
-                "url(_foo.woff2) format('woff2')",
-            )),
-            vec![
-                "_foo.css",
-                "_bar.css",
-                "_baz.css",
-                "_foo.css",
-                "_bar.css",
-                "_baz.css",
-                "_foo.woff2"
-            ]
-        );
-        assert_eq!(
-            extract_underscored_references(concat!(
-                "<img src=\"_foo.jpg\">",
-                "<object data=\"_bar\">",
-                "\"_baz.js\"",
-                "\"nope.js\"",
-                "<img src=_foo.jpg>",
-                "<object data=_bar>",
-                "'_baz.js'",
-            )),
-            vec!["_foo.jpg", "_bar", "_baz.js", "_foo.jpg", "_bar", "_baz.js",]
-        );
     }
 
     #[test]

@@ -19,12 +19,15 @@ anyhow.workspace = true
 
 [dependencies]
 anki.workspace = true
+anki_proto.workspace = true
 anyhow.workspace = true
 evolanki-server = { path = "../web-server" }
 prost.workspace = true
 prost-reflect.workspace = true
 rusqlite.workspace = true
 serde_json.workspace = true
+zip.workspace = true
+zstd.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"

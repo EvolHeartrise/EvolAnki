@@ -10,6 +10,7 @@ use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::ErrorKind;
+use std::io::Write;
 use std::os::unix::fs::FileTypeExt;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
@@ -19,20 +20,10 @@ use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
 
-use anki::collection::CollectionBuilder;
 use anki_proto::deck_config::deck_config::Config;
 use anki_proto::decks::deck::kind_container;
 use anki_proto::decks::deck::KindContainer;
 use anki_proto::decks::deck::Normal;
-use anki_proto::import_export::export_limit::Limit;
-use anki_proto::import_export::ExportAnkiPackageOptions;
-use anki_proto::import_export::ExportAnkiPackageRequest;
-use anki_proto::import_export::ExportLimit;
-use evolanki_server::collection::close_collection;
-use evolanki_server::collection::media_paths;
-use evolanki_server::collection::open_collection;
-use evolanki_server::rpc;
-use evolanki_server::rpc::call_typed;
 use prost::Message;
 use serde_json::json;
 use serde_json::Value;
@@ -1253,36 +1244,27 @@ fn reviews_and_commands_can_interleave() {
     assert_eq!(fx.ok("stats.summary", json!({}))["revlog"], 6 + answered);
 }
 
-/// Make packages with the backend, to import.
+/// Pack the closed collection and its media as older Anki versions did, with
+/// no meta, which import reads as either an .apkg or a .colpkg.
 fn export_packages(fx: &Fixture) -> (PathBuf, PathBuf) {
-    let backend = rpc::new_backend().unwrap();
-    open_collection(&backend, &fx.collection()).unwrap();
     let apkg = fx.dir.path().join("export.apkg");
     let colpkg = fx.dir.path().join("export.colpkg");
-    let _: anki_proto::generic::UInt32 = call_typed(
-        &backend,
-        "exportAnkiPackage",
-        &ExportAnkiPackageRequest {
-            out_path: apkg.to_str().unwrap().to_string(),
-            options: Some(ExportAnkiPackageOptions {
-                with_scheduling: true,
-                with_deck_configs: true,
-                with_media: true,
-            }),
-            limit: Some(ExportLimit {
-                limit: Some(Limit::WholeCollection(Default::default())),
-            }),
-        },
-    )
-    .unwrap();
-    close_collection(&backend).unwrap();
-    let (media_dir, media_db) = media_paths(&fx.collection());
-    CollectionBuilder::new(fx.collection())
-        .set_media_paths(media_dir, media_db)
-        .build()
-        .unwrap()
-        .export_colpkg(&colpkg, true)
-        .unwrap();
+    let mut zip = zip::ZipWriter::new(fs::File::create(&apkg).unwrap());
+    let options = zip::write::SimpleFileOptions::default();
+    zip.start_file("collection.anki21", options).unwrap();
+    zip.write_all(&fs::read(fx.collection()).unwrap()).unwrap();
+    let mut media = serde_json::Map::new();
+    for (index, entry) in fs::read_dir(fx.media()).unwrap().enumerate() {
+        let path = entry.unwrap().path();
+        zip.start_file(index.to_string(), options).unwrap();
+        zip.write_all(&fs::read(&path).unwrap()).unwrap();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        media.insert(index.to_string(), json!(name));
+    }
+    zip.start_file("media", options).unwrap();
+    zip.write_all(&serde_json::to_vec(&media).unwrap()).unwrap();
+    zip.finish().unwrap();
+    fs::copy(&apkg, &colpkg).unwrap();
     (apkg, colpkg)
 }
 

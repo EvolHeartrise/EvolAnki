@@ -11,7 +11,6 @@ use crate::dbcheck::DatabaseCheckProgress;
 use crate::error::AnkiError;
 use crate::error::Result;
 use crate::i18n::I18n;
-use crate::import_export::ExportProgress;
 use crate::import_export::ImportProgress;
 use crate::media::check::MediaCheckProgress;
 use crate::prelude::Collection;
@@ -180,12 +179,6 @@ impl From<DatabaseCheckProgress> for Progress {
 
 impl From<ImportProgress> for Progress {
     fn from(_: ImportProgress) -> Self {
-        Progress::Unreported
-    }
-}
-
-impl From<ExportProgress> for Progress {
-    fn from(_: ExportProgress) -> Self {
         Progress::Unreported
     }
 }

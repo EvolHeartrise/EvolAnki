@@ -2,6 +2,7 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 mod gather;
+#[cfg(test)]
 mod insert;
 pub mod package;
 mod service;
@@ -26,15 +27,6 @@ pub enum ImportProgress {
     Media(usize),
     MediaCheck(usize),
     Notes(usize),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ExportProgress {
-    #[default]
-    File,
-    Gathering,
-    Notes(usize),
-    Media(usize),
 }
 
 impl Note {
