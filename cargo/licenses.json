@@ -625,14 +625,6 @@
   },
   {
     "authors": null,
-    "description": "The `AsyncRead`, `AsyncWrite`, `AsyncSeek`, and `AsyncBufRead` traits for the futures-rs library.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "futures-io",
-    "repository": "https://github.com/rust-lang/futures-rs"
-  },
-  {
-    "authors": null,
     "description": "The asynchronous `Sink` trait for the futures-rs library.",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
