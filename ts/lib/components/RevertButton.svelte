@@ -9,10 +9,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { revertIcon } from "$lib/components/icons";
 
     import Badge from "./Badge.svelte";
-    import DropdownItem from "./DropdownItem.svelte";
     import Icon from "./Icon.svelte";
-    import Popover from "./Popover.svelte";
-    import WithFloating from "./WithFloating.svelte";
 
     type T = unknown;
 
@@ -34,41 +31,23 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     let modified: boolean;
     $: modified = !isEqual(value, defaultValue);
 
-    let showFloating = false;
-
     function revert(): void {
-        value = cloneDeep(defaultValue);
-        showFloating = false;
+        if (modified) {
+            value = cloneDeep(defaultValue);
+        }
     }
 </script>
 
-<WithFloating
-    show={showFloating}
-    closeOnInsideClick
-    inline
-    on:close={() => (showFloating = false)}
-    let:asReference
->
-    <div class:hide={!modified} use:asReference>
-        <Badge
-            iconSize={85}
-            class="p-1"
-            on:click={() => {
-                if (modified) {
-                    showFloating = !showFloating;
-                }
-            }}
-        >
-            <Icon icon={revertIcon} />
-        </Badge>
-    </div>
-
-    <Popover slot="floating">
-        <DropdownItem on:click={() => revert()}>
-            {tr.deckConfigRevertButtonTooltip()}
-        </DropdownItem>
-    </Popover>
-</WithFloating>
+<div class:hide={!modified}>
+    <Badge
+        iconSize={85}
+        class="p-1"
+        tooltip={tr.deckConfigRevertButtonTooltip()}
+        on:click={revert}
+    >
+        <Icon icon={revertIcon} />
+    </Badge>
+</div>
 
 <style lang="scss">
     :global(.badge) {

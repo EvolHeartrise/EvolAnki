@@ -329,7 +329,7 @@ export function deckConfigSaveAndOptimize(): string {
 }
 
 export function deckConfigRevertButtonTooltip(): string {
-    return "Restore this setting to its default value?";
+    return "Restore this setting to its default value";
 }
 
 export function deckConfigReviewsTooLow({ cards, expected }: { cards: number; expected: number | string }): string {

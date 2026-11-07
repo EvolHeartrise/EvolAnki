@@ -5,27 +5,6 @@
         "path": "node_modules/@bufbuild/protobuf",
         "licenseFile": "node_modules/@bufbuild/protobuf/README.md"
     },
-    "@floating-ui/core@1.8.0": {
-        "licenses": "MIT",
-        "repository": "https://github.com/floating-ui/floating-ui",
-        "publisher": "atomiks",
-        "path": "node_modules/@floating-ui/core",
-        "licenseFile": "node_modules/@floating-ui/core/LICENSE"
-    },
-    "@floating-ui/dom@1.8.0": {
-        "licenses": "MIT",
-        "repository": "https://github.com/floating-ui/floating-ui",
-        "publisher": "atomiks",
-        "path": "node_modules/@floating-ui/dom",
-        "licenseFile": "node_modules/@floating-ui/dom/LICENSE"
-    },
-    "@floating-ui/utils@0.2.12": {
-        "licenses": "MIT",
-        "repository": "https://github.com/floating-ui/floating-ui",
-        "publisher": "atomiks",
-        "path": "node_modules/@floating-ui/utils",
-        "licenseFile": "node_modules/@floating-ui/utils/LICENSE"
-    },
     "@mdi/svg@7.4.47": {
         "licenses": "Apache-2.0",
         "repository": "https://github.com/Templarian/MaterialDesign-SVG",
