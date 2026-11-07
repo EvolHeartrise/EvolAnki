@@ -57,8 +57,8 @@ message RenderExistingCardRequest {
 message RenderCardResponse {
   repeated RenderedTemplateNode question_nodes = 1;
   repeated RenderedTemplateNode answer_nodes = 2;
+  reserved 4;
   string css = 3;
-  bool latex_svg = 4;
   bool is_empty = 5;
 }
 

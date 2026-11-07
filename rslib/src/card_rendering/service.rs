@@ -136,7 +136,6 @@ impl From<RenderCardOutput> for anki_proto::card_rendering::RenderCardResponse {
             question_nodes: rendered_nodes_to_proto(o.qnodes),
             answer_nodes: rendered_nodes_to_proto(o.anodes),
             css: o.css,
-            latex_svg: o.latex_svg,
             is_empty: o.is_empty,
         }
     }

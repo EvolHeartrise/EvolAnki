@@ -150,10 +150,6 @@ impl I18n {
         "Select Deck".into()
     }
 
-    pub fn browsing_row_deleted(&self) -> Cow<'static, str> {
-        "(deleted)".into()
-    }
-
     pub fn card_template_rendering_more_info(&self) -> Cow<'static, str> {
         "More information".into()
     }
@@ -471,10 +467,6 @@ impl I18n {
         "This action can only be used on a filtered deck.".into()
     }
 
-    pub fn errors_multiple_notetypes_selected(&self) -> Cow<'static, str> {
-        "Please select notes from only one note type.".into()
-    }
-
     pub fn errors_please_check_database(&self) -> Cow<'static, str> {
         "Please use the Check Database action, then try again.".into()
     }
@@ -555,16 +547,6 @@ impl I18n {
 
     pub fn importing_file_empty(&self) -> Cow<'static, str> {
         "The file you selected is empty.".into()
-    }
-
-    pub fn media_check_trash_count(&self, count: impl Number, megs: f32) -> Cow<'static, str> {
-        let count = Num::new(count);
-        let megs = Num(megs.into());
-        if count.is_one() {
-            format!("Trash folder: {count} file, {megs}MB").into()
-        } else {
-            format!("Trash folder: {count} files, {megs}MB").into()
-        }
     }
 
     pub fn media_check_missing_count(&self, count: impl Number) -> Cow<'static, str> {
@@ -898,10 +880,6 @@ mod test {
         assert_eq!(
             tr.database_check_missing_decks(1.01),
             "Fixed 1.01 missing decks."
-        );
-        assert_eq!(
-            tr.media_check_trash_count(1234, 0.5),
-            "Trash folder: 1234 files, 0.5MB"
         );
     }
 }

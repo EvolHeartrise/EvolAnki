@@ -61,11 +61,6 @@ pub enum AnkiError {
     NotFound {
         source: NotFoundError,
     },
-    /// Indicates an absent card or note, but (unlike [AnkiError::NotFound]) in
-    /// a non-critical context like the browser table, where deleted ids are
-    /// deliberately not removed.
-    Deleted,
-    Existing,
     #[snafu(context(false))]
     FilteredDeckError {
         source: FilteredDeckError,
@@ -78,8 +73,6 @@ pub enum AnkiError {
         info: String,
     },
     UndoEmpty,
-    MultipleNotetypesSelected,
-    DatabaseCheckRequired,
     MediaCheckRequired,
     #[snafu(context(false))]
     CustomStudyError {
@@ -99,9 +92,6 @@ pub enum AnkiError {
     },
     FsrsUnableToDetermineDesiredRetention,
     ZipError {
-        info: String,
-    },
-    InvalidChecksum {
         info: String,
     },
 }
@@ -135,19 +125,15 @@ impl AnkiError {
             AnkiError::ParseNumError => tr.errors_parse_number_fail().into(),
             AnkiError::FilteredDeckError { source } => source.message(tr),
             AnkiError::InvalidRegex { info: source } => format!("<pre>{source}</pre>"),
-            AnkiError::MultipleNotetypesSelected => tr.errors_multiple_notetypes_selected().into(),
-            AnkiError::DatabaseCheckRequired => tr.errors_please_check_database().into(),
             AnkiError::MediaCheckRequired => tr.errors_please_check_media().into(),
             AnkiError::CustomStudyError { source } => source.message(tr),
             AnkiError::ImportError { source } => source.message(tr),
-            AnkiError::Deleted => tr.browsing_row_deleted().into(),
             AnkiError::InvalidId => tr.errors_please_check_database().into(),
             AnkiError::JsonError { .. }
             | AnkiError::ProtoError { .. }
             | AnkiError::Interrupted
             | AnkiError::CollectionNotOpen
             | AnkiError::CollectionAlreadyOpen
-            | AnkiError::Existing
             | AnkiError::UndoEmpty => format!("{self:?}"),
             AnkiError::ZipError { info } => info.clone(),
             AnkiError::FileIoError { source } => source.message(),
@@ -161,7 +147,6 @@ impl AnkiError {
             AnkiError::FsrsUnableToDetermineDesiredRetention => tr
                 .deck_config_unable_to_determine_desired_retention()
                 .into(),
-            AnkiError::InvalidChecksum { info } => info.into(),
         }
     }
 }

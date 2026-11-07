@@ -9,26 +9,18 @@ use std::sync::Arc;
 use unicase::UniCase;
 
 use super::NameOrId;
-use crate::card::CardQueue;
-use crate::card::CardType;
 use crate::config::I32ConfigKey;
 use crate::import_export::text::DupeResolution;
-use crate::import_export::text::ForeignCard;
 use crate::import_export::text::ForeignData;
 use crate::import_export::text::ForeignNote;
-use crate::import_export::text::ForeignNotetype;
-use crate::import_export::text::ForeignTemplate;
 use crate::import_export::text::MatchScope;
 use crate::import_export::ImportProgress;
 use crate::import_export::NoteLog;
 use crate::notes::field_checksum;
 use crate::notes::normalize_field;
 use crate::notetype::CardGenContext;
-use crate::notetype::CardTemplate;
-use crate::notetype::NoteField;
 use crate::prelude::*;
 use crate::progress::ThrottlingProgressHandler;
-use crate::scheduler::timing::SchedTimingToday;
 use crate::text::strip_html_preserving_media_filenames;
 
 impl ForeignData {
@@ -41,7 +33,6 @@ impl ForeignData {
         col.transact(Op::Import, |col| {
             self.update_config(col)?;
             let mut ctx = Context::new(&self, col)?;
-            ctx.import_foreign_notetypes(self.notetypes)?;
             ctx.import_foreign_notes(
                 self.notes,
                 &self.global_tags,
@@ -75,7 +66,6 @@ struct Context<'a> {
     notetypes: HashMap<NameOrId, Option<Arc<Notetype>>>,
     deck_ids: DeckIdsByNameOrId,
     normalize_notes: bool,
-    timing: SchedTimingToday,
     dupe_resolution: DupeResolution,
     card_gen_ctxs: HashMap<(NotetypeId, DeckId), CardGenContext<Arc<Notetype>>>,
     existing_checksums: ExistingChecksums,
@@ -192,7 +182,6 @@ impl DeckIdsByNameOrId {
 impl<'a> Context<'a> {
     fn new(data: &ForeignData, col: &'a mut Collection) -> Result<Self> {
         let normalize_notes = col.get_config_bool(BoolKey::NormalizeNoteText);
-        let timing = col.timing_today()?;
         let mut notetypes = HashMap::new();
         notetypes.insert(
             NameOrId::default(),
@@ -205,7 +194,6 @@ impl<'a> Context<'a> {
         Ok(Self {
             col,
             normalize_notes,
-            timing,
             dupe_resolution: data.dupe_resolution,
             notetypes,
             deck_ids,
@@ -213,14 +201,6 @@ impl<'a> Context<'a> {
             existing_checksums,
             existing_guids,
         })
-    }
-
-    fn import_foreign_notetypes(&mut self, notetypes: Vec<ForeignNotetype>) -> Result<()> {
-        for foreign in notetypes {
-            let mut notetype = foreign.into_native();
-            self.col.add_notetype_inner(&mut notetype, false)?;
-        }
-        Ok(())
     }
 
     fn notetype_for_note(&mut self, note: &ForeignNote) -> Result<Option<Arc<Notetype>>> {
@@ -366,12 +346,10 @@ impl<'a> Context<'a> {
 
     fn add_note(&mut self, ctx: NoteContext, log: &mut NoteLog) -> Result<()> {
         let mut note = Note::new(&ctx.notetype);
-        let mut cards = ctx
-            .note
-            .into_native(&mut note, ctx.deck_id, &self.timing, ctx.global_tags);
+        ctx.note.into_native(&mut note, ctx.global_tags);
         self.prepare_note(&mut note, &ctx.notetype)?;
         self.col.add_note_only_undoable(&mut note)?;
-        self.add_cards(&mut cards, &note, ctx.deck_id, ctx.notetype)?;
+        self.generate_missing_cards(ctx.notetype, ctx.deck_id, &note)?;
 
         if ctx.dupes.is_empty() {
             log.new.push(note.into_log_note());
@@ -380,17 +358,6 @@ impl<'a> Context<'a> {
         }
 
         Ok(())
-    }
-
-    fn add_cards(
-        &mut self,
-        cards: &mut [Card],
-        note: &Note,
-        deck_id: DeckId,
-        notetype: Arc<Notetype>,
-    ) -> Result<()> {
-        self.import_cards(cards, note.id)?;
-        self.generate_missing_cards(notetype, deck_id, note)
     }
 
     fn update_with_note(&mut self, ctx: NoteContext, log: &mut NoteLog) -> Result<()> {
@@ -402,10 +369,8 @@ impl<'a> Context<'a> {
             }
 
             let mut note = dupe.note.clone();
-            let mut cards = ctx.note.clone().into_native(
+            ctx.note.clone().into_native(
                 &mut note,
-                ctx.deck_id,
-                &self.timing,
                 ctx.global_tags.iter().chain(ctx.updated_tags.iter()),
             );
 
@@ -416,7 +381,7 @@ impl<'a> Context<'a> {
                 self.col.update_note_undoable(&note, &dupe.note)?;
                 update_result.update(DuplicateUpdateResult::Update(dupe));
             }
-            self.add_cards(&mut cards, &note, ctx.deck_id, ctx.notetype.clone())?;
+            self.generate_missing_cards(ctx.notetype.clone(), ctx.deck_id, &note)?;
         }
         update_result.log(log);
 
@@ -427,14 +392,6 @@ impl<'a> Context<'a> {
         note.prepare_for_update(notetype, self.normalize_notes)?;
         self.col.canonify_note_tags(note)?;
         note.set_modified();
-        Ok(())
-    }
-
-    fn import_cards(&mut self, cards: &mut [Card], note_id: NoteId) -> Result<()> {
-        for card in cards {
-            card.note_id = note_id;
-            self.col.add_card(card)?;
-        }
         Ok(())
     }
 
@@ -563,15 +520,12 @@ impl Collection {
 }
 
 impl ForeignNote {
-    /// Updates a native note with the foreign data and returns its new cards.
+    /// Updates a native note with the foreign data.
     fn into_native<'tags>(
         self,
         note: &mut Note,
-        deck_id: DeckId,
-        timing: &SchedTimingToday,
         extra_tags: impl IntoIterator<Item = &'tags String>,
-    ) -> Vec<Card> {
-        // TODO: Handle new and learning cards
+    ) {
         if !self.guid.is_empty() {
             note.guid = self.guid;
         }
@@ -587,11 +541,6 @@ impl ForeignNote {
                     *field = s;
                 }
             });
-        self.cards
-            .into_iter()
-            .enumerate()
-            .map(|(idx, c)| c.into_native(NoteId(0), idx as u16, deck_id, timing))
-            .collect()
     }
 
     fn first_field_is_the_empty_string(&self) -> bool {
@@ -630,62 +579,6 @@ impl ForeignNote {
     fn checksum(&self) -> Option<u32> {
         self.first_field_stripped()
             .map(|field| field_checksum(&field))
-    }
-}
-
-impl ForeignCard {
-    fn into_native(
-        self,
-        note_id: NoteId,
-        template_idx: u16,
-        deck_id: DeckId,
-        timing: &SchedTimingToday,
-    ) -> Card {
-        Card {
-            note_id,
-            template_idx,
-            deck_id,
-            due: self.native_due(timing),
-            interval: self.interval,
-            ease_factor: (self.ease_factor * 1000.).round() as u16,
-            reps: self.reps,
-            lapses: self.lapses,
-            ctype: CardType::Review,
-            queue: CardQueue::Review,
-            ..Default::default()
-        }
-    }
-
-    fn native_due(self, timing: &SchedTimingToday) -> i32 {
-        let day_start = timing.next_day_at.0 - 86_400;
-        let due_delta = (self.due - day_start) / 86_400;
-        due_delta as i32 + timing.days_elapsed as i32
-    }
-}
-
-impl ForeignNotetype {
-    fn into_native(self) -> Notetype {
-        Notetype {
-            name: self.name,
-            fields: self.fields.into_iter().map(NoteField::new).collect(),
-            templates: self
-                .templates
-                .into_iter()
-                .map(ForeignTemplate::into_native)
-                .collect(),
-            config: if self.is_cloze {
-                Notetype::new_cloze_config()
-            } else {
-                Notetype::new_config()
-            },
-            ..Notetype::default()
-        }
-    }
-}
-
-impl ForeignTemplate {
-    fn into_native(self) -> CardTemplate {
-        CardTemplate::new(self.name, self.qfmt, self.afmt)
     }
 }
 

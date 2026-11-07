@@ -19,7 +19,7 @@ message CheckMediaResponse {
   repeated string missing = 2;
   repeated int64 missing_media_notes = 3;
   string report = 4;
-  bool have_trash = 5;
+  reserved 5;
 }
 
 message AddMediaFileRequest {

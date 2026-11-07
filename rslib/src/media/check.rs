@@ -15,12 +15,11 @@ use tracing::info;
 use unicase::UniCase;
 
 use crate::error::DbErrorKind;
-use crate::latex::extract_latex_expanding_clozes;
+use crate::latex::latex_filenames_expanding_clozes;
 use crate::media::files::data_for_file;
 use crate::media::files::filename_if_normalized;
 use crate::media::files::normalize_nfc_filename;
 use crate::media::files::sha1_of_data;
-use crate::media::files::trash_folder;
 use crate::media::MediaManager;
 use crate::media::MAX_INDIVIDUAL_MEDIA_FILE_SIZE;
 use crate::prelude::*;
@@ -45,8 +44,6 @@ pub struct MediaCheckOutput {
     pub renamed: HashMap<String, String>,
     pub dirs: Vec<String>,
     pub oversize: Vec<String>,
-    pub trash_count: u64,
-    pub trash_bytes: u64,
     pub inlined_image_count: u64,
 }
 
@@ -137,7 +134,6 @@ impl MediaChecker<'_> {
         let folder_check = self.check_media_folder()?;
         let references = self.check_media_references(&folder_check.renamed)?;
         let unused_and_missing = UnusedAndMissingFiles::new(folder_check.files, references);
-        let (trash_count, trash_bytes) = self.files_in_trash()?;
         Ok(MediaCheckOutput {
             unused: unused_and_missing.unused,
             missing: unused_and_missing.missing,
@@ -145,8 +141,6 @@ impl MediaChecker<'_> {
             renamed: folder_check.renamed,
             dirs: folder_check.dirs,
             oversize: folder_check.oversize,
-            trash_count,
-            trash_bytes,
             inlined_image_count: self.inlined_image_count,
         })
     }
@@ -156,12 +150,6 @@ impl MediaChecker<'_> {
         let tr = &self.col.tr;
 
         // top summary area
-        if output.trash_count > 0 {
-            let megs = (output.trash_bytes as f32) / 1024.0 / 1024.0;
-            buf += &tr.media_check_trash_count(output.trash_count, megs);
-            buf.push('\n');
-        }
-
         buf += &tr.media_check_missing_count(output.missing.len());
         buf.push('\n');
 
@@ -326,7 +314,7 @@ impl MediaChecker<'_> {
         Ok(out)
     }
 
-    /// Write file data to normalized location, moving old file to trash.
+    /// Write file data to normalized location, removing the old file.
     fn normalize_file<'a>(
         &mut self,
         original_fname: &'a str,
@@ -349,30 +337,6 @@ impl MediaChecker<'_> {
         }
 
         Ok(fname)
-    }
-
-    /// Returns the count and total size of the files in the trash folder
-    fn files_in_trash(&mut self) -> Result<(u64, u64)> {
-        let trash = trash_folder(&self.media.media_folder)?;
-        let mut total_files = 0;
-        let mut total_bytes = 0;
-
-        for dentry in trash.read_dir()? {
-            let dentry = dentry?;
-
-            self.increment_progress()?;
-
-            if dentry.file_name() == ".DS_Store" {
-                continue;
-            }
-
-            let meta = dentry.metadata()?;
-
-            total_files += 1;
-            total_bytes += meta.len();
-        }
-
-        Ok((total_files, total_bytes))
     }
 
     /// Find all media references in notes, fixing as necessary.
@@ -553,9 +517,8 @@ impl UnusedAndMissingFiles {
 
 fn extract_latex_refs(note: &Note, mut tracker: impl FnMut(String), svg: bool) {
     for field in note.fields() {
-        let (_, extracted) = extract_latex_expanding_clozes(field, svg);
-        for e in extracted {
-            tracker(e.fname);
+        for fname in latex_filenames_expanding_clozes(field, svg) {
+            tracker(fname);
         }
     }
 }
@@ -626,8 +589,6 @@ pub(crate) mod test {
                     .collect(),
                 dirs: vec!["folder".to_string()],
                 oversize: vec![],
-                trash_count: 0,
-                trash_bytes: 0,
                 inlined_image_count: 0,
             }
         );
@@ -684,8 +645,6 @@ Unused: unused.jpg
                     renamed: Default::default(),
                     dirs: vec![],
                     oversize: vec![],
-                    trash_count: 0,
-                    trash_bytes: 0,
                     inlined_image_count: 0,
                 }
             );
@@ -703,8 +662,6 @@ Unused: unused.jpg
                         .collect(),
                     dirs: vec![],
                     oversize: vec![],
-                    trash_count: 0,
-                    trash_bytes: 0,
                     inlined_image_count: 0,
                 }
             );

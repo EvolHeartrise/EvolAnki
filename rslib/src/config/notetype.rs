@@ -16,8 +16,6 @@ enum NotetypeConfigKey {
     LastDeckAddedTo,
 }
 
-impl Collection {}
-
 impl NotetypeConfigKey {
     fn for_notetype(self, ntid: NotetypeId) -> String {
         get_aux_notetype_config_key(ntid, <&'static str>::from(self))

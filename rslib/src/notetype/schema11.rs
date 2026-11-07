@@ -84,8 +84,6 @@ pub enum FieldRequirementKindSchema11 {
     None,
 }
 
-impl NotetypeSchema11 {}
-
 impl From<NotetypeSchema11> for Notetype {
     fn from(nt: NotetypeSchema11) -> Self {
         Notetype {
