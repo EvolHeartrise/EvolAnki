@@ -221,7 +221,6 @@ mod tests {
             expected.common.last_day_studied = 10;
             expected.common.new_studied = 11;
             expected.common.review_studied = 12;
-            expected.common.learning_studied = 13;
             expected.common.milliseconds_studied = 14;
             expected.common.other = br#"{"custom":"value"}"#.to_vec();
 

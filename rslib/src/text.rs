@@ -2,11 +2,9 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use std::borrow::Cow;
+use std::fmt::Write;
 use std::sync::LazyLock;
 
-use percent_encoding_iri::utf8_percent_encode;
-use percent_encoding_iri::AsciiSet;
-use percent_encoding_iri::CONTROLS;
 use regex::Captures;
 use regex::Regex;
 use unicase::eq as uni_eq;
@@ -501,20 +499,29 @@ pub(crate) fn glob_matcher(search: &str) -> impl Fn(&str) -> bool + '_ {
 pub(crate) static REMOTE_FILENAME: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("(?i)^https?://").unwrap());
 
-/// https://url.spec.whatwg.org/#fragment-percent-encode-set
-const FRAGMENT_QUERY_UNION: &AsciiSet = &CONTROLS
-    .add(b' ')
-    .add(b'"')
-    .add(b'<')
-    .add(b'>')
-    .add(b'`')
-    .add(b'#');
+/// Percent-encode the C0 controls, DEL, and the rest of the
+/// [fragment set](https://url.spec.whatwg.org/#fragment-percent-encode-set)
+/// plus `#`. Unlike a URL, an IRI keeps non-ASCII characters as they are.
+fn iri_encode(text: &str) -> Cow<'_, str> {
+    let needs_encoding =
+        |c: char| c.is_ascii_control() || matches!(c, ' ' | '"' | '<' | '>' | '`' | '#');
+    if !text.contains(needs_encoding) {
+        return text.into();
+    }
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if needs_encoding(c) {
+            write!(out, "%{:02X}", c as u8).unwrap();
+        } else {
+            out.push(c);
+        }
+    }
+    out.into()
+}
 
 /// IRI-encode unescaped local paths in HTML fragment.
 pub(crate) fn encode_iri_paths(unescaped_html: &str) -> Cow<'_, str> {
-    transform_html_paths(unescaped_html, |fname| {
-        utf8_percent_encode(fname, FRAGMENT_QUERY_UNION).into()
-    })
+    transform_html_paths(unescaped_html, iri_encode)
 }
 
 /// Apply a transform to local filename references in tags like IMG.
@@ -648,11 +655,23 @@ mod test {
             ("日本語", "日本語"),
             ("a=b", "a=b"),
             ("a&b", "a&b"),
+            ("a#b?c%20", "a%23b?c%20"),
         ] {
             assert_eq!(
                 &encode_iri_paths(&format!("<img src=\"{input}\">")),
                 &format!("<img src=\"{output}\">")
             );
         }
+    }
+
+    #[test]
+    fn iri_encode_escapes_only_controls_and_the_fragment_set() {
+        assert_eq!(
+            iri_encode("\u{0}\t\n\u{1f}\u{7f} \"<>`#"),
+            "%00%09%0A%1F%7F%20%22%3C%3E%60%23"
+        );
+        // Everything else passes through, including non-ASCII and `%`.
+        let untouched = "azAZ09!$%&'()*+,-./:;=?@[\\]^_{|}~é日本語\u{80}";
+        assert!(matches!(iri_encode(untouched), Cow::Borrowed(s) if s == untouched));
     }
 }

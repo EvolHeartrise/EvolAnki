@@ -73,7 +73,6 @@ dependencies = [
  "num_cpus",
  "num_enum",
  "once_cell",
- "percent-encoding-iri",
  "permutation",
  "phf 0.11.3",
  "prettyplease",
@@ -1717,11 +1716,6 @@ name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
-
-[[package]]
-name = "percent-encoding-iri"
-version = "2.2.0"
-source = "git+https://github.com/ankitects/rust-url.git?rev=bb930b8d089f4d30d7d19c12e54e66191de47b88#bb930b8d089f4d30d7d19c12e54e66191de47b88"
 
 [[package]]
 name = "permutation"

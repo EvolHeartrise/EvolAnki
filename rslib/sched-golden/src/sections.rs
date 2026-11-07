@@ -165,10 +165,7 @@ fn queues(harness: &mut Harness, path: &Path) -> Result<Value> {
         for (id, _) in decks(harness)? {
             harness.must("SetCurrentDeck", json!({ "did": id }))?;
             let timing = harness.timing()?;
-            let queued = harness.record(
-                "GetQueuedCards",
-                json!({ "fetch_limit": 1_000_000, "intraday_learning_only": false }),
-            );
+            let queued = harness.record("GetQueuedCards", json!({ "fetch_limit": 1_000_000 }));
             let cards: Vec<Value> = queued["cards"]
                 .as_array()
                 .cloned()
@@ -245,10 +242,7 @@ fn answer_next(
     rng: &mut Rng,
     coverage: &mut BTreeMap<String, u64>,
 ) -> Result<Option<Value>> {
-    let queued = harness.must(
-        "GetQueuedCards",
-        json!({ "fetch_limit": 1, "intraday_learning_only": false }),
-    )?;
+    let queued = harness.must("GetQueuedCards", json!({ "fetch_limit": 1 }))?;
     let Some(item) = queued["cards"].get(0).cloned() else {
         return Ok(None);
     };

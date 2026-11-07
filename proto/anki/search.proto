@@ -7,8 +7,6 @@ option java_multiple_files = true;
 
 package anki.search;
 
-import "anki/generic.proto";
-
 service SearchService {
   rpc SearchCards(SearchRequest) returns (SearchResponse);
   rpc SearchNotes(SearchRequest) returns (SearchResponse);
@@ -16,16 +14,8 @@ service SearchService {
 
 message SearchRequest {
   string search = 1;
-  SortOrder order = 2;
 }
 
 message SearchResponse {
   repeated int64 ids = 1;
-}
-
-message SortOrder {
-  oneof value {
-    generic.Empty none = 1;
-    string custom = 2;
-  }
 }

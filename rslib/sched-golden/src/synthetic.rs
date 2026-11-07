@@ -296,10 +296,7 @@ fn capture(harness: &mut Harness) -> Result<Value> {
     }
     out.insert("cards".into(), Value::Object(per_card));
     out.insert("queue_counts".into(), {
-        let queued = harness.record(
-            "GetQueuedCards",
-            json!({ "fetch_limit": 1, "intraday_learning_only": false }),
-        );
+        let queued = harness.record("GetQueuedCards", json!({ "fetch_limit": 1 }));
         json!([
             queued["new_count"],
             queued["learning_count"],
@@ -320,10 +317,7 @@ fn capture(harness: &mut Harness) -> Result<Value> {
 fn answer_all(harness: &mut Harness, rating: usize) -> Result<Value> {
     let mut out = Map::new();
     loop {
-        let queued = harness.must(
-            "GetQueuedCards",
-            json!({ "fetch_limit": 1, "intraday_learning_only": false }),
-        )?;
+        let queued = harness.must("GetQueuedCards", json!({ "fetch_limit": 1 }))?;
         let Some(item) = queued["cards"].get(0).cloned() else {
             break;
         };

@@ -153,7 +153,7 @@ pub struct FilteredDeckSchema11 {
     // old scheduler
     #[serde(default, deserialize_with = "default_on_invalid")]
     delays: Option<Vec<f32>>,
-    // old scheduler
+    // old scheduler; parsed only so it's dropped
     #[serde(default)]
     preview_delay: u32,
 
@@ -280,9 +280,6 @@ impl From<&DeckCommonSchema11> for DeckCommon {
         // study will always update 'time', but custom study may only update
         // 'rev' or 'new'
         let max_day = today.time.day.max(today.new.day).max(today.rev.day);
-        if today.lrn.day != max_day {
-            today.lrn.amount = 0;
-        }
         if today.rev.day != max_day {
             today.rev.amount = 0;
         }
@@ -295,7 +292,6 @@ impl From<&DeckCommonSchema11> for DeckCommon {
             last_day_studied: max_day as u32,
             new_studied: today.new.amount,
             review_studied: today.rev.amount,
-            learning_studied: today.lrn.amount,
             milliseconds_studied: common.today.time.amount,
             other,
         }
@@ -325,7 +321,6 @@ impl From<FilteredDeckSchema11> for FilteredDeck {
             reschedule: deck.resched,
             search_terms: deck.terms.into_iter().map(Into::into).collect(),
             delays: deck.delays.unwrap_or_default(),
-            preview_delay: deck.preview_delay,
             preview_again_secs: deck.preview_again_secs,
             preview_hard_secs: deck.preview_hard_secs,
             preview_good_secs: deck.preview_good_secs,

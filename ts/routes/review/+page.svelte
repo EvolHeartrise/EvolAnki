@@ -272,10 +272,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         player.stop();
         error = "";
         try {
-            queued = await getQueuedCards(
-                { fetchLimit: 1, intradayLearningOnly: false },
-                { alertOnError: false },
-            );
+            queued = await getQueuedCards({ fetchLimit: 1 }, { alertOnError: false });
             await refreshUndo();
             current = queued.cards[0] ?? null;
             if (!current) {

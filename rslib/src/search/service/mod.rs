@@ -1,9 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use anki_proto::generic;
-use anki_proto::search::sort_order::Value as SortOrderProto;
-
 use crate::prelude::*;
 use crate::search::SortMode;
 
@@ -12,8 +9,7 @@ impl crate::services::SearchService for Collection {
         &mut self,
         input: anki_proto::search::SearchRequest,
     ) -> Result<anki_proto::search::SearchResponse> {
-        let order = input.order.unwrap_or_default().value.into();
-        let cids = self.search_cards(&input.search, order)?;
+        let cids = self.search_cards(&input.search, SortMode::NoOrder)?;
         Ok(anki_proto::search::SearchResponse {
             ids: cids.into_iter().map(|v| v.0).collect(),
         })
@@ -23,21 +19,10 @@ impl crate::services::SearchService for Collection {
         &mut self,
         input: anki_proto::search::SearchRequest,
     ) -> Result<anki_proto::search::SearchResponse> {
-        let order = input.order.unwrap_or_default().value.into();
-        let nids = self.search_notes(&input.search, order)?;
+        let nids = self.search_notes(&input.search, SortMode::NoOrder)?;
         Ok(anki_proto::search::SearchResponse {
             ids: nids.into_iter().map(|v| v.0).collect(),
         })
-    }
-}
-
-impl From<Option<SortOrderProto>> for SortMode {
-    fn from(order: Option<SortOrderProto>) -> Self {
-        use anki_proto::search::sort_order::Value as V;
-        match order.unwrap_or(V::None(generic::Empty {})) {
-            V::None(_) => SortMode::NoOrder,
-            V::Custom(s) => SortMode::Custom(s),
-        }
     }
 }
 
@@ -45,8 +30,6 @@ impl From<Option<SortOrderProto>> for SortMode {
 mod tests {
 
     use crate::collection::Collection;
-    use crate::search::service::SortOrderProto;
-    use crate::search::SortMode;
     use crate::services::SearchService;
     use crate::tests::DeckAdder;
     use crate::tests::NoteAdder;
@@ -59,7 +42,6 @@ mod tests {
         NoteAdder::basic(&mut col).add(&mut col);
         let input = anki_proto::search::SearchRequest {
             search: "".to_string(),
-            order: None,
         };
         let result = SearchService::search_cards(&mut col, input).unwrap();
         assert!(!result.ids.is_empty(), "expected at least one card id");
@@ -71,7 +53,6 @@ mod tests {
         NoteAdder::basic(&mut col).add(&mut col);
         let input = anki_proto::search::SearchRequest {
             search: "".to_string(),
-            order: None,
         };
         let result = SearchService::search_notes(&mut col, input).unwrap();
         assert!(!result.ids.is_empty(), "expected at least one note id");
@@ -93,7 +74,6 @@ mod tests {
             &mut col,
             anki_proto::search::SearchRequest {
                 search: "".to_string(),
-                order: None,
             },
         )
         .unwrap();
@@ -119,7 +99,6 @@ mod tests {
             &mut col,
             anki_proto::search::SearchRequest {
                 search: "note:Basic".to_string(),
-                order: None,
             },
         )
         .unwrap();
@@ -152,7 +131,6 @@ mod tests {
             &mut col,
             anki_proto::search::SearchRequest {
                 search: "deck:TargetDeck".to_string(),
-                order: None,
             },
         )
         .unwrap();
@@ -186,7 +164,6 @@ mod tests {
             &mut col,
             anki_proto::search::SearchRequest {
                 search: "tag:target".to_string(),
-                order: None,
             },
         )
         .unwrap();
@@ -200,31 +177,6 @@ mod tests {
         assert_eq!(
             result.ids[0], expected_cids[0].0,
             "card id should match the tagged note"
-        );
-    }
-
-    // --- From<Option<SortOrderProto>> for SortMode ---
-
-    #[test]
-    fn sort_order_none_option_produces_no_order() {
-        // outer Option::None → unwrap_or picks V::None → NoOrder
-        let mode = SortMode::from(None);
-        assert!(matches!(mode, SortMode::NoOrder));
-    }
-
-    #[test]
-    fn sort_order_v_none_produces_no_order() {
-        // explicit V::None variant → NoOrder
-        let mode = SortMode::from(Some(SortOrderProto::None(anki_proto::generic::Empty {})));
-        assert!(matches!(mode, SortMode::NoOrder));
-    }
-
-    #[test]
-    fn sort_order_custom_preserves_string() {
-        let mode = SortMode::from(Some(SortOrderProto::Custom("due desc".to_string())));
-        assert!(
-            matches!(mode, SortMode::Custom(ref s) if s == "due desc"),
-            "expected Custom(\"due desc\")"
         );
     }
 }

@@ -1304,14 +1304,6 @@
     "repository": "https://github.com/servo/rust-url/"
   },
   {
-    "authors": "The rust-url developers",
-    "description": "Percent encoding and decoding, preserving non-Latin characters.",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "name": "percent-encoding-iri",
-    "repository": "https://github.com/servo/rust-url/"
-  },
-  {
     "authors": "Jeremy Salwen <jeremysalwen@gmail.com>",
     "description": "Small utility for creating, manipulating, and applying permutations.",
     "license": "Apache-2.0 OR MIT",

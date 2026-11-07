@@ -124,6 +124,9 @@ impl Collection {
     #[cfg(test)]
     pub(crate) fn grade_now(&mut self, cids: &[CardId], rating: i32) -> Result<OpOutput<()>> {
         use super::answering::Rating;
+        // The cards needn't be at the top of the queue, so drop any built
+        // queues rather than updating them.
+        self.clear_study_queues();
         self.transact(Op::AnswerCard, |col| {
             for &card_id in cids {
                 let rating = match rating {
@@ -133,14 +136,12 @@ impl Collection {
                     3 => Rating::Easy,
                     _ => invalid_input!("invalid rating"),
                 };
-                // Process the card without updating queues yet
                 let mut answer = CardAnswer {
                     card_id,
                     rating,
                     answered_at: TimestampMillis::now(),
                     milliseconds_taken: 0,
                     shown_as: None,
-                    from_queue: false,
                 };
                 col.answer_card_inner(&mut answer)?;
             }

@@ -9,24 +9,12 @@ package anki.generic;
 
 message Empty {}
 
-message Int32 {
-  sint32 val = 1;
-}
-
 message UInt32 {
   uint32 val = 1;
 }
 
-message Int64 {
-  int64 val = 1;
-}
-
 message String {
   string val = 1;
-}
-
-message Json {
-  bytes json = 1;
 }
 
 message Bool {

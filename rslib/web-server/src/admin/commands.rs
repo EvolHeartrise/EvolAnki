@@ -262,7 +262,6 @@ fn search_ids(backend: &Backend, method: &str, search: &str) -> Result<Vec<i64>>
         method,
         &SearchRequest {
             search: search.to_string(),
-            order: None,
         },
     )?;
     Ok(response.ids)
