@@ -24,7 +24,6 @@ type AllConfigs =
     & Required<
         Pick<
             PlainMessage<UpdateDeckConfigsRequest>,
-            | "cardStateCustomizer"
             | "limits"
             | "newCardsIgnoreReviewLimit"
             | "applyAllParentLimits"
@@ -35,7 +34,6 @@ type AllConfigs =
 
 export class DeckOptionsState {
     readonly currentConfig: Writable<DeckConfig_Config>;
-    readonly cardStateCustomizer: Writable<string>;
     readonly currentDeck: DeckConfigsForUpdate_CurrentDeck;
     readonly deckLimits: Writable<DeckConfigsForUpdate_CurrentDeck_Limits>;
     readonly defaults: DeckConfig_Config;
@@ -43,7 +41,6 @@ export class DeckOptionsState {
     readonly applyAllParentLimits: Writable<boolean>;
     readonly fsrsReschedule: Writable<boolean> = writable(false);
     readonly fsrsHealthCheck: Writable<boolean>;
-    readonly legacyEvaluate: boolean;
     readonly daysSinceLastOptimization: Writable<number>;
     /** Used to detect if there are any pending changes */
     originalConfigsPromise: Promise<AllConfigs>;
@@ -57,12 +54,10 @@ export class DeckOptionsState {
         this.currentDeck = data.currentDeck!;
         this.defaults = data.defaults!.config!;
         this.config = data.config!;
-        this.cardStateCustomizer = writable(data.cardStateCustomizer);
         this.deckLimits = writable(data.currentDeck?.limits ?? createLimits());
         this.newCardsIgnoreReviewLimit = writable(data.newCardsIgnoreReviewLimit);
         this.applyAllParentLimits = writable(data.applyAllParentLimits);
         this.fsrsHealthCheck = writable(data.fsrsHealthCheck);
-        this.legacyEvaluate = data.fsrsLegacyEvaluate;
         this.daysSinceLastOptimization = writable(data.daysSinceLastFsrsOptimize);
 
         this.currentConfig = writable(cloneDeep(this.config.config!));
@@ -87,7 +82,6 @@ export class DeckOptionsState {
             targetDeckId: this.targetDeckId,
             config: this.config,
             mode,
-            cardStateCustomizer: get(this.cardStateCustomizer),
             limits: get(this.deckLimits),
             newCardsIgnoreReviewLimit: get(this.newCardsIgnoreReviewLimit),
             applyAllParentLimits: get(this.applyAllParentLimits),
@@ -113,7 +107,6 @@ export class DeckOptionsState {
     private getAllConfigs(): AllConfigs {
         return cloneDeep({
             config: this.config,
-            cardStateCustomizer: get(this.cardStateCustomizer),
             limits: get(this.deckLimits),
             newCardsIgnoreReviewLimit: get(this.newCardsIgnoreReviewLimit),
             applyAllParentLimits: get(this.applyAllParentLimits),

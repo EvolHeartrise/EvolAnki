@@ -20,7 +20,6 @@ use zip::ZipArchive;
 
 use super::super::meta::MetaExt;
 use crate::collection::CollectionBuilder;
-use crate::config::ConfigKey;
 use crate::import_export::gather::ExchangeData;
 use crate::import_export::package::ImportAnkiPackageOptions;
 use crate::import_export::package::Meta;
@@ -58,11 +57,6 @@ impl Collection {
         let progress = self.new_progress_handler();
 
         self.transact(Op::Import, |col| {
-            col.set_config(BoolKey::MergeNotetypes, &options.merge_notetypes)?;
-            col.set_config(BoolKey::WithScheduling, &options.with_scheduling)?;
-            col.set_config(BoolKey::WithDeckConfigs, &options.with_deck_configs)?;
-            col.set_config(ConfigKey::UpdateNotes, &options.update_notes())?;
-            col.set_config(ConfigKey::UpdateNotetypes, &options.update_notetypes())?;
             let mut ctx = Context::new(archive, col, options, progress)?;
             ctx.import()
         })

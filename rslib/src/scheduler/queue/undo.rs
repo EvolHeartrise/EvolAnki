@@ -188,11 +188,7 @@ mod test {
             Ok(())
         };
 
-        // ensure everything is restored on undo/redo
-        assert_post_review_state(&mut col)?;
-        col.undo()?;
-        assert_pre_review_state(&mut col)?;
-        col.redo()?;
+        // ensure everything is restored on undo
         assert_post_review_state(&mut col)?;
         col.undo()?;
         assert_pre_review_state(&mut col)?;
@@ -237,54 +233,6 @@ mod test {
         assert_eq!(col.counts(), [2, 0, 0]);
         col.undo()?;
         assert_eq!(col.counts(), [0, 0, 0]);
-
-        // and forwards again
-        col.redo()?;
-        assert_eq!(col.counts(), [2, 0, 0]);
-        col.redo()?;
-        assert_eq!(col.counts(), [1, 1, 0]);
-        col.redo()?;
-        assert_eq!(col.counts(), [0, 2, 0]);
-        col.redo()?;
-        assert_eq!(col.counts(), [0, 2, 0]);
-        col.redo()?;
-        assert_eq!(col.counts(), [0, 1, 0]);
-        col.redo()?;
-        assert_eq!(col.counts(), [0, 0, 0]);
-
-        Ok(())
-    }
-
-    #[test]
-    fn redo_after_queue_invalidation_bug() -> Result<()> {
-        // add a note to the default deck
-        let mut col = Collection::new();
-        let _nid = add_note(&mut col, true)?;
-
-        // add a deck and select it
-        let mut deck = Deck::new_normal();
-        deck.name = NativeDeckName::from_human_name("foo");
-        col.add_deck(&mut deck)?;
-        col.set_current_deck(deck.id)?;
-
-        // select default again, which invalidates current queues
-        col.set_current_deck(DeckId(1))?;
-
-        // get the first card and answer it
-        col.answer_easy();
-
-        // undo answer
-        col.undo()?;
-
-        // undo deck select, which invalidates the queues again
-        col.undo()?;
-
-        // redo deck select (another invalidation)
-        col.redo()?;
-
-        // when the card answer is redone, it shouldn't fail because
-        // the queues are rebuilt after the card state is restored
-        col.redo()?;
 
         Ok(())
     }

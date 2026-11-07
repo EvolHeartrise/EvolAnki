@@ -272,8 +272,7 @@ impl CardAdder {
             let cids = col.storage.card_ids_of_notes(&[note.id]).unwrap();
             for (ord, due_date) in self.due_dates.iter().enumerate() {
                 if !due_date.is_empty() {
-                    col.set_due_date(&cids[ord..ord + 1], due_date, None)
-                        .unwrap();
+                    col.set_due_date(&cids[ord..ord + 1], due_date).unwrap();
                 }
             }
         }

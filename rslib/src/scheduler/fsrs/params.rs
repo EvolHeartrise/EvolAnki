@@ -591,7 +591,6 @@ pub(crate) mod tests {
             target_deck_id: big.id,
             config: output.config.unwrap().into(),
             mode: UpdateDeckConfigsMode::ComputeAllParams,
-            card_state_customizer: String::new(),
             limits: Default::default(),
             new_cards_ignore_review_limit: false,
             apply_all_parent_limits: false,

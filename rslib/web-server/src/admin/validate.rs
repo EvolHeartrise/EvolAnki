@@ -1002,7 +1002,6 @@ fn rendering_section(
             "renderExistingCard",
             &RenderExistingCardRequest {
                 card_id: *cid,
-                browser: false,
                 partial_render: false,
             },
         );

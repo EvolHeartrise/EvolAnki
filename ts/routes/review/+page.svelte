@@ -135,7 +135,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     async function renderCard(card: QueuedCards_QueuedCard): Promise<Rendered> {
         const { id, templateIdx, noteId } = card.card!;
         const out = await renderExistingCard(
-            { cardId: id, browser: false, partialRender: true },
+            { cardId: id, partialRender: true },
             { alertOnError: false },
         );
         const qtext = finishRendering(out.questionNodes, null);

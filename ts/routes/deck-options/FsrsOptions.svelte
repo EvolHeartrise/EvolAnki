@@ -10,7 +10,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import { SimulateFsrsReviewRequest } from "@generated/anki/scheduler_pb";
     import {
         computeFsrsParams,
-        evaluateParamsLegacy,
         getRetentionWorkload,
         setWantsAbort,
     } from "@generated/backend";
@@ -63,11 +62,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     let computeParamsProgress: ComputeParamsProgress | undefined;
     let computingParams = false;
-    let checkingParams = false;
 
     const healthCheck = state.fsrsHealthCheck;
 
-    $: computing = computingParams || checkingParams;
+    $: computing = computingParams;
     const defaultparamSearch = state.defaultSearch();
     $: roundedRetention = Number($config.desiredRetention.toFixed(2));
     $: desiredRetentionWarning = getRetentionLongShortWarning(roundedRetention);
@@ -251,48 +249,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         }
     }
 
-    async function checkParams(): Promise<void> {
-        if (checkingParams) {
-            await setWantsAbort({});
-            return;
-        }
-        checkingParams = true;
-        computeParamsProgress = undefined;
-        try {
-            await runWithBackendProgress(
-                async () => {
-                    const search = $config.paramSearch
-                        ? $config.paramSearch
-                        : defaultparamSearch;
-                    const resp = await evaluateParamsLegacy({
-                        search,
-                        ignoreRevlogsBeforeMs: getIgnoreRevlogsBeforeMs(),
-                        params: fsrsParams($config),
-                    });
-                    if (computeParamsProgress) {
-                        computeParamsProgress.current = computeParamsProgress.total;
-                    }
-                    setTimeout(
-                        () =>
-                            alert(
-                                `Log loss: ${resp.logLoss.toFixed(4)}, RMSE(bins): ${(
-                                    resp.rmseBins * 100
-                                ).toFixed(2)}%. ${tr.deckConfigSmallerIsBetter()}`,
-                            ),
-                        200,
-                    );
-                },
-                (progress) => {
-                    if (progress.value.case === "computeParams") {
-                        computeParamsProgress = progress.value.value;
-                    }
-                },
-            );
-        } finally {
-            checkingParams = false;
-        }
-    }
-
     $: computeParamsProgressString = renderWeightProgress(computeParamsProgress);
     $: totalReviews = computeParamsProgress?.reviews ?? undefined;
 
@@ -390,7 +346,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     <button
         class="btn {computingParams ? 'btn-warning' : 'btn-primary'}"
-        disabled={!computingParams && computing}
         on:click={() => computeParams()}
     >
         {#if computingParams}
@@ -399,21 +354,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             {tr.deckConfigOptimizeButton()}
         {/if}
     </button>
-    {#if state.legacyEvaluate}
-        <button
-            class="btn {checkingParams ? 'btn-warning' : 'btn-primary'}"
-            disabled={!checkingParams && computing}
-            on:click={() => checkParams()}
-        >
-            {#if checkingParams}
-                {tr.actionsCancel()}
-            {:else}
-                {tr.deckConfigEvaluateButton()}
-            {/if}
-        </button>
-    {/if}
     <div>
-        {#if computingParams || checkingParams}
+        {#if computingParams}
             {computeParamsProgressString}
         {:else if totalReviews !== undefined}
             {tr.statisticsReviews({ reviews: totalReviews })}

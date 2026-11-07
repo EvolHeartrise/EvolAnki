@@ -20,8 +20,4 @@ impl crate::services::CollectionService for Collection {
     fn undo(&mut self) -> error::Result<anki_proto::collection::OpChangesAfterUndo> {
         self.undo().map(|out| out.into_protobuf(&self.tr))
     }
-
-    fn redo(&mut self) -> error::Result<anki_proto::collection::OpChangesAfterUndo> {
-        self.redo().map(|out| out.into_protobuf(&self.tr))
-    }
 }

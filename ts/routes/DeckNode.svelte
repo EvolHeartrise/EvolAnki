@@ -4,7 +4,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 -->
 <script lang="ts">
     import type { DeckTreeNode } from "@generated/anki/decks_pb";
-    import { SetDeckCollapsedRequest_Scope } from "@generated/anki/decks_pb";
     import { setDeckCollapsed } from "@generated/backend";
 
     export let node: DeckTreeNode;
@@ -15,11 +14,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     async function toggle(): Promise<void> {
         const collapsed = !node.collapsed;
-        await setDeckCollapsed({
-            deckId: node.deckId,
-            collapsed,
-            scope: SetDeckCollapsedRequest_Scope.REVIEWER,
-        });
+        await setDeckCollapsed({ deckId: node.deckId, collapsed });
         node.collapsed = collapsed;
     }
 </script>

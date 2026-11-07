@@ -19,7 +19,6 @@ pub(crate) struct UndoableOp {
     pub kind: Op,
     pub timestamp: TimestampSecs,
     pub changes: Vec<UndoableChange>,
-    pub counter: usize,
 }
 
 impl UndoableOp {
@@ -29,25 +28,12 @@ impl UndoableOp {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Default)]
-enum UndoMode {
-    #[default]
-    NormalOp,
-    Undoing,
-    Redoing,
-}
-
 pub struct UndoStatus {
     pub undo: Option<Op>,
-    pub redo: Option<Op>,
-    pub last_step: usize,
 }
 
 pub struct UndoOutput {
     pub undone_op: Op,
-    pub reverted_to: TimestampSecs,
-    pub new_undo_status: UndoStatus,
-    pub counter: usize,
 }
 
 #[derive(Debug, Default)]
@@ -55,11 +41,8 @@ pub(crate) struct UndoManager {
     // undo steps are added to the front of a double-ended queue, so we can
     // efficiently cap the number of steps we retain in memory
     undo_steps: VecDeque<UndoableOp>,
-    // redo steps are added to the end
-    redo_steps: Vec<UndoableOp>,
-    mode: UndoMode,
+    undoing: bool,
     current_step: Option<UndoableOp>,
-    counter: usize,
 }
 
 impl UndoManager {
@@ -72,41 +55,26 @@ impl UndoManager {
     fn begin_step(&mut self, op: Option<Op>) {
         if op.is_none() {
             self.undo_steps.clear();
-            self.redo_steps.clear();
-        } else if self.mode == UndoMode::NormalOp {
-            // a normal op clears the redo queue
-            self.redo_steps.clear();
         }
         self.current_step = op.map(|op| UndoableOp {
             kind: op,
             timestamp: TimestampSecs::now(),
             changes: vec![],
-            counter: {
-                self.counter += 1;
-                self.counter
-            },
         });
     }
 
     fn end_step(&mut self, skip_undo: bool) {
         if let Some(step) = self.current_step.take() {
-            if step.has_changes() && !skip_undo {
-                if self.mode == UndoMode::Undoing {
-                    self.redo_steps.push(step);
-                } else {
-                    self.undo_steps.truncate(UNDO_LIMIT - 1);
-                    self.undo_steps.push_front(step);
-                }
+            // undoing a step isn't itself undoable
+            if step.has_changes() && !skip_undo && !self.undoing {
+                self.undo_steps.truncate(UNDO_LIMIT - 1);
+                self.undo_steps.push_front(step);
             }
         }
     }
 
     fn can_undo(&self) -> Option<&Op> {
         self.undo_steps.front().map(|s| &s.kind)
-    }
-
-    fn can_redo(&self) -> Option<&Op> {
-        self.redo_steps.last().map(|s| &s.kind)
     }
 
     fn previous_op(&self) -> Option<&UndoableOp> {
@@ -136,20 +104,9 @@ impl Collection {
         self.state.undo.can_undo()
     }
 
-    pub fn can_redo(&self) -> Option<&Op> {
-        self.state.undo.can_redo()
-    }
-
     pub fn undo(&mut self) -> Result<OpOutput<UndoOutput>> {
         if let Some(step) = self.state.undo.undo_steps.pop_front() {
-            self.undo_inner(step, UndoMode::Undoing)
-        } else {
-            Err(AnkiError::UndoEmpty)
-        }
-    }
-    pub fn redo(&mut self) -> Result<OpOutput<UndoOutput>> {
-        if let Some(step) = self.state.undo.redo_steps.pop() {
-            self.undo_inner(step, UndoMode::Redoing)
+            self.undo_inner(step)
         } else {
             Err(AnkiError::UndoEmpty)
         }
@@ -158,14 +115,12 @@ impl Collection {
     pub fn undo_status(&self) -> UndoStatus {
         UndoStatus {
             undo: self.can_undo().cloned(),
-            redo: self.can_redo().cloned(),
-            last_step: self.state.undo.counter,
         }
     }
 }
 
 impl Collection {
-    /// If op is None, clears the undo/redo queues.
+    /// If op is None, clears the undo queue.
     pub(crate) fn begin_undoable_operation(&mut self, op: Option<Op>) {
         self.state.undo.begin_step(op);
     }
@@ -194,8 +149,8 @@ impl Collection {
         self.state.undo.previous_op()
     }
 
-    pub(crate) fn undoing_or_redoing(&self) -> bool {
-        self.state.undo.mode != UndoMode::NormalOp
+    pub(crate) fn undoing(&self) -> bool {
+        self.state.undo.undoing
     }
 
     pub(crate) fn current_undo_step_has_changes(&self) -> bool {
@@ -223,24 +178,17 @@ impl Collection {
         self.state.undo.op_changes()
     }
 
-    fn undo_inner(&mut self, step: UndoableOp, mode: UndoMode) -> Result<OpOutput<UndoOutput>> {
+    fn undo_inner(&mut self, step: UndoableOp) -> Result<OpOutput<UndoOutput>> {
         let undone_op = step.kind;
-        let reverted_to = step.timestamp;
         let changes = step.changes;
-        let counter = step.counter;
-        self.state.undo.mode = mode;
+        self.state.undo.undoing = true;
         let res = self.transact(undone_op.clone(), |col| {
             for change in changes.into_iter().rev() {
                 change.undo(col)?;
             }
-            Ok(UndoOutput {
-                undone_op,
-                reverted_to,
-                new_undo_status: col.undo_status(),
-                counter,
-            })
+            Ok(UndoOutput { undone_op })
         });
-        self.state.undo.mode = UndoMode::NormalOp;
+        self.state.undo.undoing = false;
         res
     }
 }
@@ -287,7 +235,6 @@ mod test {
         let cid = card.id;
 
         assert_eq!(col.can_undo(), None);
-        assert_eq!(col.can_redo(), None);
 
         // outside of a transaction, no undo info recorded
         let card = col
@@ -298,7 +245,6 @@ mod test {
             .unwrap();
         assert_eq!(card.interval, 2);
         assert_eq!(col.can_undo(), None);
-        assert_eq!(col.can_redo(), None);
 
         // record a few undo steps
         for i in 3..=4 {
@@ -315,53 +261,28 @@ mod test {
 
         assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 4);
         assert_eq!(col.can_undo(), Some(&Op::UpdateNote));
-        assert_eq!(col.can_redo(), None);
 
         // undo a step
         col.undo().unwrap();
         assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 3);
         assert_eq!(col.can_undo(), Some(&Op::UpdateNote));
-        assert_eq!(col.can_redo(), Some(&Op::UpdateNote));
 
         // and again
         col.undo().unwrap();
         assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 2);
         assert_eq!(col.can_undo(), None);
-        assert_eq!(col.can_redo(), Some(&Op::UpdateNote));
 
-        // redo a step
-        col.redo().unwrap();
-        assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 3);
-        assert_eq!(col.can_undo(), Some(&Op::UpdateNote));
-        assert_eq!(col.can_redo(), Some(&Op::UpdateNote));
-
-        // and another
-        col.redo().unwrap();
-        assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 4);
-        assert_eq!(col.can_undo(), Some(&Op::UpdateNote));
-        assert_eq!(col.can_redo(), None);
-
-        // and undo the redo
-        col.undo().unwrap();
-        assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 3);
-        assert_eq!(col.can_undo(), Some(&Op::UpdateNote));
-        assert_eq!(col.can_redo(), Some(&Op::UpdateNote));
-
-        // if any action is performed, it should clear the redo queue
         col.transact(Op::UpdateNote, |col| {
             col.get_and_update_card(cid, |card| {
                 card.interval = 5;
                 Ok(())
             })
         })?;
-        assert_eq!(col.storage.get_card(cid).unwrap().unwrap().interval, 5);
         assert_eq!(col.can_undo(), Some(&Op::UpdateNote));
-        assert_eq!(col.can_redo(), None);
 
-        // and any action that doesn't support undoing will clear both queues
+        // and any action that doesn't support undoing will clear the queue
         col.transact_no_undo(|_col| Ok(())).unwrap();
         assert_eq!(col.can_undo(), None);
-        assert_eq!(col.can_redo(), None);
 
         // if an object is mutated multiple times in one operation,
         // the changes should be undone in the correct order

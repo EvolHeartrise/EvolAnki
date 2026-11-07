@@ -14,46 +14,13 @@ service ConfigService {
 }
 
 message ConfigKey {
+  // The only setting the pages read this way. Desktop Anki's others are gone.
   enum Bool {
-    BROWSER_TABLE_SHOW_NOTES_MODE = 0;
-    PREVIEW_BOTH_SIDES = 3;
-    COLLAPSE_TAGS = 4;
-    COLLAPSE_NOTETYPES = 5;
-    COLLAPSE_DECKS = 6;
-    COLLAPSE_SAVED_SEARCHES = 7;
-    COLLAPSE_TODAY = 8;
-    COLLAPSE_CARD_STATE = 9;
-    SCHED_2021 = 11;
-    ADDING_DEFAULTS_TO_CURRENT_DECK = 12;
-    HIDE_AUDIO_PLAY_BUTTONS = 13;
-    INTERRUPT_AUDIO_WHEN_ANSWERING = 14;
-    PASTE_IMAGES_AS_PNG = 15;
-    PASTE_STRIPS_FORMATTING = 16;
-    NORMALIZE_NOTE_TEXT = 17;
-    IGNORE_ACCENTS_IN_SEARCH = 18;
-    RESTORE_POSITION_BROWSER = 19;
-    RESTORE_POSITION_REVIEWER = 20;
-    RESET_COUNTS_BROWSER = 21;
-    RESET_COUNTS_REVIEWER = 22;
-    RANDOM_ORDER_REPOSITION = 23;
-    SHIFT_POSITION_OF_EXISTING_CARDS = 24;
-    RENDER_LATEX = 25;
-    LOAD_BALANCER_ENABLED = 26;
-    FSRS_SHORT_TERM_WITH_STEPS_ENABLED = 27;
-    FSRS_LEGACY_EVALUATE = 28;
-  }
-  enum String {
-    SET_DUE_BROWSER = 0;
-    SET_DUE_REVIEWER = 1;
-    DEFAULT_SEARCH_TEXT = 2;
-    CARD_STATE_CUSTOMIZER = 3;
+    HIDE_AUDIO_PLAY_BUTTONS = 0;
+    reserved 1 to 28;
   }
 }
 
 message GetConfigBoolRequest {
   ConfigKey.Bool key = 1;
-}
-
-message OptionalStringConfigKey {
-  ConfigKey.String key = 1;
 }

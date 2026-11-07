@@ -916,7 +916,7 @@ pub(crate) mod test {
         if col.timing_today()?.near_cutoff() {
             return Ok(());
         }
-        col.set_due_date(&cids[0..2], "0", None)?;
+        col.set_due_date(&cids[0..2], "0")?;
         // set a limit of 3 reviews, which should give us 2 reviews and 1 new card
         let mut conf = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         conf.inner.reviews_per_day = 3;

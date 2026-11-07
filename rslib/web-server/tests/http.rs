@@ -1134,7 +1134,6 @@ fn reviewer_rpcs_work() {
         "renderExistingCard",
         &render::RenderExistingCardRequest {
             card_id,
-            browser: false,
             partial_render: false,
         },
     );
@@ -1175,9 +1174,8 @@ fn reviewer_rpcs_work() {
     );
     let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
     assert!(!status.undo.is_empty());
-    let _: OpChangesAfterUndo = server.rpc("undo", &generic::Empty {});
-    let status: UndoStatus = server.rpc("getUndoStatus", &generic::Empty {});
-    assert!(!status.redo.is_empty());
+    let undone: OpChangesAfterUndo = server.rpc("undo", &generic::Empty {});
+    assert_eq!(undone.operation, status.undo);
 
     server.stop();
 }
