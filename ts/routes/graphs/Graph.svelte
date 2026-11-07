@@ -30,7 +30,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 {/if}
 
 <style lang="scss">
-    @use "$lib/sass/elevation" as *;
     .graph {
         /* See graph-styles.ts for constants referencing global styles */
         /* Customizing the standard x and y tick markers and text on the graphs.
