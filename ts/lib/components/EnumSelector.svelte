@@ -50,8 +50,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     select {
-        @include button.select($with-disabled: false);
+        @include button.base($with-disabled: false);
         appearance: none;
+        width: 100%;
+        border-radius: var(--border-radius);
         height: 100%;
         line-height: 1.5;
         padding-block: 0;
