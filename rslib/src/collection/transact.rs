@@ -19,8 +19,7 @@ impl Collection {
         func(self)
             .and_then(|output| {
                 // any changes mean an mtime bump
-                if !have_op || (self.current_undo_step_has_changes() && !self.undoing_or_redoing())
-                {
+                if !have_op || (self.current_undo_step_has_changes() && !self.undoing()) {
                     self.set_modified()?;
                 }
                 // then commit

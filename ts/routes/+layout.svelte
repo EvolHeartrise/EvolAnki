@@ -6,12 +6,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import "./base.scss";
 
     import * as tr from "@tslib/tr";
-    import { setContext } from "svelte";
-
-    import { modalsKey, touchDeviceKey } from "$lib/components/context-keys";
-
-    setContext(modalsKey, new Map());
-    setContext(touchDeviceKey, "ontouchstart" in document.documentElement);
 </script>
 
 <!-- Full loads, as pages have different content security policies -->

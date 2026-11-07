@@ -1,5 +1,5 @@
-# These settings are not supported on stable Rust, and are ignored by the ninja
-# build script - to use them you need to run 'cargo +nightly fmt'
+# These settings need nightly rustfmt. The build's format and check:format
+# steps use the nightly pinned in cargo/format; by hand, run 'cargo +nightly fmt'.
 group_imports = "StdExternalCrate"
 imports_granularity = "Item"
 imports_layout = "Vertical"

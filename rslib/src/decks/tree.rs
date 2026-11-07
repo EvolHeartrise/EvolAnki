@@ -6,7 +6,6 @@ use std::collections::HashSet;
 use std::iter::Peekable;
 use std::ops::AddAssign;
 
-pub use anki_proto::decks::set_deck_collapsed_request::Scope as DeckCollapseScope;
 use anki_proto::decks::DeckTreeNode;
 use unicase::UniCase;
 
@@ -64,21 +63,13 @@ fn add_child_nodes(
     }
 }
 
-fn add_collapsed_and_filtered(
-    node: &mut DeckTreeNode,
-    decks: &HashMap<DeckId, Deck>,
-    browser: bool,
-) {
+fn add_collapsed_and_filtered(node: &mut DeckTreeNode, decks: &HashMap<DeckId, Deck>) {
     if let Some(deck) = decks.get(&DeckId(node.deck_id)) {
-        node.collapsed = if browser {
-            deck.common.browser_collapsed
-        } else {
-            deck.common.study_collapsed
-        };
+        node.collapsed = deck.common.study_collapsed;
         node.filtered = deck.is_filtered();
     }
     for child in &mut node.children {
-        add_collapsed_and_filtered(child, decks, browser);
+        add_collapsed_and_filtered(child, decks);
     }
 }
 
@@ -203,7 +194,7 @@ impl Collection {
 
         let decks_map = self.storage.get_decks_map()?;
 
-        add_collapsed_and_filtered(&mut tree, &decks_map, timestamp.is_none());
+        add_collapsed_and_filtered(&mut tree, &decks_map);
         if self.default_deck_is_empty()? {
             hide_default_deck(&mut tree);
         }
@@ -232,20 +223,13 @@ impl Collection {
         Ok(tree)
     }
 
-    pub fn set_deck_collapsed(
-        &mut self,
-        did: DeckId,
-        collapsed: bool,
-        scope: DeckCollapseScope,
-    ) -> Result<OpOutput<()>> {
+    /// Collapses or expands a deck in the deck list. Desktop Anki's separate
+    /// browser setting is left alone.
+    pub fn set_deck_collapsed(&mut self, did: DeckId, collapsed: bool) -> Result<OpOutput<()>> {
         self.transact(Op::SkipUndo, |col| {
             if let Some(mut deck) = col.storage.get_deck(did)? {
                 let original = deck.clone();
-                let c = &mut deck.common;
-                match scope {
-                    DeckCollapseScope::Reviewer => c.study_collapsed = collapsed,
-                    DeckCollapseScope::Browser => c.browser_collapsed = collapsed,
-                };
+                deck.common.study_collapsed = collapsed;
                 col.update_deck_inner(&mut deck, original)?;
             }
             Ok(())

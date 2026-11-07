@@ -11,7 +11,6 @@ import { area, axisBottom, axisLeft, axisRight, cumsum, curveBasis, max, pointer
 
 import type { GraphBounds } from "./graph-helpers";
 import { setDataAvailable } from "./graph-helpers";
-import { clickableClass } from "./graph-styles";
 import { hideTooltip, showTooltip } from "./tooltip-utils.svelte";
 
 export interface HistogramData {
@@ -23,7 +22,6 @@ export interface HistogramData {
         cumulative: number,
         percent: number,
     ) => string;
-    onClick: ((data: Bin<number, number>) => void) | null;
     showArea: boolean;
     colourScale: ScaleSequential<string>;
     binValue?: (bin: Bin<any, any>) => number;
@@ -153,7 +151,7 @@ export function histogramGraph(
     );
 
     // hover/tooltip
-    const hoverzone = svg
+    svg
         .select("g.hover-columns")
         .selectAll("rect")
         .data(hoverData)
@@ -168,11 +166,4 @@ export function histogramGraph(
             showTooltip(data.hoverText(bin, area, pct), x, y);
         })
         .on("mouseout", hideTooltip);
-
-    if (data.onClick) {
-        hoverzone
-            .filter(([bin]) => bin.length > 0)
-            .attr("class", clickableClass)
-            .on("click", (_event, [bin]) => data.onClick!(bin));
-    }
 }

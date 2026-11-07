@@ -11,7 +11,7 @@ import * as tr from "@tslib/tr";
 import type { Bin } from "d3";
 import { bin, interpolateRdYlGn, scaleSequential, sum } from "d3";
 
-import type { SearchDispatch, TableDatum } from "./graph-helpers";
+import type { TableDatum } from "./graph-helpers";
 import { getNumericMapBinValue, numericMap } from "./graph-helpers";
 import type { HistogramData } from "./histogram-graph";
 import { getAdjustedScaleAndTicks, percentageRangeMinMax } from "./percentageRange";
@@ -32,19 +32,8 @@ export function gatherData(data: GraphsResponse): GraphData {
     };
 }
 
-function makeQuery(start: number, end: number): string {
-    const fromQuery = `"prop:r>=${start / 100}"`;
-    let tillQuery = `"prop:r<${(end + 1) / 100}"`;
-    if (end === 99) {
-        tillQuery = tillQuery.replace("<", "<=");
-    }
-    return `${fromQuery} AND ${tillQuery}`;
-}
-
 export function prepareData(
     data: GraphData,
-    dispatch: SearchDispatch,
-    browserLinksSupported: boolean,
     quantile?: number,
 ): [HistogramData | null, TableDatum[]] {
     // get min/max
@@ -75,13 +64,6 @@ export function prepareData(
         });
     }
 
-    function onClick(bin: Bin<number, number>): void {
-        const start = bin.x0!;
-        const end = bin.x1! - 1;
-        const query = makeQuery(start, end);
-        dispatch("search", { query });
-    }
-
     const xTickFormat = (num: number): string => localizedNumber(num, 0) + "%";
     const tableData = [
         {
@@ -102,7 +84,6 @@ export function prepareData(
             bins,
             total,
             hoverText,
-            onClick: browserLinksSupported ? onClick : null,
             colourScale,
             showArea: false,
             binValue: getNumericMapBinValue,

@@ -456,20 +456,12 @@ export function deckConfigTimeToOptimize(): string {
     return "It's been a while - using the Optimize All Decks button is recommended.";
 }
 
-export function deckConfigEvaluateButton(): string {
-    return "Evaluate";
-}
-
 export function deckConfigDesiredRetention(): string {
     return "Desired retention";
 }
 
 export function deckConfigHistoricalRetention(): string {
     return "Historical retention";
-}
-
-export function deckConfigSmallerIsBetter(): string {
-    return "Smaller numbers indicate a better fit to your review history.";
 }
 
 export function deckConfigStepsTooLargeForFsrs(): string {

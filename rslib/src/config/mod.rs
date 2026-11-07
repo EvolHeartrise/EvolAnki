@@ -6,7 +6,6 @@ mod deck;
 mod notetype;
 mod number;
 pub(crate) mod schema11;
-mod string;
 pub(crate) mod undo;
 
 use serde::de::DeserializeOwned;
@@ -18,7 +17,6 @@ use strum::IntoStaticStr;
 pub use self::bool::BoolKey;
 pub use self::deck::DeckConfigKey;
 pub use self::number::I32ConfigKey;
-pub use self::string::StringKey;
 use crate::prelude::*;
 
 /// Only used when updating/undoing.
@@ -46,8 +44,6 @@ pub(crate) enum ConfigKey {
     FirstDayOfWeek,
     LocalOffset,
     Rollover,
-    UpdateNotes,
-    UpdateNotetypes,
 
     #[strum(to_string = "curDeck")]
     CurrentDeckId,
@@ -67,8 +63,6 @@ pub enum SchedulerVersion {
     V1 = 1,
     V2 = 2,
 }
-
-impl Collection {}
 
 impl Collection {
     /// Get config item, returning None if missing/invalid.

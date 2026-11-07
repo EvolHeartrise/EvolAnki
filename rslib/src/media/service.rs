@@ -22,7 +22,6 @@ impl crate::services::MediaService for Collection {
                 missing: output.missing,
                 missing_media_notes: to_i64s(output.missing_media_notes),
                 report,
-                have_trash: output.trash_count > 0,
             })
         })
     }

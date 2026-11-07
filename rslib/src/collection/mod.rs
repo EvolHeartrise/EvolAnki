@@ -34,7 +34,6 @@ pub struct CollectionBuilder {
     media_folder: Option<PathBuf>,
     media_db: Option<PathBuf>,
     tr: Option<I18n>,
-    check_integrity: bool,
     progress_handler: Option<Arc<Mutex<ProgressState>>>,
 }
 
@@ -55,7 +54,7 @@ impl CollectionBuilder {
         let tr = self.tr.clone().unwrap_or_default();
         let media_folder = self.media_folder.clone().unwrap_or_default();
         let media_db = self.media_db.clone().unwrap_or_default();
-        let storage = SqliteStorage::open_or_create(&col_path, &tr, self.check_integrity)?;
+        let storage = SqliteStorage::open_or_create(&col_path, &tr)?;
         let mut col = Collection {
             storage,
             col_path,

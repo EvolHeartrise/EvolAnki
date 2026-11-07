@@ -45,12 +45,12 @@ pub enum Rating {
 
 pub struct CardAnswer {
     pub card_id: CardId,
-    pub current_state: CardState,
-    pub new_state: CardState,
     pub rating: Rating,
     pub answered_at: TimestampMillis,
     pub milliseconds_taken: u32,
-    pub custom_data: Option<String>,
+    /// The card's mtime and reps when it was shown. If given and the card no
+    /// longer matches, the answer is refused.
+    pub shown_as: Option<(TimestampSecs, u32)>,
     pub from_queue: bool,
 }
 
@@ -218,23 +218,22 @@ impl Collection {
         card: Card,
     ) -> Result<(SchedulingStates, Card)> {
         let ctx = self.card_state_updater(card)?;
-        let current = ctx.current_card_state();
+        Ok((self.next_states(&ctx), ctx.into_card()))
+    }
 
-        let load_balancer_ctx = if let Some(load_balancer) = self
+    fn next_states(&self, ctx: &CardStateUpdater) -> SchedulingStates {
+        let load_balancer_ctx = self
             .state
             .card_queues
             .as_ref()
             .and_then(|card_queues| card_queues.load_balancer.as_ref())
-        {
-            ctx.original_deck
-                .config_id()
-                .map(|deck_config_id| load_balancer.review_context(deck_config_id))
-        } else {
-            None
-        };
-
-        let state_ctx = ctx.state_context(load_balancer_ctx);
-        Ok((current.next_states(&state_ctx), ctx.into_card()))
+            .and_then(|load_balancer| {
+                ctx.original_deck
+                    .config_id()
+                    .map(|deck_config_id| load_balancer.review_context(deck_config_id))
+            });
+        ctx.current_card_state()
+            .next_states(&ctx.state_context(load_balancer_ctx))
     }
 
     /// Describe the next intervals, to display on the answer buttons.
@@ -312,19 +311,25 @@ impl Collection {
             .or_not_found(answer.card_id)?;
         let original = card.clone();
 
+        if let Some((mtime, reps)) = answer.shown_as {
+            require!(
+                card.mtime == mtime && card.reps == reps,
+                "This card changed while it was showing, so that answer wasn't recorded."
+            );
+        }
+
         let mut updater = self.card_state_updater(card)?;
         answer.cap_answer_secs(updater.config.inner.cap_answer_time_to_secs);
-        let current_state = updater.current_card_state();
-        // If the states aren't equal, it's probably because some time has passed.
-        // Try to fix this by setting elapsed_secs equal.
-        self.set_elapsed_secs_equal(&current_state, &mut answer.current_state);
-        require!(
-            current_state == answer.current_state,
-            "card was modified: {current_state:#?} {:#?}",
-            answer.current_state,
-        );
+        let states = self.next_states(&updater);
+        let current_state = states.current;
+        let new_state = match answer.rating {
+            Rating::Again => states.again,
+            Rating::Hard => states.hard,
+            Rating::Good => states.good,
+            Rating::Easy => states.easy,
+        };
 
-        let revlog_partial = updater.apply_study_state(current_state, answer.new_state)?;
+        let revlog_partial = updater.apply_study_state(current_state, new_state)?;
         self.add_partial_revlog(revlog_partial, answer)?;
 
         self.update_deck_stats_from_answer(answer, &updater, original.queue)?;
@@ -332,14 +337,10 @@ impl Collection {
         let deckconfig_id = updater.original_deck.config_id();
         let mut card = updater.into_card();
         if !matches!(
-            answer.current_state,
+            current_state,
             CardState::Filtered(FilteredState::Preview(_))
         ) {
             card.last_review_time = Some(answer.answered_at.as_secs());
-        }
-        if let Some(data) = answer.custom_data.take() {
-            card.custom_data = data;
-            card.validate_custom_data()?;
         }
 
         self.update_card_inner(&mut card, original)?;
@@ -363,7 +364,7 @@ impl Collection {
                 &card,
                 timing,
                 matches!(
-                    answer.new_state,
+                    new_state,
                     CardState::Filtered(FilteredState::Preview(PreviewState {
                         finished: true,
                         ..
@@ -496,41 +497,6 @@ impl Collection {
             fsrs_allow_short_term,
         })
     }
-
-    /// Update the elapsed time of the answer state to match the current state.
-    ///
-    /// Since the state calculation takes the current time into account, the
-    /// elapsed_secs will probably be different for the two states. This is fine
-    /// for elapsed_secs, but we set the two values equal to easily compare
-    /// the other values of the two states.
-    fn set_elapsed_secs_equal(&self, current_state: &CardState, answer_state: &mut CardState) {
-        if let (Some(current_state), Some(answer_state)) = (
-            match current_state {
-                CardState::Normal(normal_state) => Some(normal_state),
-                CardState::Filtered(FilteredState::Rescheduling(resched_filter_state)) => {
-                    Some(&resched_filter_state.original_state)
-                }
-                _ => None,
-            },
-            match answer_state {
-                CardState::Normal(normal_state) => Some(normal_state),
-                CardState::Filtered(FilteredState::Rescheduling(resched_filter_state)) => {
-                    Some(&mut resched_filter_state.original_state)
-                }
-                _ => None,
-            },
-        ) {
-            match (current_state, answer_state) {
-                (NormalState::Learning(answer), NormalState::Learning(current)) => {
-                    current.elapsed_secs = answer.elapsed_secs;
-                }
-                (NormalState::Relearning(answer), NormalState::Relearning(current)) => {
-                    current.learning.elapsed_secs = answer.learning.elapsed_secs;
-                }
-                _ => {} // Other states don't use elapsed_secs.
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -568,12 +534,10 @@ pub mod test_helpers {
             let new_state = get_state(&queued.states);
             self.answer_card(&mut CardAnswer {
                 card_id: queued.card.id,
-                current_state: queued.states.current,
-                new_state,
                 rating,
                 answered_at: TimestampMillis::now(),
                 milliseconds_taken: 0,
-                custom_data: None,
+                shown_as: None,
                 from_queue: true,
             })?;
             Ok(PostAnswerState {
@@ -626,6 +590,7 @@ pub(crate) mod test {
     use crate::card::FsrsMemoryState;
     use crate::deckconfig::ReviewMix;
     use crate::search::SortMode;
+    use crate::tests::NoteAdder;
 
     fn current_state(col: &mut Collection, card_id: CardId) -> CardState {
         col.get_scheduling_states(card_id).unwrap().current
@@ -718,6 +683,42 @@ pub(crate) mod test {
         assert_eq!(expected, actual);
     }
 
+    /// Update the elapsed time of the expected state to match the current
+    /// state.
+    ///
+    /// Since the state calculation takes the current time into account, the
+    /// elapsed_secs will probably be different for the two states. This is fine
+    /// for elapsed_secs, but we set the two values equal to easily compare
+    /// the other values of the two states.
+    fn set_elapsed_secs_equal(current_state: &CardState, answer_state: &mut CardState) {
+        if let (Some(current_state), Some(answer_state)) = (
+            match current_state {
+                CardState::Normal(normal_state) => Some(normal_state),
+                CardState::Filtered(FilteredState::Rescheduling(resched_filter_state)) => {
+                    Some(&resched_filter_state.original_state)
+                }
+                _ => None,
+            },
+            match answer_state {
+                CardState::Normal(normal_state) => Some(normal_state),
+                CardState::Filtered(FilteredState::Rescheduling(resched_filter_state)) => {
+                    Some(&mut resched_filter_state.original_state)
+                }
+                _ => None,
+            },
+        ) {
+            match (current_state, answer_state) {
+                (NormalState::Learning(answer), NormalState::Learning(current)) => {
+                    current.elapsed_secs = answer.elapsed_secs;
+                }
+                (NormalState::Relearning(answer), NormalState::Relearning(current)) => {
+                    current.learning.elapsed_secs = answer.learning.elapsed_secs;
+                }
+                _ => {} // Other states don't use elapsed_secs.
+            }
+        }
+    }
+
     fn scheduled_days(state: CardState) -> u32 {
         match state {
             CardState::Normal(NormalState::Review(review)) => review.scheduled_days,
@@ -726,6 +727,31 @@ pub(crate) mod test {
             }
             _ => panic!("unexpected state: {state:?}"),
         }
+    }
+
+    #[test]
+    fn answer_is_refused_once_the_shown_card_has_changed() -> Result<()> {
+        let mut col = Collection::new();
+        NoteAdder::basic(&mut col).add(&mut col);
+        let shown = col.get_next_card()?.unwrap().card;
+        let answer = || CardAnswer {
+            card_id: shown.id,
+            rating: Rating::Good,
+            answered_at: TimestampMillis::now(),
+            milliseconds_taken: 0,
+            shown_as: Some((shown.mtime, shown.reps)),
+            from_queue: true,
+        };
+
+        col.answer_card(&mut answer())?;
+        // eg the same card answered again from another tab
+        let err = col.answer_card(&mut answer()).unwrap_err();
+
+        assert!(err
+            .message(&col.tr)
+            .contains("changed while it was showing"));
+        assert_eq!(col.storage.get_card(shown.id)?.unwrap().reps, 1);
+        Ok(())
     }
 
     // make sure the 'current' state for a card matches the
@@ -743,7 +769,7 @@ pub(crate) mod test {
         // new->learning
         let post_answer = col.answer_again();
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
@@ -754,7 +780,7 @@ pub(crate) mod test {
         col.clear_study_queues();
         let post_answer = col.answer_good();
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
@@ -769,7 +795,7 @@ pub(crate) mod test {
             state.elapsed_days = state.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
@@ -786,7 +812,7 @@ pub(crate) mod test {
             state.elapsed_days = state.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
@@ -801,7 +827,7 @@ pub(crate) mod test {
             state.review.elapsed_days = state.review.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
@@ -818,7 +844,7 @@ pub(crate) mod test {
             state.review.elapsed_days = state.review.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Learn);
@@ -832,7 +858,7 @@ pub(crate) mod test {
             state.elapsed_days = state.scheduled_days;
         };
         let mut current = current_state(&mut col, post_answer.card_id);
-        col.set_elapsed_secs_equal(&post_answer.new_state, &mut current);
+        set_elapsed_secs_equal(&post_answer.new_state, &mut current);
         assert_same_state(post_answer.new_state, current);
         let card = col.storage.get_card(post_answer.card_id)?.unwrap();
         assert_eq!(card.queue, CardQueue::Review);
@@ -916,7 +942,7 @@ pub(crate) mod test {
         if col.timing_today()?.near_cutoff() {
             return Ok(());
         }
-        col.set_due_date(&cids[0..2], "0", None)?;
+        col.set_due_date(&cids[0..2], "0")?;
         // set a limit of 3 reviews, which should give us 2 reviews and 1 new card
         let mut conf = col.get_deck_config(DeckConfigId(1), false)?.unwrap();
         conf.inner.reviews_per_day = 3;

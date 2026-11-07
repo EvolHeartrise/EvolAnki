@@ -14,7 +14,6 @@ use crate::card::CardId;
 use crate::card::CardQueue;
 use crate::card::CardType;
 use crate::collection::Collection;
-use crate::config::StringKey;
 use crate::error::Result;
 use crate::prelude::*;
 use crate::scheduler::timing::is_unix_epoch_timestamp;
@@ -102,14 +101,7 @@ pub fn parse_due_date_str(s: &str) -> Result<DueDateSpecifier> {
 
 impl Collection {
     /// `days` should be in a format parseable by `parse_due_date_str`.
-    /// If `context` is provided, provided key will be updated with the new
-    /// value of `days`.
-    pub fn set_due_date(
-        &mut self,
-        cids: &[CardId],
-        days: &str,
-        context: Option<StringKey>,
-    ) -> Result<OpOutput<()>> {
+    pub fn set_due_date(&mut self, cids: &[CardId], days: &str) -> Result<OpOutput<()>> {
         let spec = parse_due_date_str(days)?;
         let today = self.timing_today()?.days_elapsed;
         let next_day_start = self.timing_today()?.next_day_at.0;
@@ -123,9 +115,6 @@ impl Collection {
                 col.log_manually_scheduled_review(&card, original.interval)?;
                 col.update_card_inner(&mut card, original)?;
             }
-            if let Some(key) = context {
-                col.set_config_string_inner(key, days)?;
-            }
             Ok(())
         })
     }
@@ -134,27 +123,25 @@ impl Collection {
     /// by tests to give cards a review history.
     #[cfg(test)]
     pub(crate) fn grade_now(&mut self, cids: &[CardId], rating: i32) -> Result<OpOutput<()>> {
+        use super::answering::Rating;
         self.transact(Op::AnswerCard, |col| {
             for &card_id in cids {
-                let states = col.get_scheduling_states(card_id)?;
-                let new_state = match rating {
-                    0 => states.again,
-                    1 => states.hard,
-                    2 => states.good,
-                    3 => states.easy,
+                let rating = match rating {
+                    0 => Rating::Again,
+                    1 => Rating::Hard,
+                    2 => Rating::Good,
+                    3 => Rating::Easy,
                     _ => invalid_input!("invalid rating"),
                 };
-                let mut answer: CardAnswer = anki_proto::scheduler::CardAnswer {
-                    card_id: card_id.into(),
-                    current_state: Some(states.current.into()),
-                    new_state: Some(new_state.into()),
-                    rating,
-                    milliseconds_taken: 0,
-                    answered_at_millis: TimestampMillis::now().into(),
-                }
-                .into();
                 // Process the card without updating queues yet
-                answer.from_queue = false;
+                let mut answer = CardAnswer {
+                    card_id,
+                    rating,
+                    answered_at: TimestampMillis::now(),
+                    milliseconds_taken: 0,
+                    shown_as: None,
+                    from_queue: false,
+                };
                 col.answer_card_inner(&mut answer)?;
             }
             Ok(())
@@ -261,7 +248,7 @@ mod test {
         let cid = col.get_first_card().id;
         assert_eq!(col.get_first_card().ease_factor, 0);
 
-        col.set_due_date(&[cid], "7", None)?;
+        col.set_due_date(&[cid], "7")?;
 
         let revlog = col.storage.get_revlog_entries_for_card(cid)?;
         assert_eq!(revlog.len(), 1);

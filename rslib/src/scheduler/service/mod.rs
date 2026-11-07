@@ -13,7 +13,6 @@ use anki_proto::scheduler::SimulateFsrsWorkloadResponse;
 
 use crate::prelude::*;
 use crate::scheduler::fsrs::params::ComputeParamsRequest;
-use crate::scheduler::states::SchedulingStates;
 
 impl crate::services::SchedulerService for Collection {
     fn sched_timing_today(&mut self) -> Result<scheduler::SchedTimingTodayResponse> {
@@ -64,18 +63,8 @@ impl crate::services::SchedulerService for Collection {
         &mut self,
         input: scheduler::SetDueDateRequest,
     ) -> Result<anki_proto::collection::OpChanges> {
-        let config = input.config_key.map(|v| v.key().into());
-        let days = input.days;
         let cids = input.card_ids.into_newtype(CardId);
-        self.set_due_date(&cids, &days, config).map(Into::into)
-    }
-
-    fn describe_next_states(
-        &mut self,
-        input: scheduler::SchedulingStates,
-    ) -> Result<generic::StringList> {
-        let states: SchedulingStates = input.into();
-        self.describe_next_states(&states).map(Into::into)
+        self.set_due_date(&cids, &input.days).map(Into::into)
     }
 
     fn answer_card(
@@ -199,28 +188,20 @@ mod tests {
             },
         )
         .unwrap();
-        let qc = queued.cards.first().expect("a card should be queued");
-        let card_id = qc.card.as_ref().unwrap().id;
-        let states = qc.states.clone().unwrap();
-        let new_state = match rating {
-            Rating::Again => states.again,
-            Rating::Hard => states.hard,
-            Rating::Good => states.good,
-            Rating::Easy => states.easy,
-        };
+        let card = queued.cards[0].card.as_ref().unwrap();
         let _ = SchedulerService::answer_card(
             col,
             CardAnswer {
-                card_id,
-                current_state: states.current,
-                new_state,
+                card_id: card.id,
                 rating: rating as i32,
                 answered_at_millis: TimestampMillis::now().0,
                 milliseconds_taken: 0,
+                card_mtime_secs: card.mtime_secs,
+                card_reps: card.reps,
             },
         )
         .unwrap();
-        card_id
+        card.id
     }
 
     #[test]
@@ -478,7 +459,6 @@ mod tests {
             anki_proto::scheduler::SetDueDateRequest {
                 card_ids: vec![cid.0],
                 days: "3".to_string(),
-                config_key: None,
             },
         )
         .unwrap();
@@ -500,51 +480,22 @@ mod tests {
     }
 
     #[test]
-    fn set_due_date_with_config_key_persists_the_history() {
-        use anki_proto::config::config_key::String as StringConfigKey;
-
-        use crate::config::StringKey;
+    fn queued_cards_carry_one_label_per_button() {
         let mut col = Collection::new();
-        let cid = add_basic_card(&mut col);
+        add_basic_card(&mut col);
 
-        let _ = SchedulerService::set_due_date(
+        let queued = SchedulerService::get_queued_cards(
             &mut col,
-            anki_proto::scheduler::SetDueDateRequest {
-                card_ids: vec![cid.0],
-                days: "5".to_string(),
-                config_key: Some(anki_proto::config::OptionalStringConfigKey {
-                    key: StringConfigKey::SetDueBrowser as i32,
-                }),
+            GetQueuedCardsRequest {
+                fetch_limit: 1,
+                intraday_learning_only: false,
             },
         )
         .unwrap();
 
-        let card = col.storage.get_card(cid).unwrap().unwrap();
-        assert_eq!(card.ctype, CardType::Review);
-        let today = col.timing_today().unwrap().days_elapsed as i32;
-        assert_eq!(card.due, today + 5, "the requested offset is applied");
-
-        // The days string must be written back to config so the dialog
-        // can pre-populate it on the next open.
-        let stored = col.get_config_string(StringKey::SetDueBrowser);
-        assert_eq!(
-            stored, "5",
-            "days value should be persisted under SetDueBrowser"
-        );
-    }
-
-    #[test]
-    fn describe_next_states_returns_one_label_per_button() {
-        let mut col = Collection::new();
-        let cid = add_basic_card(&mut col);
-
-        let states = col.get_scheduling_states(cid).unwrap();
-
-        let labels = SchedulerService::describe_next_states(&mut col, states.into()).unwrap();
-
-        // one human-readable interval label for Again/Hard/Good/Easy
-        assert_eq!(labels.vals.len(), 4);
-        assert!(labels.vals.iter().all(|s| !s.is_empty()));
+        let labels = &queued.cards[0].labels;
+        assert_eq!(labels.len(), 4);
+        assert!(labels.iter().all(|s| !s.is_empty()));
     }
 
     #[test]

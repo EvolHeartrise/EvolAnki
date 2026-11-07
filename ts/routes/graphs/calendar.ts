@@ -21,9 +21,8 @@ import {
     timeYear,
 } from "d3";
 
-import type { GraphBounds, SearchDispatch } from "./graph-helpers";
+import type { GraphBounds } from "./graph-helpers";
 import { RevlogRange, setDataAvailable } from "./graph-helpers";
-import { clickableClass } from "./graph-styles";
 import { hideTooltip, showTooltip } from "./tooltip-utils.svelte";
 
 export interface GraphData {
@@ -66,7 +65,6 @@ export function renderCalendar(
     svgElem: SVGElement,
     bounds: GraphBounds,
     sourceData: GraphData,
-    dispatch: SearchDispatch,
     targetYear: number,
     nightMode: boolean,
     revlogRange: RevlogRange,
@@ -192,12 +190,6 @@ export function renderCalendar(
             showTooltip(tooltipText(d), x, y);
         })
         .on("mouseout", hideTooltip)
-        .attr("class", (d: DayDatum): string => (d.count > 0 ? clickableClass : ""))
-        .on("click", function(_event: MouseEvent, d: DayDatum) {
-            if (d.count > 0) {
-                dispatch("search", { query: `"prop:rated=${d.day}"` });
-            }
-        })
         .transition()
         .duration(800)
         .attr("fill", (d: DayDatum) => (d.count === 0 ? emptyColour : blues(d.count)!));

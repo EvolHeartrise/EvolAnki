@@ -33,10 +33,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     @use "$lib/sass/elevation" as *;
     .graph {
         /* See graph-styles.ts for constants referencing global styles */
-        :global(.graph-element-clickable) {
-            cursor: pointer;
-        }
-
         /* Customizing the standard x and y tick markers and text on the graphs.
          * The `tick` class is automatically added by d3. */
         :global(.tick) {

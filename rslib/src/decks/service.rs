@@ -92,7 +92,7 @@ impl crate::services::DecksService for Collection {
         &mut self,
         input: anki_proto::decks::SetDeckCollapsedRequest,
     ) -> error::Result<anki_proto::collection::OpChanges> {
-        self.set_deck_collapsed(input.deck_id.into(), input.collapsed, input.scope())
+        self.set_deck_collapsed(input.deck_id.into(), input.collapsed)
             .map(Into::into)
     }
 
@@ -500,7 +500,7 @@ mod tests {
     }
 
     #[test]
-    fn set_deck_collapsed_changes_only_the_requested_scope() {
+    fn set_deck_collapsed_leaves_the_browser_setting_alone() {
         let mut col = Collection::new();
         let deck = DeckAdder::new("Collapse").add(&mut col);
         let _ = DecksService::set_deck_collapsed(
@@ -508,7 +508,6 @@ mod tests {
             anki_proto::decks::SetDeckCollapsedRequest {
                 deck_id: deck.id.0,
                 collapsed: false,
-                scope: anki_proto::decks::set_deck_collapsed_request::Scope::Reviewer as i32,
             },
         )
         .unwrap();

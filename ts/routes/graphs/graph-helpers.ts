@@ -67,12 +67,6 @@ export interface TableDatum {
     value: string;
 }
 
-export type SearchEventMap = { search: { query: string } };
-export type SearchDispatch = <EventKey extends Extract<keyof SearchEventMap, string>>(
-    type: EventKey,
-    detail: SearchEventMap[EventKey],
-) => void;
-
 /** Convert a protobuf map that protobufjs represents as an object with string
 keys into a Map with numeric keys. */
 export function numericMap<T>(obj: { [k: string]: T }): Map<number, T> {

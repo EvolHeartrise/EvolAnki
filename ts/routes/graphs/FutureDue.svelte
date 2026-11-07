@@ -5,13 +5,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import type { GraphsResponse } from "@generated/anki/stats_pb";
     import * as tr from "@tslib/tr";
-    import { createEventDispatcher } from "svelte";
 
     import type { GraphData } from "./future-due";
     import { buildHistogram, gatherData } from "./future-due";
     import Graph from "./Graph.svelte";
     import type { GraphPrefs } from "./graph-helpers";
-    import type { SearchEventMap, TableDatum } from "./graph-helpers";
+    import type { TableDatum } from "./graph-helpers";
     import { GraphRange, RevlogRange } from "./graph-helpers";
     import GraphRangeRadios from "./GraphRangeRadios.svelte";
     import type { HistogramData } from "./histogram-graph";
@@ -21,8 +20,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
     export let sourceData: GraphsResponse | null = null;
     export let prefs: GraphPrefs;
-
-    const dispatch = createEventDispatcher<SearchEventMap>();
 
     let graphData: GraphData | null = null;
     let histogramData: HistogramData | null = null;
@@ -38,8 +35,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             graphData,
             graphRange,
             $prefs.futureDueShowBacklog,
-            dispatch,
-            $prefs.browserLinksSupported,
         ));
     }
 

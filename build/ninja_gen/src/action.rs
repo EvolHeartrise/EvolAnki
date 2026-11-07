@@ -32,14 +32,6 @@ pub trait BuildAction {
         Ok(())
     }
 
-    fn concurrency_pool(&self) -> Option<&'static str> {
-        None
-    }
-
-    fn bypass_runner(&self) -> bool {
-        false
-    }
-
     fn hide_success(&self) -> bool {
         true
     }

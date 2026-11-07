@@ -1,25 +1,8 @@
 @use "vars";
 @use "button-mixins" as button;
-@use "elevation" as *;
 
 :root {
     --focus-color: #{vars.palette-of(shadow-focus)};
-
-    .isMac {
-        --focus-color: rgba(0 103 244 / 0.247);
-    }
-}
-
-.isWin {
-    button {
-        font-size: 12px;
-    }
-}
-
-.isMac {
-    button {
-        font-size: 13px;
-    }
 }
 
 button {
@@ -36,12 +19,4 @@ button {
     margin: 0 4px;
 
     @include button.base;
-    .fancy & {
-        border-radius: var(--border-radius-large);
-        @include elevation(1, $opacity-boost: -0.08);
-        &:hover {
-            @include elevation(2);
-            transition: box-shadow var(--transition) linear;
-        }
-    }
 }

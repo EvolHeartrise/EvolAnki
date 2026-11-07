@@ -5,13 +5,10 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import * as tr from "@tslib/tr";
     import { HelpPage } from "@tslib/help-page";
-    import type Carousel from "bootstrap/js/dist/carousel";
-    import type Modal from "bootstrap/js/dist/modal";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import SwitchRow from "$lib/components/SwitchRow.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import type { HelpItem } from "$lib/components/types";
 
     import type { DeckOptionsState } from "./lib";
 
@@ -30,15 +27,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             help: tr.deckConfigAlwaysIncludeQuestionAudioTooltip(),
         },
     };
-    const helpSections: HelpItem[] = Object.values(settings);
 
-    let modal: Modal;
-    let carousel: Carousel;
-
-    function openHelpModal(index: number): void {
-        modal.show();
-        carousel.to(index);
-    }
+    let helpModal: HelpModal;
 </script>
 
 <TitledContainer title={tr.deckConfigAudioTitle()}>
@@ -46,20 +36,14 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         title={tr.deckConfigAudioTitle()}
         url={HelpPage.DeckOptions.audio}
         slot="tooltip"
-        {helpSections}
-        on:mount={(e) => {
-            modal = e.detail.modal;
-            carousel = e.detail.carousel;
-        }}
+        sections={settings}
+        bind:this={helpModal}
     />
     <SwitchRow
         bind:value={$config.disableAutoplay}
         defaultValue={defaults.disableAutoplay}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("disableAutoplay"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("disableAutoplay")}>
             {settings.disableAutoplay.title}
         </SettingTitle>
     </SwitchRow>
@@ -67,12 +51,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         bind:value={$config.skipQuestionWhenReplayingAnswer}
         defaultValue={defaults.skipQuestionWhenReplayingAnswer}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(
-                    Object.keys(settings).indexOf("skipQuestionWhenReplaying"),
-                )}
-        >
+        <SettingTitle on:click={() => helpModal.open("skipQuestionWhenReplaying")}>
             {settings.skipQuestionWhenReplaying.title}
         </SettingTitle>
     </SwitchRow>

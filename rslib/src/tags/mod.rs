@@ -3,7 +3,6 @@
 
 mod bulkadd;
 mod matcher;
-mod notes;
 mod register;
 mod remove;
 mod rename;

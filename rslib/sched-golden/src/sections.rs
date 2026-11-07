@@ -270,7 +270,7 @@ fn answer_next(
     let (name, key) = RATINGS[rating];
     // what's stored, as the queue's copy has its FSRS fields filled in
     let stored = harness.card(cid);
-    let result = harness.answer(cid, &item["states"], rating, millis);
+    let result = harness.answer(&item["card"], rating, millis);
     *coverage
         .entry(format!(
             "type {} queue {} {name}",
@@ -301,7 +301,7 @@ fn replay(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<S
     let per_day = (config.answers / config.days.max(1)).max(1);
     let mut events = vec![];
     let mut coverage = BTreeMap::new();
-    let (mut answers, mut undos, mut redos, mut undo_mismatches) = (0usize, 0, 0, 0);
+    let (mut answers, mut undos, mut undo_mismatches) = (0usize, 0, 0);
     let all_decks: Vec<i64> = decks(harness)?.iter().map(|deck| deck.0).collect();
     let mut day = 0;
     while day < config.days * 8 && (answers < config.answers || day < config.days) {
@@ -330,7 +330,6 @@ fn replay(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<S
             };
             let cid = event["card_id"].as_i64().unwrap_or(0);
             let before = event["before"].clone();
-            let after = event["after"].clone();
             answers += 1;
             events.push(event);
             clock::advance_ms(5000 + rng.below(40_000) as i64);
@@ -348,20 +347,6 @@ fn replay(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<S
                     "card": restored,
                     "revlog": harness.latest_revlog(cid),
                 }));
-                if rng.chance(500) {
-                    redos += 1;
-                    let result = harness.record("Redo", json!({}));
-                    let redone = harness.card(cid);
-                    events.push(json!({
-                        "op": "redo",
-                        "card_id": cid,
-                        "operation": result["operation"],
-                        "error": result["error"],
-                        "reapplied_exactly": redone == after,
-                        "card": redone,
-                        "revlog": harness.latest_revlog(cid),
-                    }));
-                }
             }
         }
         let next_day_at = harness.timing()?.next_day_at;
@@ -383,7 +368,6 @@ fn replay(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<S
             "answers": answers,
             "undos": undos,
             "undo_mismatches": undo_mismatches,
-            "redos": redos,
             "days": day,
             "today": timing.today,
             "coverage": coverage,

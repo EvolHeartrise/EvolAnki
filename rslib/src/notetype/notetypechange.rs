@@ -24,17 +24,6 @@ pub struct ChangeNotetypeInput {
     pub new_templates: Option<Vec<Option<usize>>>,
 }
 
-#[cfg(test)]
-#[derive(Debug)]
-pub struct NotetypeChangeInfo {
-    pub input: ChangeNotetypeInput,
-    pub old_notetype_name: String,
-    pub old_field_names: Vec<String>,
-    pub old_template_names: Vec<String>,
-    pub new_field_names: Vec<String>,
-    pub new_template_names: Vec<String>,
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct TemplateMap {
     pub removed: Vec<usize>,
@@ -65,97 +54,6 @@ impl TemplateMap {
 
         TemplateMap { removed, remapped }
     }
-}
-
-#[cfg(test)]
-fn default_template_map(
-    current_notetype: &Notetype,
-    new_notetype: &Notetype,
-) -> Option<Vec<Option<usize>>> {
-    if current_notetype.config.kind() == NotetypeKind::Cloze
-        || new_notetype.config.kind() == NotetypeKind::Cloze
-    {
-        // clozes can't be remapped
-        None
-    } else {
-        // name -> (ordinal, is_used)
-        let mut existing_templates: HashMap<&str, (usize, bool)> = current_notetype
-            .templates
-            .iter()
-            .map(|template| {
-                (
-                    template.name.as_str(),
-                    (template.ord.unwrap() as usize, false),
-                )
-            })
-            .collect();
-
-        // match by name
-        let mut new_templates: Vec<_> = new_notetype
-            .templates
-            .iter()
-            .map(|template| {
-                existing_templates
-                    .get_mut(template.name.as_str())
-                    .map(|(idx, used)| {
-                        *used = true;
-                        *idx
-                    })
-            })
-            .collect();
-
-        // fill in gaps with any unused templates
-        let mut remaining_templates: Vec<_> = existing_templates
-            .values()
-            .filter_map(|(idx, used)| if !used { Some(idx) } else { None })
-            .collect();
-        remaining_templates.sort_unstable();
-        new_templates
-            .iter_mut()
-            .filter(|o| o.is_none())
-            .zip(remaining_templates)
-            .for_each(|(template, old_idx)| *template = Some(*old_idx));
-
-        Some(new_templates)
-    }
-}
-
-#[cfg(test)]
-fn default_field_map(current_notetype: &Notetype, new_notetype: &Notetype) -> Vec<Option<usize>> {
-    // name -> (ordinal, is_used)
-    let mut existing_fields: HashMap<&str, (usize, bool)> = current_notetype
-        .fields
-        .iter()
-        .map(|field| (field.name.as_str(), (field.ord.unwrap() as usize, false)))
-        .collect();
-
-    // match by name
-    let mut new_fields: Vec<_> = new_notetype
-        .fields
-        .iter()
-        .map(|field| {
-            existing_fields
-                .get_mut(field.name.as_str())
-                .map(|(idx, used)| {
-                    *used = true;
-                    *idx
-                })
-        })
-        .collect();
-
-    // fill in gaps with any unused fields
-    let mut remaining_fields: Vec<_> = existing_fields
-        .values()
-        .filter_map(|(idx, used)| if !used { Some(idx) } else { None })
-        .collect();
-    remaining_fields.sort_unstable();
-    new_fields
-        .iter_mut()
-        .filter(|o| o.is_none())
-        .zip(remaining_fields)
-        .for_each(|(field, old_idx)| *field = Some(*old_idx));
-
-    new_fields
 }
 
 impl Collection {
@@ -299,101 +197,27 @@ fn remap_fields(fields: &mut Vec<String>, new_fields: &[Option<usize>]) {
 }
 
 #[cfg(test)]
-impl Collection {
-    pub fn notetype_change_info(
-        &mut self,
-        old_notetype_id: NotetypeId,
-        new_notetype_id: NotetypeId,
-    ) -> Result<NotetypeChangeInfo> {
-        let old_notetype = self
-            .get_notetype(old_notetype_id)?
-            .or_not_found(old_notetype_id)?;
-        let new_notetype = self
-            .get_notetype(new_notetype_id)?
-            .or_not_found(new_notetype_id)?;
-
-        let old_notetype_name = &old_notetype.name;
-        let new_fields = default_field_map(&old_notetype, &new_notetype);
-        let new_templates = default_template_map(&old_notetype, &new_notetype);
-        Ok(NotetypeChangeInfo {
-            input: ChangeNotetypeInput {
-                note_ids: vec![],
-                old_notetype_id,
-                new_notetype_id,
-                new_fields,
-                new_templates,
-            },
-            old_notetype_name: old_notetype_name.clone(),
-            old_field_names: old_notetype.fields.iter().map(|f| f.name.clone()).collect(),
-            old_template_names: old_notetype
-                .templates
-                .iter()
-                .map(|f| f.name.clone())
-                .collect(),
-            new_field_names: new_notetype.fields.iter().map(|f| f.name.clone()).collect(),
-            new_template_names: new_notetype
-                .templates
-                .iter()
-                .map(|f| f.name.clone())
-                .collect(),
-        })
-    }
-
-    pub fn change_notetype_of_notes(&mut self, input: ChangeNotetypeInput) -> Result<OpOutput<()>> {
-        self.transact(Op::UpdateNotetype, |col| {
-            col.change_notetype_of_notes_inner(input)
-        })
-    }
-}
-
-#[cfg(test)]
 mod test {
     use super::*;
     use crate::error::Result;
 
-    #[test]
-    fn field_map() -> Result<()> {
-        let mut col = Collection::new();
-        let mut basic = col
-            .storage
-            .get_notetype(col.get_current_notetype_id().unwrap())?
-            .unwrap();
-
-        // no matching field names; fields are assigned in order
-        let cloze = col.get_notetype_by_name("Cloze")?.unwrap().as_ref().clone();
-        assert_eq!(&default_field_map(&basic, &cloze), &[Some(0), Some(1)]);
-
-        basic.add_field("idx2");
-        basic.add_field("idx3");
-        basic.add_field("Text"); // 4
-        basic.add_field("idx5");
-        // re-fetch to get ordinals
-        col.update_notetype(&mut basic, false)?;
-        let basic = col.get_notetype(basic.id)?.unwrap();
-
-        // if names match, assignments are out of order; unmatched entries
-        // are filled sequentially
-        assert_eq!(&default_field_map(&basic, &cloze), &[Some(4), Some(0)]);
-
-        // unmatched entries are filled sequentially until exhausted
-        assert_eq!(
-            &default_field_map(&cloze, &basic),
-            &[
-                // front
-                Some(1),
-                // back
-                None,
-                // idx2
-                None,
-                // idx3
-                None,
-                // text
-                Some(0),
-                // idx5
-                None,
-            ]
-        );
-
+    fn change_notetype(
+        col: &mut Collection,
+        note_id: NoteId,
+        old_notetype_id: NotetypeId,
+        new_notetype_id: NotetypeId,
+        new_fields: Vec<Option<usize>>,
+        new_templates: Option<Vec<Option<usize>>>,
+    ) -> Result<()> {
+        col.transact(Op::UpdateNotetype, |col| {
+            col.change_notetype_of_notes_inner(ChangeNotetypeInput {
+                note_ids: vec![note_id],
+                old_notetype_id,
+                new_notetype_id,
+                new_fields,
+                new_templates,
+            })
+        })?;
         Ok(())
     }
 
@@ -435,12 +259,14 @@ mod test {
         assert_eq!(first_card.template_idx, 0);
 
         // switch the existing card to ordinal 2
-        let input = ChangeNotetypeInput {
-            note_ids: vec![note.id],
-            new_templates: Some(vec![None, Some(0)]),
-            ..col.notetype_change_info(basic.id, basic2.id)?.input
-        };
-        col.change_notetype_of_notes(input)?;
+        change_notetype(
+            &mut col,
+            note.id,
+            basic.id,
+            basic2.id,
+            vec![Some(0), Some(1)],
+            Some(vec![None, Some(0)]),
+        )?;
 
         // cards arrive in creation order, so the existing card will come first
         let cards = col.storage.all_cards_of_note(note.id)?;
@@ -466,11 +292,14 @@ mod test {
         let basic2 = col
             .get_notetype_by_name("Basic (optional reversed card)")?
             .unwrap();
-        let input = ChangeNotetypeInput {
-            note_ids: vec![note.id],
-            ..col.notetype_change_info(basic.id, basic2.id)?.input
-        };
-        col.change_notetype_of_notes(input)?;
+        change_notetype(
+            &mut col,
+            note.id,
+            basic.id,
+            basic2.id,
+            vec![Some(0), Some(1), None],
+            Some(vec![Some(0), None]),
+        )?;
 
         Ok(())
     }
@@ -489,37 +318,49 @@ mod test {
         let cloze = col.get_notetype_by_name("Cloze")?.unwrap();
 
         // changing to cloze should leave all the existing cards alone
-        let input = ChangeNotetypeInput {
-            note_ids: vec![note.id],
-            ..col.notetype_change_info(basic.id, cloze.id)?.input
-        };
-        col.change_notetype_of_notes(input)?;
+        change_notetype(
+            &mut col,
+            note.id,
+            basic.id,
+            cloze.id,
+            vec![Some(0), Some(1)],
+            None,
+        )?;
         let cards = col.storage.all_cards_of_note(note.id)?;
         assert_eq!(cards.len(), 2);
 
         // and back again should also work
-        let input = ChangeNotetypeInput {
-            note_ids: vec![note.id],
-            ..col.notetype_change_info(cloze.id, basic.id)?.input
-        };
-        col.change_notetype_of_notes(input)?;
+        change_notetype(
+            &mut col,
+            note.id,
+            cloze.id,
+            basic.id,
+            vec![Some(0), Some(1)],
+            None,
+        )?;
         let cards = col.storage.all_cards_of_note(note.id)?;
         assert_eq!(cards.len(), 2);
 
         // but any cards above the available templates should be removed when converting
         // from cloze->normal
-        let input = ChangeNotetypeInput {
-            note_ids: vec![note.id],
-            ..col.notetype_change_info(basic.id, cloze.id)?.input
-        };
-        col.change_notetype_of_notes(input)?;
+        change_notetype(
+            &mut col,
+            note.id,
+            basic.id,
+            cloze.id,
+            vec![Some(0), Some(1)],
+            None,
+        )?;
 
         let basic1 = col.get_notetype_by_name("Basic")?.unwrap();
-        let input = ChangeNotetypeInput {
-            note_ids: vec![note.id],
-            ..col.notetype_change_info(cloze.id, basic1.id)?.input
-        };
-        col.change_notetype_of_notes(input)?;
+        change_notetype(
+            &mut col,
+            note.id,
+            cloze.id,
+            basic1.id,
+            vec![Some(0), Some(1)],
+            None,
+        )?;
         let cards = col.storage.all_cards_of_note(note.id)?;
         assert_eq!(cards.len(), 1);
 

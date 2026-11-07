@@ -22,7 +22,6 @@ pub struct Build {
     pub variables: HashMap<&'static str, String>,
     pub buildroot: Utf8PathBuf,
     pub build_profile: BuildProfile,
-    pub pools: Vec<(&'static str, usize)>,
     pub trailing_text: String,
     pub host_platform: Platform,
     pub have_n2: bool,
@@ -35,11 +34,11 @@ pub struct Build {
 impl Build {
     pub fn new() -> Result<Self> {
         let out = Utf8PathBuf::from("out");
-        // On Unix systems we allow out to be a symlink to an external location,
-        // which commands need the real path of. Otherwise stay relative, as
-        // commands run from the repo root, and an absolute path would break
-        // them if the repo's path contains a space.
-        let buildroot = if !cfg!(windows) && out.is_symlink() {
+        // out may be a symlink to an external location, which commands need
+        // the real path of. Otherwise stay relative, as commands run from the
+        // repo root, and an absolute path would break them if the repo's path
+        // contains a space.
+        let buildroot = if out.is_symlink() {
             out.canonicalize_utf8()?
         } else {
             out
@@ -50,7 +49,6 @@ impl Build {
             build_profile: BuildProfile::from_env(),
             host_platform: Platform::current(),
             variables: Default::default(),
-            pools: Default::default(),
             trailing_text: Default::default(),
             output_text: Default::default(),
             action_names: Default::default(),
@@ -65,10 +63,6 @@ impl Build {
 
     pub fn variable(&mut self, name: &'static str, value: impl Into<String>) {
         self.variables.insert(name, value.into());
-    }
-
-    pub fn pool(&mut self, name: &'static str, size: usize) {
-        self.pools.push((name, size));
     }
 
     /// Evaluate the provided closure only once, using `key` to determine
@@ -103,11 +97,7 @@ impl Build {
         let action_name = action_name.to_string();
 
         // ensure separator is delivered to runner, not shell
-        let command = if cfg!(windows) || action.bypass_runner() {
-            command.into()
-        } else {
-            command.replace("&&", "\"&&\"")
-        };
+        let command = command.replace("&&", "\"&&\"");
 
         let mut statement = BuildStatement::from_build_action(
             group,
@@ -207,16 +197,13 @@ struct BuildStatement<'a> {
     implicit_outputs: Vec<String>,
     explicit_inputs: Vec<String>,
     explicit_outputs: Vec<String>,
-    order_only_inputs: Vec<String>,
     output_subsets: Vec<(String, Vec<String>)>,
     variables: Vec<(String, String)>,
     rule_variables: Vec<(String, String)>,
     output_stamp: bool,
-    env_vars: Vec<String>,
     working_dir: Option<String>,
     create_dirs: Vec<String>,
     build_profile: BuildProfile,
-    bypass_runner: bool,
 }
 
 impl BuildStatement<'_> {
@@ -234,16 +221,13 @@ impl BuildStatement<'_> {
             implicit_outputs: Default::default(),
             explicit_inputs: Default::default(),
             explicit_outputs: Default::default(),
-            order_only_inputs: Default::default(),
             variables: Default::default(),
             rule_variables: Default::default(),
             output_subsets: Default::default(),
             output_stamp: false,
-            env_vars: Default::default(),
             working_dir: None,
             create_dirs: Default::default(),
             build_profile,
-            bypass_runner: action.bypass_runner(),
         };
         action.files(&mut stmt);
 
@@ -256,9 +240,6 @@ impl BuildStatement<'_> {
         }
         if action.generator() {
             stmt.rule_variables.push(("generator".into(), "1".into()));
-        }
-        if let Some(pool) = action.concurrency_pool() {
-            stmt.rule_variables.push(("pool".into(), pool.into()));
         }
         if have_n2 {
             if action.hide_success()
@@ -284,13 +265,8 @@ impl BuildStatement<'_> {
         let action_name = self.rule_name;
         self.implicit_inputs.sort();
         self.implicit_outputs.sort();
-        let inputs_str = to_ninja_target_string(
-            &self.explicit_inputs,
-            &self.implicit_inputs,
-            &self.order_only_inputs,
-        );
-        let outputs_str =
-            to_ninja_target_string(&self.explicit_outputs, &self.implicit_outputs, &[]);
+        let inputs_str = to_ninja_target_string(&self.explicit_inputs, &self.implicit_inputs);
+        let outputs_str = to_ninja_target_string(&self.explicit_outputs, &self.implicit_outputs);
 
         writeln!(buf, "build {outputs_str}: {action_name} {inputs_str}").unwrap();
         for (key, value) in self.variables.iter().sorted() {
@@ -306,9 +282,6 @@ impl BuildStatement<'_> {
     }
 
     fn prepare_command(&mut self, command: String) -> Result<String> {
-        if self.bypass_runner {
-            return Ok(command);
-        }
         if command.starts_with("$runner") {
             self.implicit_inputs.push("$runner".into());
             return Ok(command);
@@ -316,9 +289,6 @@ impl BuildStatement<'_> {
         let mut buf = String::from("$runner run ");
         if self.output_stamp {
             write!(&mut buf, "--stamp=$stamp ")?;
-        }
-        for var in &self.env_vars {
-            write!(&mut buf, "--env=\"{var}\" ")?;
         }
         for dir in &self.create_dirs {
             write!(&mut buf, "--mkdir={dir} ")?;
@@ -400,7 +370,6 @@ pub trait FilesHandle {
     ///   convention, this is often `in`.
     fn add_inputs(&mut self, variable: &'static str, inputs: impl AsRef<BuildInput>);
     fn add_inputs_vec(&mut self, variable: &'static str, inputs: Vec<String>);
-    fn add_order_only_inputs(&mut self, variable: &'static str, inputs: impl AsRef<BuildInput>);
 
     /// Add a variable that can be referenced in the command.
     fn add_variable(&mut self, name: impl Into<String>, value: impl Into<String>);
@@ -435,15 +404,8 @@ pub trait FilesHandle {
         subgroup: bool,
     );
 
-    /// Save an output stamp if the command completes successfully. Note that
-    /// if you have bypassed the runner, you will need to create the file
-    /// yourself.
+    /// Save an output stamp if the command completes successfully.
     fn add_output_stamp(&mut self, path: impl Into<String>);
-    /// Set an env var for the duration of the provided command(s).
-    /// Note this is defined once for the rule, so if the value should change
-    /// for each command, `constant_value` should reference a `$variable` you
-    /// have defined.
-    fn add_env_var(&mut self, key: &str, constant_value: &str);
     /// Set the current working dir for the provided command(s).
     /// Note this is defined once for the rule, so if the value should change
     /// for each command, `constant_value` should reference a `$variable` you
@@ -474,14 +436,6 @@ impl FilesHandle for BuildStatement<'_> {
         }
     }
 
-    fn add_order_only_inputs(&mut self, variable: &'static str, inputs: impl AsRef<BuildInput>) {
-        let inputs = FilesHandle::expand_inputs(self, inputs);
-        if !variable.is_empty() {
-            self.add_variable(variable, space_separated(&inputs))
-        }
-        self.order_only_inputs.extend(inputs);
-    }
-
     fn add_variable(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.variables.push((key.into(), value.into()));
     }
@@ -503,15 +457,10 @@ impl FilesHandle for BuildStatement<'_> {
     ) {
         let outputs = outputs.into_iter().map(|v| {
             let v = v.as_ref();
-            let v = if !v.starts_with("$builddir/") && !v.starts_with("$builddir\\") {
-                format!("$builddir/{v}")
-            } else {
+            if v.starts_with("$builddir/") {
                 v.to_owned()
-            };
-            if cfg!(windows) {
-                v.replace('/', "\\")
             } else {
-                v
+                format!("$builddir/{v}")
             }
         });
         let variable = variable.into();
@@ -546,10 +495,6 @@ impl FilesHandle for BuildStatement<'_> {
         self.add_outputs("stamp", vec![path.into()]);
     }
 
-    fn add_env_var(&mut self, key: &str, constant_value: &str) {
-        self.env_vars.push(format!("{key}={constant_value}"));
-    }
-
     fn set_working_dir(&mut self, constant_value: &str) {
         self.working_dir = Some(constant_value.to_owned());
     }
@@ -561,19 +506,11 @@ impl FilesHandle for BuildStatement<'_> {
     }
 }
 
-fn to_ninja_target_string(
-    explicit: &[String],
-    implicit: &[String],
-    order_only: &[String],
-) -> String {
+fn to_ninja_target_string(explicit: &[String], implicit: &[String]) -> String {
     let mut joined = join_inputs(explicit);
     if !implicit.is_empty() {
         joined.push_str(" | ");
         joined.push_str(&join_inputs(implicit));
-    }
-    if !order_only.is_empty() {
-        joined.push_str(" || ");
-        joined.push_str(&join_inputs(order_only));
     }
     joined
 }

@@ -209,7 +209,7 @@ mod test {
     use crate::i18n::I18n;
 
     fn create_test_storage() -> SqliteStorage {
-        SqliteStorage::open_or_create(Path::new(":memory:"), &I18n::new(), false).unwrap()
+        SqliteStorage::open_or_create(Path::new(":memory:"), &I18n::new()).unwrap()
     }
 
     /// A revlog entry with a fixed card id, used where the card is irrelevant.

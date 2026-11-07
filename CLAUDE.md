@@ -91,9 +91,8 @@ Prefer adding to the root workspace, and using dep.workspace = true in the indiv
 
 ## Rust utilities
 
-rslib/{process,io} contain some helpers for file and process operations,
-which provide better error messages/context and some ergonomics. Use them
-when possible.
+rslib/io contains some helpers for file operations, which provide better
+error messages/context and some ergonomics. Use them when possible.
 
 ## Rust error handling
 

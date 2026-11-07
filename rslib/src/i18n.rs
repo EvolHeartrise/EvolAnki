@@ -150,10 +150,6 @@ impl I18n {
         "Select Deck".into()
     }
 
-    pub fn browsing_row_deleted(&self) -> Cow<'static, str> {
-        "(deleted)".into()
-    }
-
     pub fn card_template_rendering_more_info(&self) -> Cow<'static, str> {
         "More information".into()
     }
@@ -164,14 +160,6 @@ impl I18n {
 
     pub fn card_template_rendering_back_side_problem(&self) -> Cow<'static, str> {
         "Back template has a problem:".into()
-    }
-
-    pub fn card_template_rendering_browser_front_side_problem(&self) -> Cow<'static, str> {
-        "Browser-specific front template has a problem:".into()
-    }
-
-    pub fn card_template_rendering_browser_back_side_problem(&self) -> Cow<'static, str> {
-        "Browser-specific back template has a problem:".into()
     }
 
     pub fn card_template_rendering_conditional_not_closed(
@@ -376,26 +364,6 @@ impl I18n {
         "One or more note types were missing. The notes that used them have been given new note types starting with \"db-check\", but field names and card design have been lost, so you may be better off restoring from an automatic backup.".into()
     }
 
-    pub fn database_check_checking_integrity(&self) -> Cow<'static, str> {
-        "Checking collection...".into()
-    }
-
-    pub fn database_check_rebuilding(&self) -> Cow<'static, str> {
-        "Rebuilding...".into()
-    }
-
-    pub fn database_check_checking_cards(&self) -> Cow<'static, str> {
-        "Checking cards...".into()
-    }
-
-    pub fn database_check_checking_notes(&self) -> Cow<'static, str> {
-        "Checking notes...".into()
-    }
-
-    pub fn database_check_checking_history(&self) -> Cow<'static, str> {
-        "Checking history...".into()
-    }
-
     pub fn deck_config_default_name(&self) -> Cow<'static, str> {
         "Default".into()
     }
@@ -471,10 +439,6 @@ impl I18n {
         "This action can only be used on a filtered deck.".into()
     }
 
-    pub fn errors_multiple_notetypes_selected(&self) -> Cow<'static, str> {
-        "Please select notes from only one note type.".into()
-    }
-
     pub fn errors_please_check_database(&self) -> Cow<'static, str> {
         "Please use the Check Database action, then try again.".into()
     }
@@ -491,19 +455,6 @@ impl I18n {
         "Your database appears to be in an inconsistent state. Please use the Check Database action.".into()
     }
 
-    pub fn exporting_exporting_file(&self) -> Cow<'static, str> {
-        "Exporting file...".into()
-    }
-
-    pub fn exporting_processed_media_files(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        if count.is_one() {
-            format!("Processed {count} media file...").into()
-        } else {
-            format!("Processed {count} media files...").into()
-        }
-    }
-
     pub fn importing_cannot_merge_notetypes_of_different_kinds(&self) -> Cow<'static, str> {
         "Cloze note types cannot be merged with regular note types.\nYou may still import the file with 'Merge note types' disabled.".into()
     }
@@ -516,27 +467,6 @@ impl I18n {
         "The provided file is not a valid .apkg file.".into()
     }
 
-    pub fn importing_processed_media_file(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        if count.is_one() {
-            format!("Imported {count} media file").into()
-        } else {
-            format!("Imported {count} media files").into()
-        }
-    }
-
-    pub fn importing_importing_file(&self) -> Cow<'static, str> {
-        "Importing file...".into()
-    }
-
-    pub fn importing_extracting(&self) -> Cow<'static, str> {
-        "Extracting data...".into()
-    }
-
-    pub fn importing_gathering(&self) -> Cow<'static, str> {
-        "Gathering data...".into()
-    }
-
     pub fn importing_failed_to_import_media_file(
         &self,
         debuginfo: impl Display,
@@ -544,27 +474,8 @@ impl I18n {
         format!("Failed to import media file: {debuginfo}").into()
     }
 
-    pub fn importing_processed_notes(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        if count.is_one() {
-            format!("Processed {count} note...").into()
-        } else {
-            format!("Processed {count} notes...").into()
-        }
-    }
-
     pub fn importing_file_empty(&self) -> Cow<'static, str> {
         "The file you selected is empty.".into()
-    }
-
-    pub fn media_check_trash_count(&self, count: impl Number, megs: f32) -> Cow<'static, str> {
-        let count = Num::new(count);
-        let megs = Num(megs.into());
-        if count.is_one() {
-            format!("Trash folder: {count} file, {megs}MB").into()
-        } else {
-            format!("Trash folder: {count} files, {megs}MB").into()
-        }
     }
 
     pub fn media_check_missing_count(&self, count: impl Number) -> Cow<'static, str> {
@@ -653,11 +564,6 @@ impl I18n {
         side: impl Display,
     ) -> Cow<'static, str> {
         format!("{notetype}: {card_type} ({side})").into()
-    }
-
-    pub fn media_check_checked(&self, count: impl Number) -> Cow<'static, str> {
-        let count = Num::new(count);
-        format!("Checked {count}...").into()
     }
 
     pub fn notetypes_front_field(&self) -> Cow<'static, str> {
@@ -898,10 +804,6 @@ mod test {
         assert_eq!(
             tr.database_check_missing_decks(1.01),
             "Fixed 1.01 missing decks."
-        );
-        assert_eq!(
-            tr.media_check_trash_count(1234, 0.5),
-            "Trash folder: 1234 files, 0.5MB"
         );
     }
 }

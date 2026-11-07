@@ -90,12 +90,10 @@ mod test {
         // use Again on the preview
         col.answer_card(&mut CardAnswer {
             card_id: c.id,
-            current_state: next.current,
-            new_state: next.again,
             rating: Rating::Again,
             answered_at: TimestampMillis::now(),
             milliseconds_taken: 0,
-            custom_data: None,
+            shown_as: None,
             from_queue: true,
         })?;
 
@@ -103,15 +101,12 @@ mod test {
         assert_eq!(c.queue, CardQueue::PreviewRepeat);
 
         // hard
-        let next = col.get_scheduling_states(c.id)?;
         col.answer_card(&mut CardAnswer {
             card_id: c.id,
-            current_state: next.current,
-            new_state: next.hard,
             rating: Rating::Hard,
             answered_at: TimestampMillis::now(),
             milliseconds_taken: 0,
-            custom_data: None,
+            shown_as: None,
             from_queue: true,
         })?;
         c = col.storage.get_card(c.id)?.unwrap();
@@ -119,15 +114,12 @@ mod test {
 
         // and then it should return to its old state once good or easy selected,
         // with the default filtered config
-        let next = col.get_scheduling_states(c.id)?;
         col.answer_card(&mut CardAnswer {
             card_id: c.id,
-            current_state: next.current,
-            new_state: next.good,
             rating: Rating::Good,
             answered_at: TimestampMillis::now(),
             milliseconds_taken: 0,
-            custom_data: None,
+            shown_as: None,
             from_queue: true,
         })?;
         c = col.storage.get_card(c.id)?.unwrap();

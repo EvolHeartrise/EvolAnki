@@ -14,7 +14,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import {
         answerCard,
         compareAnswer,
-        describeNextStates,
         encodeIriPaths,
         extractAvTags,
         extractClozeForTyping,
@@ -135,7 +134,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     async function renderCard(card: QueuedCards_QueuedCard): Promise<Rendered> {
         const { id, templateIdx, noteId } = card.card!;
         const out = await renderExistingCard(
-            { cardId: id, browser: false, partialRender: true },
+            { cardId: id, partialRender: true },
             { alertOnError: false },
         );
         const qtext = finishRendering(out.questionNodes, null);
@@ -286,9 +285,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
                 return;
             }
             navigations = 0;
-            labels = (
-                await describeNextStates(current.states!, { alertOnError: false })
-            ).vals;
+            labels = current.labels;
             try {
                 rendered = await renderCard(current);
             } catch (err) {
@@ -347,18 +344,16 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         if (side !== "answer" || !current) {
             return;
         }
-        const states = current.states!;
-        // Sent back as received: the backend refuses a current state that differs
-        // from its own, and these carry the FSRS memory state and any custom data.
-        const newState = [states.again, states.hard, states.good, states.easy][rating]!;
-        const cardId = current.card!.id;
+        const card = current.card!;
         side = "transition";
         try {
+            // The backend works out what the rating does, and refuses it if the
+            // card has changed since it was shown.
             await answerCard(
                 {
-                    cardId,
-                    currentState: states.current,
-                    newState,
+                    cardId: card.id,
+                    cardMtimeSecs: card.mtimeSecs,
+                    cardReps: card.reps,
                     rating,
                     answeredAtMillis: BigInt(Date.now()),
                     millisecondsTaken: timer.elapsedMillis(),

@@ -5,12 +5,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import * as tr from "@tslib/tr";
     import { HelpPage } from "@tslib/help-page";
-    import type Carousel from "bootstrap/js/dist/carousel";
-    import type Modal from "bootstrap/js/dist/modal";
     import HelpModal from "$lib/components/HelpModal.svelte";
     import SettingTitle from "$lib/components/SettingTitle.svelte";
     import TitledContainer from "$lib/components/TitledContainer.svelte";
-    import type { HelpItem } from "$lib/components/types";
 
     import type { DeckOptionsState } from "./lib";
     import SpinBoxFloatRow from "./SpinBoxFloatRow.svelte";
@@ -40,7 +37,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             help: tr.deckConfigIgnoreBeforeTooltip2(),
         },
     };
-    const helpSections: HelpItem[] = Object.values(settings);
 
     $: maxIntervalWarningClass =
         $config.maximumReviewInterval < 50 ? "alert-danger" : "alert-warning";
@@ -109,13 +105,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
           })
         : "";
 
-    let modal: Modal;
-    let carousel: Carousel;
-
-    function openHelpModal(index: number): void {
-        modal.show();
-        carousel.to(index);
-    }
+    let helpModal: HelpModal;
 </script>
 
 <TitledContainer title={tr.deckConfigAdvancedTitle()}>
@@ -123,11 +113,8 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         title={tr.deckConfigAdvancedTitle()}
         url={HelpPage.DeckOptions.advanced}
         slot="tooltip"
-        {helpSections}
-        on:mount={(e) => {
-            modal = e.detail.modal;
-            carousel = e.detail.carousel;
-        }}
+        sections={settings}
+        bind:this={helpModal}
     />
     <SpinBoxRow
         bind:value={$config.maximumReviewInterval}
@@ -135,10 +122,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         min={1}
         max={365 * 100}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("maximumInterval"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("maximumInterval")}>
             {settings.maximumInterval.title}
         </SettingTitle>
     </SpinBoxRow>
@@ -151,10 +135,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         max={1.0}
         percentage={true}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("historicalRetention"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("historicalRetention")}>
             {tr.deckConfigHistoricalRetention()}
         </SettingTitle>
     </SpinBoxFloatRow>
@@ -162,10 +143,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         bind:date={$config.ignoreRevlogsBeforeDate}
         max={new Date().toLocaleDateString("en-CA")}
     >
-        <SettingTitle
-            on:click={() =>
-                openHelpModal(Object.keys(settings).indexOf("ignoreRevlogsBeforeMs"))}
-        >
+        <SettingTitle on:click={() => helpModal.open("ignoreRevlogsBeforeMs")}>
             {tr.deckConfigIgnoreBefore()}
         </SettingTitle>
     </DateInput>

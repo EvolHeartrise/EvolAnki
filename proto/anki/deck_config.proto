@@ -202,12 +202,10 @@ message DeckConfigsForUpdate {
   CurrentDeck current_deck = 2;
   DeckConfig defaults = 3;
   // only applies to v3 scheduler
-  string card_state_customizer = 6;
-  // only applies to v3 scheduler
   bool new_cards_ignore_review_limit = 7;
-  reserved 8;
+  // 6 was the card state customizer, 12 legacy evaluation: desktop-only.
+  reserved 6, 8, 12;
   bool fsrs_health_check = 11;
-  bool fsrs_legacy_evaluate = 12;
   bool apply_all_parent_limits = 9;
   uint32 days_since_last_fsrs_optimize = 10;
 }
@@ -222,7 +220,8 @@ message UpdateDeckConfigsRequest {
   // The settings of the target deck. Its id is ignored.
   DeckConfig config = 2;
   UpdateDeckConfigsMode mode = 4;
-  string card_state_customizer = 5;
+  // 5 was the card state customizer.
+  reserved 5;
   DeckConfigsForUpdate.CurrentDeck.Limits limits = 6;
   bool new_cards_ignore_review_limit = 7;
   reserved 8;

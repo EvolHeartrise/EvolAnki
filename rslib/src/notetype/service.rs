@@ -140,24 +140,6 @@ mod tests {
         assert_eq!(back, original);
     }
 
-    // --- From<ChangeNotetypeRequest> for ChangeNotetypeInput ---
-
-    // --- From<ChangeNotetypeInput> for ChangeNotetypeRequest ---
-
-    // --- Service: get_notetype_legacy / get_stock_notetype_legacy ---
-
-    // --- Service: add_notetype_legacy ---
-
-    // --- Service: update_notetype_legacy ---
-
-    // --- Service: add_or_update_notetype (branch: id=0 → add) ---
-
-    // --- Service: add_or_update_notetype (branch: id!=0, !preserve_usn_and_mtime →
-    // update) ---
-
-    // --- Service: add_or_update_notetype (branch: id!=0, preserve_usn_and_mtime →
-    // add_or_update_with_existing_id) ---
-
     // --- Service: get_notetype_names ---
 
     #[test]
@@ -257,8 +239,6 @@ mod tests {
         assert!(result.is_err(), "expected Err for unknown notetype name");
     }
 
-    // --- Service: get_field_names ---
-
     // --- Service: update_notetype ---
 
     #[test]
@@ -319,8 +299,6 @@ mod tests {
         );
     }
 
-    // --- Service: remove_notetype ---
-
     // --- Service: get_notetype_names_and_counts ---
 
     #[test]
@@ -353,8 +331,4 @@ mod tests {
             "expected use_count 1 after adding one Basic note"
         );
     }
-
-    // --- Service: get_aux_notetype_config_key ---
-
-    // --- Service: get_aux_template_config_key ---
 }

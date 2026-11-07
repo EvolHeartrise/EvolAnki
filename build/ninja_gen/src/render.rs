@@ -8,7 +8,6 @@ use anki_io::write_file_if_changed;
 use anyhow::Result;
 use itertools::Itertools;
 
-use crate::archives::with_exe;
 use crate::build::BuildProfile;
 use crate::input::space_separated;
 use crate::Build;
@@ -33,18 +32,12 @@ impl Build {
         writeln!(&mut buf, "builddir = {}", self.buildroot.as_str()).unwrap();
         writeln!(
             &mut buf,
-            "runner = $builddir/rust/{}/{}",
-            profile_output_dir(self.build_profile),
-            with_exe("runner")
+            "runner = $builddir/rust/{}/runner",
+            profile_output_dir(self.build_profile)
         )
         .unwrap();
         for (key, value) in &self.variables {
             writeln!(&mut buf, "{key} = {value}").unwrap();
-        }
-        buf.push('\n');
-
-        for (key, value) in &self.pools {
-            writeln!(&mut buf, "pool {key}\n  depth = {value}").unwrap();
         }
         buf.push('\n');
 

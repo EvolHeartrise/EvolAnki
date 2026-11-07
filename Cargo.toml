@@ -12,7 +12,6 @@ members = [
   "build/runner",
   "rslib",
   "rslib/io",
-  "rslib/process",
   "rslib/proto",
   "rslib/sched-golden",
   "rslib/web-server",
@@ -32,7 +31,6 @@ version = "6.6.2"
 # local
 anki = { path = "rslib" }
 anki_io = { path = "rslib/io" }
-anki_process = { path = "rslib/process" }
 anki_proto = { path = "rslib/proto" }
 anki_proto_gen = { path = "rslib/proto_gen" }
 ninja_gen = { "path" = "build/ninja_gen" }
@@ -55,8 +53,6 @@ convert_case = "0.8.0"
 csv = "1.3.1"
 data-encoding = "2.9.0"
 difflib = "0.4.0"
-embed-resource = "3.0.4"
-flate2 = "1.1.2"
 fnv = "1.0.7"
 globset = "0.4.16"
 hex = "0.4.3"
@@ -64,7 +60,6 @@ htmlescape = "0.3.1"
 id_tree = "1.8.0"
 inflections = "1.1.1"
 itertools = "0.14.0"
-junction = "1.2.0"
 maplit = "1.0.2"
 nom = "8.0.0"
 num_cpus = "1.17.0"
@@ -80,7 +75,7 @@ pulldown-cmark = "0.13.6"
 rand = "0.10.1"
 rayon = "1.10.0"
 regex = "1.11.1"
-reqwest = { version = "0.12.20", default-features = false, features = ["json"] }
+reqwest = { version = "0.12.20", default-features = false }
 rusqlite = { version = "0.36.0", features = ["trace", "functions", "collation", "bundled", "backup"] }
 same-file = "1.0.6"
 serde = { version = "1.0.219", features = ["derive"] }

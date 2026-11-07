@@ -47,7 +47,8 @@ message EmptyCardsReport {
 
 message RenderExistingCardRequest {
   int64 card_id = 1;
-  bool browser = 2;
+  // 2 picked the desktop card browser's templates.
+  reserved 2;
   // If true, rendering will stop when an unknown filter is encountered,
   // and caller will need to complete rendering. This is done to allow
   // Python code to modify the rendering.
@@ -57,8 +58,8 @@ message RenderExistingCardRequest {
 message RenderCardResponse {
   repeated RenderedTemplateNode question_nodes = 1;
   repeated RenderedTemplateNode answer_nodes = 2;
+  reserved 4;
   string css = 3;
-  bool latex_svg = 4;
   bool is_empty = 5;
 }
 

@@ -5,7 +5,6 @@ use std::process::Command;
 
 use anki_io::create_dir_all;
 use anki_io::write_file;
-use anki_process::CommandExt;
 use anyhow::Result;
 use clap::Args;
 
@@ -13,8 +12,6 @@ use clap::Args;
 pub struct RunArgs {
     #[arg(long)]
     stamp: Option<String>,
-    #[arg(long, value_parser = split_env)]
-    env: Vec<(String, String)>,
     #[arg(long)]
     cwd: Option<String>,
     #[arg(long)]
@@ -23,15 +20,14 @@ pub struct RunArgs {
     args: Vec<String>,
 }
 
-/// Run one or more commands separated by `&&`, optionally stamping or setting
-/// extra env vars.
+/// Run one or more commands separated by `&&`, optionally stamping.
 pub fn run_commands(args: RunArgs) -> Result<()> {
     let commands = split_args(args.args);
     for dir in args.mkdir {
         create_dir_all(&dir)?;
     }
     for command in commands {
-        run_command(&mut build_command(command, &args.env, &args.cwd));
+        run_command(&mut build_command(command, &args.cwd));
     }
     if let Some(stamp_file) = args.stamp {
         write_file(stamp_file, b"")?;
@@ -39,24 +35,9 @@ pub fn run_commands(args: RunArgs) -> Result<()> {
     Ok(())
 }
 
-fn split_env(s: &str) -> Result<(String, String), std::io::Error> {
-    if let Some((k, v)) = s.split_once('=') {
-        Ok((k.into(), v.into()))
-    } else {
-        Err(std::io::Error::other("invalid env var"))
-    }
-}
-
-fn build_command(
-    command_and_args: Vec<String>,
-    env: &[(String, String)],
-    cwd: &Option<String>,
-) -> Command {
+fn build_command(command_and_args: Vec<String>, cwd: &Option<String>) -> Command {
     let mut command = Command::new(&command_and_args[0]);
     command.args(&command_and_args[1..]);
-    for (k, v) in env {
-        command.env(k, v);
-    }
     if let Some(cwd) = cwd {
         command.current_dir(cwd);
     }
@@ -86,8 +67,17 @@ pub fn run_command(command: &mut Command) {
     // needs YARN_BINARY, so keep it out of the commands we run.
     command.env_remove("YARN_BINARY");
 
-    if let Err(err) = command.ensure_success() {
-        println!("{err}");
-        std::process::exit(1);
+    let cmdline = format!("{command:?}");
+    match command.status() {
+        Ok(status) if status.success() => {}
+        Ok(status) => {
+            let code = status.code().map_or("?".into(), |c| c.to_string());
+            println!("Failed to run ({code}): {cmdline}");
+            std::process::exit(1);
+        }
+        Err(err) => {
+            println!("Failed to execute: {cmdline}: {err}");
+            std::process::exit(1);
+        }
     }
 }

@@ -7,8 +7,6 @@ use std::io::Write;
 use std::process::Command;
 use std::time::Instant;
 
-use anki_process::CommandExt;
-use anyhow::Context;
 use camino::Utf8Path;
 use camino::Utf8PathBuf;
 use clap::Args;
@@ -27,24 +25,13 @@ pub struct BuildArgs {
 pub fn run_build(args: BuildArgs) {
     let build_root = &setup_build_root();
 
-    let path = if cfg!(windows) {
-        format!(
-            "out\\bin;out\\extracted\\node;node_modules\\.bin;{};\\msys64\\usr\\bin",
-            env::var("PATH").unwrap()
-        )
-    } else {
-        format!(
-            "{br}/bin:{br}/extracted/node/bin:{path}",
-            br = build_root
-                .canonicalize_utf8()
-                .expect("resolving build root")
-                .as_str(),
-            path = env::var("PATH").unwrap()
-        )
-    };
+    let path = format!(
+        "{br}/bin:{br}/extracted/node/bin:{path}",
+        br = build_root.as_str(),
+        path = env::var("PATH").unwrap()
+    );
 
     maybe_update_env_file(build_root);
-    maybe_update_buildhash(build_root);
 
     // Ensure build file is up to date
     let build_file = build_root.join("build.ninja");
@@ -116,7 +103,6 @@ fn get_ninja_command() -> &'static str {
 fn setup_build_root() -> Utf8PathBuf {
     let build_root = Utf8Path::new("out");
 
-    #[cfg(unix)]
     if let Ok(new_target) = env::var("BUILD_ROOT").map(camino::Utf8PathBuf::from) {
         let create = if let Ok(existing_target) = build_root.read_link_utf8() {
             if existing_target != new_target {
@@ -135,11 +121,7 @@ fn setup_build_root() -> Utf8PathBuf {
     }
 
     fs::create_dir_all(build_root).unwrap();
-    if cfg!(windows) {
-        build_root.to_owned()
-    } else {
-        build_root.canonicalize_utf8().unwrap()
-    }
+    build_root.canonicalize_utf8().unwrap()
 }
 
 fn bootstrap_build() {
@@ -155,25 +137,6 @@ fn bootstrap_profile() -> &'static str {
     } else {
         "dev"
     }
-}
-
-fn maybe_update_buildhash(build_root: &Utf8Path) {
-    // only updated on release builds
-    let path = build_root.join("buildhash");
-    if (env::var("RELEASE").is_ok() && env::var("OFFLINE_BUILD").is_err()) || !path.exists() {
-        write_if_changed(&path, &get_buildhash())
-    }
-}
-
-fn get_buildhash() -> String {
-    let output = Command::new("git")
-        .args(["rev-parse", "--short=8", "HEAD"])
-        .utf8_output()
-        .context(
-            "Make sure you're building from a clone of the git repo, and that 'git' is installed.",
-        )
-        .unwrap();
-    output.stdout.trim().into()
 }
 
 fn write_if_changed(path: &Utf8Path, contents: &str) {

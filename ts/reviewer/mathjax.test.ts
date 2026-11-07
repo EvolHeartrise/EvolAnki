@@ -47,7 +47,7 @@ describe("mathjax lazy loading", () => {
         const { _updateQA } = await import("./index");
 
         const cb = vi.fn();
-        _updateQA(HTML_WITHOUT_MATHJAX, null, () => null, cb);
+        _updateQA(HTML_WITHOUT_MATHJAX, () => null, cb);
         await vi.waitFor(() => expect(cb).toHaveBeenCalledOnce());
         expect(scripts).toHaveLength(0);
     });
@@ -71,18 +71,18 @@ describe("mathjax lazy loading", () => {
         const { _updateQA } = await import("./index");
 
         const cb = vi.fn();
-        _updateQA(HTML_WITH_MATHJAX, null, () => null, cb);
+        _updateQA(HTML_WITH_MATHJAX, () => null, cb);
         await vi.waitFor(() => expect(scripts).toHaveLength(1));
         scripts[0].onload?.(new Event("load"));
         await vi.waitFor(() => expect(scripts).toHaveLength(2));
         scripts[1].onload?.(new Event("load"));
         await vi.waitFor(() => expect(cb).toHaveBeenCalledOnce());
 
-        _updateQA(HTML_WITHOUT_MATHJAX, null, () => null, cb);
+        _updateQA(HTML_WITHOUT_MATHJAX, () => null, cb);
         await vi.waitFor(() => expect(cb).toHaveBeenCalledTimes(2));
         expect(scripts).toHaveLength(2);
 
-        _updateQA(HTML_WITH_MATHJAX_SQUARE, null, () => null, cb);
+        _updateQA(HTML_WITH_MATHJAX_SQUARE, () => null, cb);
         await vi.waitFor(() => expect(cb).toHaveBeenCalledTimes(3));
         expect(scripts).toHaveLength(2);
     });
@@ -96,7 +96,7 @@ describe("mathjax lazy loading", () => {
         };
         const { _updateQA } = await import("./index");
         const cb = vi.fn();
-        _updateQA(HTML_WITH_MATHJAX, null, () => null, cb);
+        _updateQA(HTML_WITH_MATHJAX, () => null, cb);
         await vi.waitFor(() => expect(cb).toHaveBeenCalledOnce());
         expect(scripts).toHaveLength(0);
     });
@@ -112,7 +112,7 @@ describe("mathjax lazy loading", () => {
         await vi.waitFor(() => expect(scripts).toHaveLength(2));
 
         const cb = vi.fn();
-        _updateQA(HTML_WITH_MATHJAX_SQUARE, null, () => null, cb);
+        _updateQA(HTML_WITH_MATHJAX_SQUARE, () => null, cb);
         await vi.waitFor(() => expect(scripts).toHaveLength(2));
         expect(cb).toHaveBeenCalledTimes(0);
         scripts[1].onload?.(new Event("load"));

@@ -15,17 +15,11 @@
 body {
     color: var(--fg);
     background: var(--canvas);
-    &.fancy {
-        transition: opacity var(--transition-medium) ease-out;
-    }
     margin: 2em;
     overscroll-behavior: none;
-    &:not(.isMac),
-    &:not(.isMac) * {
+    &,
+    & * {
         @include scrollbar.custom;
-    }
-    &.no-blur * {
-        backdrop-filter: none !important;
     }
 }
 

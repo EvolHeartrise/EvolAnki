@@ -63,15 +63,15 @@ pub fn seed_demo_content(backend: &Backend) -> Result<()> {
                 intraday_learning_only: false,
             },
         )?;
-        let card = queued.cards.into_iter().next().context("no queued card")?;
-        let states = card.states.context("no states")?;
+        let queued = queued.cards.into_iter().next().context("no queued card")?;
+        let card = queued.card.context("no card")?;
         let answer = CardAnswer {
-            card_id: card.card.context("no card")?.id,
-            current_state: states.current,
-            new_state: states.good,
+            card_id: card.id,
             rating: Rating::Good as i32,
             answered_at_millis: anki::timestamp::TimestampMillis::now().0,
             milliseconds_taken: 1000,
+            card_mtime_secs: card.mtime_secs,
+            card_reps: card.reps,
         };
         let _: anki_proto::collection::OpChanges = call_typed(backend, "answerCard", &answer)?;
     }
@@ -187,7 +187,6 @@ pub fn seed_from_file(backend: &Backend, path: &Path) -> Result<()> {
                 &SetDueDateRequest {
                     card_ids: cards.cids,
                     days: "0".into(),
-                    config_key: None,
                 },
             )?;
         }

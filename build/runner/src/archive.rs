@@ -2,7 +2,6 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 use std::fs;
-use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -67,57 +66,10 @@ fn sha2_data(data: &[u8]) -> String {
     hex::encode(digest.finalize())
 }
 
-enum CompressionKind {
-    Zstd,
-    Gzip,
-    Lzma,
-    /// handled by archive
-    Internal,
-}
-
-enum ArchiveKind {
-    Tar,
-    Zip,
-}
-
+/// Extract a .tar.xz or .zip archive, the only kinds the build downloads.
 fn extract_archive(archive_path: &str, output_folder: &str) -> Result<()> {
     let archive_path = Utf8Path::new(archive_path);
-    let archive_filename = archive_path.file_name().unwrap();
-    let mut components = archive_filename.rsplit('.');
-    let last_component = components.next().unwrap();
-    let (compression, archive_suffix) = match last_component {
-        "zst" | "zstd" => (CompressionKind::Zstd, components.next().unwrap()),
-        "gz" => (CompressionKind::Gzip, components.next().unwrap()),
-        "xz" => (CompressionKind::Lzma, components.next().unwrap()),
-        "tgz" => (CompressionKind::Gzip, last_component),
-        "zip" => (CompressionKind::Internal, last_component),
-        other => panic!("unexpected compression: {other}"),
-    };
-    let archive = match archive_suffix {
-        "tar" | "tgz" => ArchiveKind::Tar,
-        "zip" => ArchiveKind::Zip,
-        other => panic!("unexpected archive kind: {other}"),
-    };
-
     let reader = fs::File::open(archive_path)?;
-    let uncompressed_data = match compression {
-        CompressionKind::Zstd => zstd::decode_all(&reader)?,
-        CompressionKind::Gzip => {
-            let mut buf = Vec::new();
-            let mut decoder = flate2::read::GzDecoder::new(&reader);
-            decoder.read_to_end(&mut buf)?;
-            buf
-        }
-        CompressionKind::Lzma => {
-            let mut buf = Vec::new();
-            let mut decoder = xz2::read::XzDecoder::new(&reader);
-            decoder.read_to_end(&mut buf)?;
-            buf
-        }
-        CompressionKind::Internal => {
-            vec![]
-        }
-    };
 
     let output_folder = Utf8Path::new(output_folder);
     if output_folder.exists() {
@@ -126,16 +78,17 @@ fn extract_archive(archive_path: &str, output_folder: &str) -> Result<()> {
     // extract into a temporary folder
     let output_tmp =
         output_folder.with_file_name(format!("{}.tmp", output_folder.file_name().unwrap()));
-    match archive {
-        ArchiveKind::Tar => {
-            let mut archive = tar::Archive::new(&uncompressed_data[..]);
+    match archive_path.extension() {
+        Some("xz") => {
+            let mut archive = tar::Archive::new(xz2::read::XzDecoder::new(reader));
             archive.set_preserve_mtime(false);
             archive.unpack(&output_tmp)?;
         }
-        ArchiveKind::Zip => {
+        Some("zip") => {
             let mut archive = zip::ZipArchive::new(reader)?;
             archive.extract(&output_tmp)?;
         }
+        _ => panic!("unexpected archive type: {archive_path}"),
     }
     // if the output folder contains a single folder (eg foo-1.2), move it up a
     // level

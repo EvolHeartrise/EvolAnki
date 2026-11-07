@@ -719,10 +719,6 @@ mod test {
         assert_after_add(&mut col)?;
         col.undo()?;
         assert_initial(&mut col)?;
-        col.redo()?;
-        assert_after_add(&mut col)?;
-        col.undo()?;
-        assert_initial(&mut col)?;
 
         let assert_after_remove = |col: &mut Collection| -> Result<()> {
             assert_eq!(col.search_notes_unordered("")?.len(), 0);
@@ -731,15 +727,16 @@ mod test {
             Ok(())
         };
 
-        col.redo()?;
+        let mut note = nt.new_note();
+        note.set_field(0, "a")?;
+        note.set_field(1, "b")?;
+        col.add_note(&mut note, DeckId(1)).unwrap();
         assert_after_add(&mut col)?;
         let nids = col.search_notes_unordered("")?;
         col.remove_notes(&nids)?;
         assert_after_remove(&mut col)?;
         col.undo()?;
         assert_after_add(&mut col)?;
-        col.redo()?;
-        assert_after_remove(&mut col)?;
 
         Ok(())
     }

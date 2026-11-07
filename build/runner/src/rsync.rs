@@ -6,7 +6,6 @@ use std::process::Command;
 use camino::Utf8Path;
 use clap::Args;
 
-use crate::paths::absolute_msys_path;
 use crate::run::run_command;
 
 #[derive(Args)]
@@ -22,19 +21,13 @@ pub struct RsyncArgs {
 }
 
 pub fn rsync_files(args: RsyncArgs) {
-    let output_dir = absolute_msys_path(Utf8Path::new(&args.output_dir));
+    let output_dir = Utf8Path::new(&args.output_dir).canonicalize_utf8().unwrap();
     run_command(
         Command::new("rsync")
             .current_dir(&args.prefix)
             .arg("--relative")
             .args(args.extra_args)
-            .args(args.inputs.iter().map(|i| {
-                if cfg!(windows) {
-                    i.replace('\\', "/")
-                } else {
-                    i.clone()
-                }
-            }))
+            .args(&args.inputs)
             .arg(output_dir),
     );
 }

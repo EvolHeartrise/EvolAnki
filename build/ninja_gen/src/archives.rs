@@ -1,7 +1,6 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 
 use anyhow::Result;
@@ -23,10 +22,6 @@ pub struct OnlineArchive {
 pub enum Platform {
     LinuxX64,
     LinuxArm,
-    MacX64,
-    MacArm,
-    WindowsX64,
-    WindowsArm,
 }
 
 impl Platform {
@@ -36,21 +31,8 @@ impl Platform {
         match (os, arch) {
             ("linux", "x86_64") => Self::LinuxX64,
             ("linux", "aarch64") => Self::LinuxArm,
-            ("macos", "x86_64") => Self::MacX64,
-            ("macos", "aarch64") => Self::MacArm,
-            ("windows", "x86_64") => Self::WindowsX64,
-            ("windows", "aarch64") => Self::WindowsArm,
-            _ => panic!("unsupported os/arch {os} {arch} - PR welcome!"),
+            _ => panic!("unsupported os/arch {os} {arch}: only Linux is supported"),
         }
-    }
-}
-
-/// Append .exe to path if on Windows.
-pub fn with_exe(path: &str) -> Cow<'_, str> {
-    if cfg!(windows) {
-        format!("{path}.exe").into()
-    } else {
-        path.into()
     }
 }
 

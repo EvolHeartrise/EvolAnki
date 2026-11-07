@@ -17,18 +17,14 @@ pub struct RenderCardOutput {
     pub qnodes: Vec<RenderedNode>,
     pub anodes: Vec<RenderedNode>,
     pub css: String,
-    pub latex_svg: bool,
     pub is_empty: bool,
 }
-
-impl RenderCardOutput {}
 
 impl Collection {
     /// Render an existing card saved in the database.
     pub fn render_existing_card(
         &mut self,
         cid: CardId,
-        browser: bool,
         partial_render: bool,
     ) -> Result<RenderCardOutput> {
         let card = self.storage.get_card(cid)?.or_invalid("no such card")?;
@@ -45,7 +41,7 @@ impl Collection {
         }
         .or_invalid("missing template")?;
 
-        self.render_card(&note, &card, &nt, template, browser, partial_render)
+        self.render_card(&note, &card, &nt, template, partial_render)
     }
 
     pub fn render_card(
@@ -54,7 +50,6 @@ impl Collection {
         card: &Card,
         nt: &Notetype,
         template: &CardTemplate,
-        browser: bool,
         partial_render: bool,
     ) -> Result<RenderCardOutput> {
         let mut field_map = note.fields_map(&nt.fields);
@@ -64,25 +59,12 @@ impl Collection {
         let card_num = format!("c{}", card.template_idx + 1);
         field_map.entry(&card_num).or_insert_with(|| "1".into());
 
-        let (qfmt, afmt) = if browser {
-            (
-                template.question_format_for_browser(),
-                template.answer_format_for_browser(),
-            )
-        } else {
-            (
-                template.config.q_format.as_str(),
-                template.config.a_format.as_str(),
-            )
-        };
-
         let response = render_card(RenderCardRequest {
-            qfmt,
-            afmt,
+            qfmt: &template.config.q_format,
+            afmt: &template.config.a_format,
             field_map: &field_map,
             card_ord: card.template_idx,
             is_cloze: nt.is_cloze(),
-            browser,
             tr: &self.tr,
             partial_render,
         })?;
@@ -90,7 +72,6 @@ impl Collection {
             qnodes: response.qnodes,
             anodes: response.anodes,
             css: nt.config.css.clone(),
-            latex_svg: nt.config.latex_svg,
             is_empty: response.is_empty,
         })
     }
