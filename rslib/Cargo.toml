@@ -43,7 +43,6 @@ nom.workspace = true
 num_cpus.workspace = true
 num_enum.workspace = true
 once_cell.workspace = true
-percent-encoding-iri.workspace = true
 permutation.workspace = true
 phf.workspace = true
 prost.workspace = true

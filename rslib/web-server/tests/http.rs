@@ -804,13 +804,8 @@ fn answer_next(server: &Server) -> bool {
     use anki_proto::scheduler::GetQueuedCardsRequest;
     use anki_proto::scheduler::QueuedCards;
 
-    let queued: QueuedCards = server.rpc(
-        "getQueuedCards",
-        &GetQueuedCardsRequest {
-            fetch_limit: 1,
-            intraday_learning_only: false,
-        },
-    );
+    let queued: QueuedCards =
+        server.rpc("getQueuedCards", &GetQueuedCardsRequest { fetch_limit: 1 });
     let Some(queued) = queued.cards.into_iter().next() else {
         return false;
     };
@@ -1118,13 +1113,8 @@ fn reviewer_rpcs_work() {
     let _: OpChanges = server.rpc("setCurrentDeck", &DeckId { did: 1 });
 
     let next_card = || -> QueuedCard {
-        let queued: QueuedCards = server.rpc(
-            "getQueuedCards",
-            &GetQueuedCardsRequest {
-                fetch_limit: 1,
-                intraday_learning_only: false,
-            },
-        );
+        let queued: QueuedCards =
+            server.rpc("getQueuedCards", &GetQueuedCardsRequest { fetch_limit: 1 });
         queued.cards.into_iter().next().unwrap()
     };
     let queued = next_card();

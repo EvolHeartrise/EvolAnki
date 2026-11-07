@@ -31,8 +31,7 @@ impl SqliteStorage {
     }
 }
 
-// If changing this, make sure to update StockNotetype enum. Other parts of the
-// code expect the order here to be the same as the enum.
+// Other parts of the code expect basic to come first.
 pub fn all_stock_notetypes(tr: &I18n) -> Vec<Notetype> {
     vec![
         basic(tr),

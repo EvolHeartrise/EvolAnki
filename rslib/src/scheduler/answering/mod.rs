@@ -51,7 +51,6 @@ pub struct CardAnswer {
     /// The card's mtime and reps when it was shown. If given and the card no
     /// longer matches, the answer is refused.
     pub shown_as: Option<(TimestampSecs, u32)>,
-    pub from_queue: bool,
 }
 
 impl CardAnswer {
@@ -358,20 +357,14 @@ impl Collection {
             }
         }
 
-        // Handle queue updates based on from_queue flag
-        if answer.from_queue {
-            self.update_queues_after_answering_card(
-                &card,
-                timing,
-                matches!(
-                    new_state,
-                    CardState::Filtered(FilteredState::Preview(PreviewState {
-                        finished: true,
-                        ..
-                    }))
-                ),
-            )?;
-        }
+        self.update_queues_after_answering_card(
+            &card,
+            timing,
+            matches!(
+                new_state,
+                CardState::Filtered(FilteredState::Preview(PreviewState { finished: true, .. }))
+            ),
+        )?;
 
         Ok(())
     }
@@ -406,12 +399,10 @@ impl Collection {
         }
         self.update_deck_stats(
             updater.timing.days_elapsed,
-            anki_proto::scheduler::UpdateStatsRequest {
-                deck_id: updater.deck.id.0,
-                new_delta,
-                review_delta,
-                millisecond_delta: answer.milliseconds_taken as i32,
-            },
+            updater.deck.id,
+            new_delta,
+            review_delta,
+            answer.milliseconds_taken as i32,
         )
     }
 
@@ -538,7 +529,6 @@ pub mod test_helpers {
                 answered_at: TimestampMillis::now(),
                 milliseconds_taken: 0,
                 shown_as: None,
-                from_queue: true,
             })?;
             Ok(PostAnswerState {
                 card_id: queued.card.id,
@@ -740,7 +730,6 @@ pub(crate) mod test {
             answered_at: TimestampMillis::now(),
             milliseconds_taken: 0,
             shown_as: Some((shown.mtime, shown.reps)),
-            from_queue: true,
         };
 
         col.answer_card(&mut answer())?;
@@ -924,7 +913,7 @@ pub(crate) mod test {
             assert_eq!(tree.new_count, $new);
             assert_eq!(tree.learn_count, $learn);
             assert_eq!(tree.review_count, $review);
-            let queued = $col.get_queued_cards(1, false).unwrap();
+            let queued = $col.get_queued_cards(1).unwrap();
             assert_eq!(queued.new_count, $new);
             assert_eq!(queued.learning_count, $learn);
             assert_eq!(queued.review_count, $review);

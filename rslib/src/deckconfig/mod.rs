@@ -43,7 +43,6 @@ const DEFAULT_DECK_CONFIG_INNER: DeckConfigInner = DeckConfigInner {
     relearn_steps: Vec::new(),
     new_per_day: 20,
     reviews_per_day: 200,
-    new_per_day_minimum: 0,
     maximum_review_interval: 36_500,
     new_card_insert_order: NewCardInsertOrder::Due as i32,
     new_card_gather_priority: NewCardGatherPriority::Deck as i32,
@@ -183,12 +182,6 @@ pub(crate) fn ensure_deck_config_values_valid(config: &mut DeckConfigInner) {
     ensure_u32_valid(
         &mut config.reviews_per_day,
         default.reviews_per_day,
-        0,
-        9999,
-    );
-    ensure_u32_valid(
-        &mut config.new_per_day_minimum,
-        default.new_per_day_minimum,
         0,
         9999,
     );

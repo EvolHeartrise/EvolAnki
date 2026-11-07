@@ -13,7 +13,7 @@ export const load = (async ({ params, url }) => {
     }
     const [deck, queued] = await Promise.all([
         getDeck({ did }),
-        getQueuedCards({ fetchLimit: 1, intradayLearningOnly: false }),
+        getQueuedCards({ fetchLimit: 1 }),
     ]);
     let description = "";
     if (deck.kind.case === "normal") {

@@ -568,11 +568,7 @@ impl Server {
     fn queued_card(&self) -> anki_proto::scheduler::QueuedCards {
         let (status, body) = self.post(
             "getQueuedCards",
-            &anki_proto::scheduler::GetQueuedCardsRequest {
-                fetch_limit: 1,
-                intraday_learning_only: false,
-            }
-            .encode_to_vec(),
+            &anki_proto::scheduler::GetQueuedCardsRequest { fetch_limit: 1 }.encode_to_vec(),
         );
         assert_eq!(status, 200);
         Message::decode(body.as_slice()).unwrap()

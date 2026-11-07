@@ -76,26 +76,14 @@ pub struct QueuedCards {
 impl Collection {
     #[cfg(test)]
     pub fn get_next_card(&mut self) -> Result<Option<QueuedCard>> {
-        self.get_queued_cards(1, false)
+        self.get_queued_cards(1)
             .map(|queued| queued.cards.first().cloned())
     }
 
-    pub fn get_queued_cards(
-        &mut self,
-        fetch_limit: usize,
-        intraday_learning_only: bool,
-    ) -> Result<QueuedCards> {
+    pub fn get_queued_cards(&mut self, fetch_limit: usize) -> Result<QueuedCards> {
         let queues = self.get_queues()?;
         let counts = queues.counts();
-        let entries: Vec<_> = if intraday_learning_only {
-            queues
-                .intraday_now_iter()
-                .chain(queues.intraday_ahead_iter())
-                .map(Into::into)
-                .collect()
-        } else {
-            queues.iter().take(fetch_limit).collect()
-        };
+        let entries: Vec<_> = queues.iter().take(fetch_limit).collect();
         let cards: Vec<_> = entries
             .into_iter()
             .map(|entry| {
@@ -286,7 +274,7 @@ impl Collection {
 #[cfg(test)]
 impl Collection {
     pub(crate) fn counts(&mut self) -> [usize; 3] {
-        self.get_queued_cards(1, false)
+        self.get_queued_cards(1)
             .map(|q| [q.new_count, q.learning_count, q.review_count])
             .unwrap_or([0; 3])
     }

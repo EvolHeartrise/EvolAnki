@@ -58,10 +58,7 @@ pub fn seed_demo_content(backend: &Backend) -> Result<()> {
         let queued: QueuedCards = call_typed(
             backend,
             "getQueuedCards",
-            &GetQueuedCardsRequest {
-                fetch_limit: 1,
-                intraday_learning_only: false,
-            },
+            &GetQueuedCardsRequest { fetch_limit: 1 },
         )?;
         let queued = queued.cards.into_iter().next().context("no queued card")?;
         let card = queued.card.context("no card")?;

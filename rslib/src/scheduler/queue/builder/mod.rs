@@ -477,7 +477,7 @@ mod test {
 
     impl Collection {
         fn card_queue_len(&mut self) -> usize {
-            self.get_queued_cards(5, false).unwrap().cards.len()
+            self.get_queued_cards(5).unwrap().cards.len()
         }
     }
 

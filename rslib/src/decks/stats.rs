@@ -8,7 +8,6 @@ impl Deck {
         let c = &mut self.common;
         if c.last_day_studied != today {
             c.new_studied = 0;
-            c.learning_studied = 0;
             c.review_studied = 0;
             c.milliseconds_studied = 0;
             c.last_day_studied = today;
@@ -17,18 +16,20 @@ impl Deck {
 }
 
 impl Collection {
-    /// Apply input delta to deck, and its parents.
+    /// Add the deltas to the deck's studied counts, and its parents'.
     /// Caller should ensure transaction.
     pub(crate) fn update_deck_stats(
         &mut self,
         today: u32,
-        input: anki_proto::scheduler::UpdateStatsRequest,
+        did: DeckId,
+        new_delta: i32,
+        review_delta: i32,
+        millisecond_delta: i32,
     ) -> Result<()> {
-        let did = input.deck_id.into();
         let mutator = |c: &mut DeckCommon| {
-            c.new_studied += input.new_delta;
-            c.review_studied += input.review_delta;
-            c.milliseconds_studied += input.millisecond_delta;
+            c.new_studied += new_delta;
+            c.review_studied += review_delta;
+            c.milliseconds_studied += millisecond_delta;
         };
         if let Some(mut deck) = self.storage.get_deck(did)? {
             self.update_deck_stats_single(today, &mut deck, mutator)?;

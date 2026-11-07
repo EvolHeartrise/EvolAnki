@@ -53,6 +53,7 @@ pub struct DeckConfSchema11 {
     // so the settings are not lost on upgrade/downgrade.
     #[serde(default)]
     new_mix: i32,
+    // Never used; parsed only so it's dropped rather than kept in `other`.
     #[serde(default)]
     new_per_day_minimum: u32,
     #[serde(default)]
@@ -282,7 +283,6 @@ impl From<DeckConfSchema11> for DeckConfig {
                 relearn_steps: c.lapse.delays,
                 new_per_day: c.new.per_day,
                 reviews_per_day: c.rev.per_day,
-                new_per_day_minimum: c.new_per_day_minimum,
                 maximum_review_interval: c.rev.max_ivl,
                 new_card_insert_order: match c.new.order {
                     NewCardOrderSchema11::Random => NewCardInsertOrder::Random,

@@ -127,8 +127,9 @@ message DeckConfig {
     uint32 new_per_day = 9;
     uint32 reviews_per_day = 10;
 
-    // not currently used
-    uint32 new_per_day_minimum = 35;
+    // new_per_day_minimum, which was never used
+    reserved 35;
+    reserved "new_per_day_minimum";
 
     // Old rows can still hold the ease, multipliers, minimum lapse interval and
     // graduating intervals, which FSRS has no use for. They're dropped when

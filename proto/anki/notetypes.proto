@@ -108,18 +108,9 @@ message Notetype {
 }
 
 message StockNotetype {
-  enum Kind {
-    KIND_BASIC = 0;
-    KIND_BASIC_AND_REVERSED = 1;
-    KIND_BASIC_OPTIONAL_REVERSED = 2;
-    KIND_BASIC_TYPING = 3;
-    KIND_CLOZE = 4;
-    reserved 5;  // image occlusion, which was removed
-  }
-  // This is decoupled from Kind to allow us to evolve notetypes over time
-  // (eg an older notetype might require different JS), and allow us to store
-  // a type even for notetypes that we don't add by default. Code should not
-  // assume that the entries here are always +1 from Kind.
+  // Records which stock notetype a notetype was created from, so that
+  // notetypes can evolve over time (eg an older notetype might require
+  // different JS).
   enum OriginalStockKind {
     ORIGINAL_STOCK_KIND_UNKNOWN = 0;
     ORIGINAL_STOCK_KIND_BASIC = 1;
@@ -131,8 +122,6 @@ message StockNotetype {
     // value on a notetype; it then reads as ORIGINAL_STOCK_KIND_UNKNOWN.
     reserved 6;
   }
-
-  Kind kind = 1;
 }
 
 message NotetypeNames {

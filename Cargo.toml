@@ -18,10 +18,6 @@ members = [
 ]
 resolver = "2"
 
-[workspace.dependencies.percent-encoding-iri]
-git = "https://github.com/ankitects/rust-url.git"
-rev = "bb930b8d089f4d30d7d19c12e54e66191de47b88"
-
 [workspace.dependencies.fsrs]
 version = "6.6.2"
 # git = "https://github.com/open-spaced-repetition/fsrs-rs.git"

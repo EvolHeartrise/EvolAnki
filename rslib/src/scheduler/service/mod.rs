@@ -78,7 +78,7 @@ impl crate::services::SchedulerService for Collection {
         &mut self,
         input: scheduler::GetQueuedCardsRequest,
     ) -> Result<scheduler::QueuedCards> {
-        self.get_queued_cards(input.fetch_limit as usize, input.intraday_learning_only)
+        self.get_queued_cards(input.fetch_limit as usize)
             .map(Into::into)
     }
 
@@ -180,14 +180,9 @@ mod tests {
     /// given rating, returning the answered card's id. Building the request
     /// from `get_queued_cards` mirrors what the front-end does.
     fn answer_top_card(col: &mut Collection, rating: Rating) -> i64 {
-        let queued = SchedulerService::get_queued_cards(
-            col,
-            GetQueuedCardsRequest {
-                fetch_limit: 1,
-                intraday_learning_only: false,
-            },
-        )
-        .unwrap();
+        let queued =
+            SchedulerService::get_queued_cards(col, GetQueuedCardsRequest { fetch_limit: 1 })
+                .unwrap();
         let card = queued.cards[0].card.as_ref().unwrap();
         let _ = SchedulerService::answer_card(
             col,
@@ -227,16 +222,7 @@ mod tests {
 
         // Pretend 5 new / 5 review cards were already studied today.
         let today = col.timing_today().unwrap().days_elapsed;
-        col.update_deck_stats(
-            today,
-            anki_proto::scheduler::UpdateStatsRequest {
-                deck_id: 1,
-                new_delta: 5,
-                review_delta: 5,
-                millisecond_delta: 0,
-            },
-        )
-        .unwrap();
+        col.update_deck_stats(today, DeckId(1), 5, 5, 0).unwrap();
 
         // Extending the limits lowers the studied counts, freeing up more cards.
         col.transact_no_undo(|col| col.extend_limits(today, DeckId(1), 2, 1))
@@ -352,14 +338,9 @@ mod tests {
         let mut col = Collection::new();
         let note = NoteAdder::basic(&mut col).add(&mut col);
 
-        let queued = SchedulerService::get_queued_cards(
-            &mut col,
-            GetQueuedCardsRequest {
-                fetch_limit: 10,
-                intraday_learning_only: false,
-            },
-        )
-        .unwrap();
+        let queued =
+            SchedulerService::get_queued_cards(&mut col, GetQueuedCardsRequest { fetch_limit: 10 })
+                .unwrap();
 
         assert_eq!(
             queued.new_count, 1,
@@ -484,14 +465,9 @@ mod tests {
         let mut col = Collection::new();
         add_basic_card(&mut col);
 
-        let queued = SchedulerService::get_queued_cards(
-            &mut col,
-            GetQueuedCardsRequest {
-                fetch_limit: 1,
-                intraday_learning_only: false,
-            },
-        )
-        .unwrap();
+        let queued =
+            SchedulerService::get_queued_cards(&mut col, GetQueuedCardsRequest { fetch_limit: 1 })
+                .unwrap();
 
         let labels = &queued.cards[0].labels;
         assert_eq!(labels.len(), 4);
