@@ -35,15 +35,16 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 <div
     bind:this={container}
-    class="tooltip"
+    class="graph-tooltip"
     style="left: {adjustedX}px; top: {adjustedY}px; opacity: {show ? 1 : 0}"
 >
     {@html html}
 </div>
 
 <style lang="scss">
-    .tooltip {
+    .graph-tooltip {
         position: absolute;
+        z-index: 1080;
         white-space: nowrap;
         padding: 15px;
         border-radius: 5px;

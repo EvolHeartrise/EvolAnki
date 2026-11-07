@@ -5,13 +5,12 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <script lang="ts">
     import type { GraphsResponse } from "@generated/anki/stats_pb";
     import * as tr from "@tslib/tr";
-    import { createEventDispatcher } from "svelte";
 
     import AxisTicks from "./AxisTicks.svelte";
     import type { GraphData } from "./calendar";
     import { gatherData, renderCalendar } from "./calendar";
     import Graph from "./Graph.svelte";
-    import type { GraphPrefs, SearchEventMap } from "./graph-helpers";
+    import type { GraphPrefs } from "./graph-helpers";
     import { defaultGraphBounds, RevlogRange } from "./graph-helpers";
     import InputBox from "./InputBox.svelte";
     import NoDataOverlay from "./NoDataOverlay.svelte";
@@ -20,8 +19,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     export let prefs: GraphPrefs;
     export let revlogRange: RevlogRange;
     export let nightMode: boolean;
-
-    const dispatch = createEventDispatcher<SearchEventMap>();
 
     let graphData: GraphData | null = null;
 
@@ -41,7 +38,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             svg as SVGElement,
             bounds,
             graphData,
-            dispatch,
             targetYear,
             nightMode,
             revlogRange,

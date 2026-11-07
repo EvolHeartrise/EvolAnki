@@ -12,7 +12,7 @@ import * as tr from "@tslib/tr";
 import type { Bin } from "d3";
 import { bin, extent, interpolateGreens, scaleLinear, scaleSequential, sum } from "d3";
 
-import type { SearchDispatch, TableDatum } from "./graph-helpers";
+import type { TableDatum } from "./graph-helpers";
 import { getNumericMapBinValue, GraphRange, numericMap } from "./graph-helpers";
 import type { HistogramData } from "./histogram-graph";
 
@@ -36,16 +36,6 @@ export interface FutureDueResponse {
     tableData: TableDatum[];
 }
 
-function makeQuery(start: number, end: number): string {
-    if (start === end) {
-        return `"prop:due=${start}"`;
-    } else {
-        const fromQuery = `"prop:due>=${start}"`;
-        const tillQuery = `"prop:due<=${end}"`;
-        return `${fromQuery} AND ${tillQuery}`;
-    }
-}
-
 function withoutBacklog(data: Map<number, number>): Map<number, number> {
     const map = new Map();
     for (const [day, count] of data.entries()) {
@@ -60,8 +50,6 @@ export function buildHistogram(
     sourceData: GraphData,
     range: GraphRange,
     includeBacklog: boolean,
-    dispatch: SearchDispatch,
-    browserLinksSupported: boolean,
 ): FutureDueResponse {
     const output = { histogramData: null, tableData: [] };
     // get min/max
@@ -127,14 +115,6 @@ export function buildHistogram(
         return `${days}:<br>${cards}<br>${totalLabel}: ${localizedNumber(cumulative)}`;
     }
 
-    function onClick(bin: Bin<number, number>): void {
-        const start = bin.x0!;
-        // x1 in last bin is inclusive
-        const end = bin.x1 === xMax ? bin.x1! : bin.x1! - 1;
-        const query = makeQuery(start, end);
-        dispatch("search", { query });
-    }
-
     const periodDays = xMax! - xMin!;
     const tableData = [
         {
@@ -167,7 +147,6 @@ export function buildHistogram(
             bins,
             total,
             hoverText,
-            onClick: browserLinksSupported ? onClick : null,
             showArea: true,
             colourScale,
             binValue: getNumericMapBinValue,

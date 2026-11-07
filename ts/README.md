@@ -1,9 +1,4 @@
 EvolAnki's web pages, with their TypeScript and Sass dependencies.
 
-To update all dependencies:
-
-./update.sh
-
-To add a new dev dependency, use something like:
-
-./add.sh -D @rollup/plugin-alias
+Dependencies are managed with yarn from the repo root, e.g.
+`yarn add -D some-package`.

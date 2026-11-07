@@ -58,8 +58,8 @@ html {
     font-size: prop(font-size);
     body {
         overscroll-behavior: none;
-        &:not(.isMac),
-        &:not(.isMac) * {
+        &,
+        & * {
             @include scrollbar.custom;
         }
     }

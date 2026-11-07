@@ -24,7 +24,7 @@ import {
 
 import type { GraphBounds } from "./graph-helpers";
 
-type Count = [string, number, boolean, string];
+type Count = [string, number, boolean];
 export interface GraphData {
     title: string;
     counts: Count[];
@@ -43,40 +43,13 @@ const barColours = [
 function countCards(data: GraphsResponse, separateInactive: boolean): Count[] {
     const countData = separateInactive ? data.cardCounts!.excludingInactive! : data.cardCounts!.includingInactive!;
 
-    const extraQuery = separateInactive ? "AND -\"is:suspended\"" : "";
-
     const counts: Count[] = [
-        [tr.statisticsCountsNewCards(), countData.newCards, true, `"is:new"${extraQuery}`],
-        [
-            tr.statisticsCountsLearningCards(),
-            countData.learn,
-            true,
-            `(-"is:review" AND "is:learn")${extraQuery}`,
-        ],
-        [
-            tr.statisticsCountsRelearningCards(),
-            countData.relearn,
-            true,
-            `("is:review" AND "is:learn")${extraQuery}`,
-        ],
-        [
-            tr.statisticsCountsYoungCards(),
-            countData.young,
-            true,
-            `("is:review" AND -"is:learn") AND "prop:ivl<21"${extraQuery}`,
-        ],
-        [
-            tr.statisticsCountsMatureCards(),
-            countData.mature,
-            true,
-            `("is:review" -"is:learn") AND "prop:ivl>=21"${extraQuery}`,
-        ],
-        [
-            tr.statisticsCountsSuspendedCards(),
-            countData.suspended,
-            separateInactive,
-            "\"is:suspended\"",
-        ],
+        [tr.statisticsCountsNewCards(), countData.newCards, true],
+        [tr.statisticsCountsLearningCards(), countData.learn, true],
+        [tr.statisticsCountsRelearningCards(), countData.relearn, true],
+        [tr.statisticsCountsYoungCards(), countData.young, true],
+        [tr.statisticsCountsMatureCards(), countData.mature, true],
+        [tr.statisticsCountsSuspendedCards(), countData.suspended, separateInactive],
     ];
 
     return counts;
@@ -102,7 +75,6 @@ export interface SummedDatum {
     count: number;
     // show up in the table
     show: boolean;
-    query: string;
     // running total
     total: number;
 }
@@ -110,7 +82,6 @@ export interface SummedDatum {
 export interface TableDatum {
     label: string;
     count: string;
-    query: string;
     percent: string;
     colour: string;
 }
@@ -127,7 +98,6 @@ export function renderCards(
             label: count[0],
             count: count[1],
             show: count[2],
-            query: count[3],
             total: n,
         } satisfies SummedDatum;
     });
@@ -177,7 +147,6 @@ export function renderCards(
                 count: localizedNumber(d.count),
                 percent: `${percent}%`,
                 colour: barColours[idx],
-                query: d.query,
             } satisfies TableDatum)
             : [];
     });

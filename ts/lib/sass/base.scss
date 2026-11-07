@@ -25,15 +25,6 @@ $utilities: (
 @import "bootstrap/scss/bootstrap-reboot";
 @import "bootstrap/scss/bootstrap-utilities";
 
-/* Bootstrap "extensions" */
-.flex-basis-100 {
-    flex-basis: 100%;
-}
-
-.flex-basis-75 {
-    flex-basis: 75%;
-}
-
 html,
 body {
     height: 100%;
@@ -46,12 +37,9 @@ html {
 body {
     font-family: inherit;
     overflow-x: hidden;
-    &:not(.isMac),
-    &:not(.isMac) * {
+    &,
+    & * {
         @include scrollbar.custom;
-    }
-    &.no-blur * {
-        backdrop-filter: none !important;
     }
 }
 

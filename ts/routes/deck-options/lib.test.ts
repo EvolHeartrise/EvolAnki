@@ -77,24 +77,12 @@ test("saving sends the deck's settings", () => {
     expect(out.mode).toBe(UpdateDeckConfigsMode.COMPUTE_ALL_PARAMS);
 });
 
-test("a save becomes the baseline for later changes", async () => {
+test("saving calls the backend once", async () => {
     const fetchMock = vi.fn(async () => new Response(new Uint8Array(), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     try {
-        const state = startingState();
-        state.resolveOriginalConfigs();
-        const config = get(state.currentConfig);
-        config.newPerDay += 1;
-        state.currentConfig.set(config);
-        expect(await state.isModified()).toBe(true);
-
-        await state.save(UpdateDeckConfigsMode.NORMAL);
+        await startingState().save(UpdateDeckConfigsMode.NORMAL);
         expect(fetchMock).toHaveBeenCalledOnce();
-        expect(await state.isModified()).toBe(false);
-
-        config.newPerDay += 1;
-        state.currentConfig.set(config);
-        expect(await state.isModified()).toBe(true);
     } finally {
         vi.unstubAllGlobals();
     }

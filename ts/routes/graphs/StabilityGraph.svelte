@@ -6,11 +6,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import type { GraphsResponse } from "@generated/anki/stats_pb";
     import * as tr from "@tslib/tr";
     import { MONTH, timeSpan } from "@tslib/time";
-    import { createEventDispatcher } from "svelte";
 
     import Graph from "./Graph.svelte";
-    import type { GraphPrefs } from "./graph-helpers";
-    import type { SearchEventMap, TableDatum } from "./graph-helpers";
+    import type { TableDatum } from "./graph-helpers";
     import type { HistogramData } from "./histogram-graph";
     import HistogramGraph from "./HistogramGraph.svelte";
     import InputBox from "./InputBox.svelte";
@@ -23,9 +21,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     import TableData from "./TableData.svelte";
 
     export let sourceData: GraphsResponse | null = null;
-    export let prefs: GraphPrefs;
-
-    const dispatch = createEventDispatcher<SearchEventMap>();
 
     let intervalData: IntervalGraphData | null = null;
     let histogramData: HistogramData | null = null;
@@ -37,13 +32,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     }
 
     $: if (intervalData) {
-        [histogramData, tableData] = prepareIntervalData(
-            intervalData,
-            range,
-            dispatch,
-            $prefs.browserLinksSupported,
-            true,
-        );
+        [histogramData, tableData] = prepareIntervalData(intervalData, range, true);
     }
 
     const title = tr.statisticsCardStabilityTitle();
