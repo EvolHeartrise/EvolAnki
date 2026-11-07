@@ -7,6 +7,7 @@ use rand::distr::Distribution;
 use rand::distr::Uniform;
 use regex::Regex;
 
+#[cfg(test)]
 use super::answering::CardAnswer;
 use crate::card::Card;
 use crate::card::CardId;
@@ -129,8 +130,11 @@ impl Collection {
         })
     }
 
-    pub fn grade_now(&mut self, cids: &[CardId], rating: i32) -> Result<OpOutput<()>> {
-        self.transact(Op::GradeNow, |col| {
+    /// Answers each card as if from the reviewer, without it being queued. Used
+    /// by tests to give cards a review history.
+    #[cfg(test)]
+    pub(crate) fn grade_now(&mut self, cids: &[CardId], rating: i32) -> Result<OpOutput<()>> {
+        self.transact(Op::AnswerCard, |col| {
             for &card_id in cids {
                 let states = col.get_scheduling_states(card_id)?;
                 let new_state = match rating {

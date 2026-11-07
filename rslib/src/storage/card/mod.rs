@@ -581,15 +581,6 @@ impl super::SqliteStorage {
             .collect()
     }
 
-    pub(crate) fn all_cards_at_or_above_position(&self, start: u32) -> Result<Vec<Card>> {
-        self.with_searched_cards_table(false, || {
-            self.db
-                .prepare(include_str!("at_or_above_position.sql"))?
-                .execute([start, CardType::New as u32])?;
-            self.all_searched_cards()
-        })
-    }
-
     pub(crate) fn setup_searched_cards_table(&self) -> Result<()> {
         self.db
             .execute_batch(include_str!("search_cids_setup.sql"))?;

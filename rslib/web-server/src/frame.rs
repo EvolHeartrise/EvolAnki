@@ -46,7 +46,7 @@ pub fn base(state: &AppState) -> String {
 fn is_frame_asset(path: &str) -> bool {
     matches!(
         path,
-        "css/webview.css" | "css/reviewer.css" | "js/reviewer.js" | "js/mathjax.js"
+        "css/card.css" | "css/reviewer.css" | "js/reviewer.js" | "js/mathjax.js"
     ) || path.starts_with("js/vendor/mathjax/")
 }
 

@@ -14,7 +14,6 @@ service CollectionService {
   rpc GetUndoStatus(generic.Empty) returns (UndoStatus);
   rpc Undo(generic.Empty) returns (OpChangesAfterUndo);
   rpc Redo(generic.Empty) returns (OpChangesAfterUndo);
-  rpc SetLoadBalancerEnabled(generic.Bool) returns (OpChanges);
 }
 
 // Implemented on the Backend, as these work without an open collection.

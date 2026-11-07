@@ -9,16 +9,6 @@ use crate::prelude::*;
 use crate::services::BackendImportExportService;
 
 impl BackendImportExportService for Backend {
-    fn export_collection_package(
-        &self,
-        input: anki_proto::import_export::ExportCollectionPackageRequest,
-    ) -> Result<()> {
-        let mut guard = self.lock_open_collection()?;
-
-        let col_inner = guard.take().unwrap();
-        col_inner.export_colpkg(input.out_path, input.include_media)
-    }
-
     fn import_collection_package(
         &self,
         input: anki_proto::import_export::ImportCollectionPackageRequest,

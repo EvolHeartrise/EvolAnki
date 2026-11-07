@@ -71,20 +71,25 @@ pub fn run(config: &Config) -> Result<()> {
     Ok(())
 }
 
+/// Every deck, filtered ones included, by full name.
 fn decks(harness: &mut Harness) -> Result<Vec<(i64, String)>> {
-    let response = harness.must("GetDeckNames", json!({ "include_filtered": true }))?;
-    Ok(response["entries"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .map(|entry| {
-            (
-                entry["id"].as_i64().unwrap_or(0),
-                entry["name"].as_str().unwrap_or("").to_string(),
-            )
-        })
-        .collect())
+    fn walk(node: &Value, parent: &str, out: &mut Vec<(i64, String)>) {
+        for child in node["children"].as_array().into_iter().flatten() {
+            let name = child["name"].as_str().unwrap_or("");
+            let full = if parent.is_empty() {
+                name.to_string()
+            } else {
+                format!("{parent}::{name}")
+            };
+            out.push((child["deck_id"].as_i64().unwrap_or(0), full.clone()));
+            walk(child, &full, out);
+        }
+    }
+    let tree = harness.must("DeckTree", json!({ "now": 0 }))?;
+    let mut out = vec![];
+    walk(&tree, "", &mut out);
+    out.sort_by(|a, b| a.1.cmp(&b.1));
+    Ok(out)
 }
 
 fn deck_search(name: &str) -> String {
@@ -125,17 +130,37 @@ fn stats(harness: &mut Harness) -> Result<Value> {
                     "Graphs",
                     json!({ "search": deck_search(&name), "days": 365 }),
                 ),
-                "today": harness.record("CountsForDeckToday", json!({ "did": id })),
+                "studied": harness.record("GetDeck", json!({ "did": id }))["common"].clone(),
             }),
         );
     }
     Ok(Value::Object(out))
 }
 
-fn queues(harness: &mut Harness) -> Result<Value> {
+/// No RPC changes the setting, so it's written to the closed file.
+fn set_load_balancer(harness: &mut Harness, path: &Path, enabled: bool) -> Result<()> {
+    harness.close()?;
+    {
+        let db = rusqlite::Connection::open(path)?;
+        let has_usn = db
+            .prepare("select 1 from pragma_table_info('config') where name = 'usn'")?
+            .exists([])?;
+        let sql = if has_usn {
+            "insert or replace into config (key, usn, mtime_secs, val)
+             values ('loadBalancerEnabled', 0, 0, ?)"
+        } else {
+            "insert or replace into config (key, mtime_secs, val)
+             values ('loadBalancerEnabled', 0, ?)"
+        };
+        db.execute(sql, [enabled.to_string().into_bytes()])?;
+    }
+    harness.open(path)
+}
+
+fn queues(harness: &mut Harness, path: &Path) -> Result<Value> {
     let mut out = Map::new();
     for balancer in [true, false] {
-        harness.must("SetLoadBalancerEnabled", json!({ "val": balancer }))?;
+        set_load_balancer(harness, path, balancer)?;
         let mut by_deck = Map::new();
         for (id, _) in decks(harness)? {
             harness.must("SetCurrentDeck", json!({ "did": id }))?;
@@ -192,23 +217,9 @@ fn snapshot(harness: &mut Harness, source: &Path, _: &Config) -> Result<Map<Stri
     for cid in &cids {
         let mut item = Map::new();
         item.insert("card".into(), harness.card(*cid));
-        item.insert("next".into(), harness.card_states(*cid));
         item.insert(
             "stats".into(),
             harness.record("CardStats", json!({ "cid": cid })),
-        );
-        item.insert(
-            "fuzz_delta".into(),
-            Value::Array(
-                [3, 7, 30, 100, 1000]
-                    .iter()
-                    .map(|interval| {
-                        harness.record("FuzzDelta", json!({ "card_id": cid, "interval": interval }))
-                            ["delta_days"]
-                            .clone()
-                    })
-                    .collect(),
-            ),
         );
         per_card.insert(cid.to_string(), Value::Object(item));
     }
@@ -222,7 +233,7 @@ fn snapshot(harness: &mut Harness, source: &Path, _: &Config) -> Result<Map<Stri
         harness.record("DeckTree", json!({ "now": clock::now_secs() })),
     );
     output.insert("stats".into(), stats(harness)?);
-    output.insert("queues".into(), queues(harness)?);
+    output.insert("queues".into(), queues(harness, &path)?);
     harness.close()?;
     fs::remove_file(path)?;
     Ok(output)
@@ -297,8 +308,12 @@ fn replay(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<S
         let deck = all_decks[day % all_decks.len()];
         for id in &all_decks {
             harness.record(
-                "ExtendLimits",
-                json!({ "deck_id": id, "new_delta": 60, "review_delta": 300 }),
+                "CustomStudy",
+                json!({ "deck_id": id, "new_limit_delta": 60 }),
+            );
+            harness.record(
+                "CustomStudy",
+                json!({ "deck_id": id, "review_limit_delta": 300 }),
             );
         }
         harness.must("SetCurrentDeck", json!({ "did": deck }))?;
@@ -310,27 +325,6 @@ fn replay(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<S
             "tree": harness.record("DeckTree", json!({ "now": clock::now_secs() }))["review_count"],
         }));
         for _ in 0..per_day {
-            // a card suspended while it's on screen, then brought back
-            if rng.chance(5) {
-                let cards = harness.search("is:suspended")?;
-                if let Some(cid) = cards.get(rng.below(cards.len() as u64) as usize).copied() {
-                    let states = harness.must("GetSchedulingStates", json!({ "cid": cid }))?;
-                    let refused = harness.answer(cid, &states, 2, 1000);
-                    harness.record("UnsuspendCards", json!({ "cids": [cid] }));
-                    let unsuspended = harness.card(cid);
-                    harness.record("SuspendCards", json!({ "card_ids": [cid] }));
-                    events.push(json!({
-                        "op": "answer_suspended",
-                        "card_id": cid,
-                        "result": refused.err(),
-                        "unsuspended": unsuspended,
-                        "after": harness.card(cid),
-                    }));
-                    *coverage
-                        .entry("suspended, refused".to_string())
-                        .or_default() += 1u64;
-                }
-            }
             let Some(event) = answer_next(harness, &mut rng, &mut coverage)? else {
                 break;
             };
@@ -444,10 +438,6 @@ fn filtered_case(
     };
     let members = harness.search(&deck_search(name))?;
     let in_deck = harness.cards(&members);
-    let states: Map<String, Value> = members
-        .iter()
-        .map(|cid| (cid.to_string(), harness.card_states(*cid)))
-        .collect();
     harness.must("SetCurrentDeck", json!({ "did": did }))?;
     let mut coverage = BTreeMap::new();
     let mut answered = vec![];
@@ -463,7 +453,6 @@ fn filtered_case(
     let emptied = harness.record("EmptyFilteredDeck", json!({ "did": did }));
     Ok(json!({
         "members": in_deck,
-        "states": states,
         "answered": answered,
         "rebuild": rebuilt["count"],
         "after_rebuild": after_rebuild,
@@ -477,10 +466,6 @@ fn change_case(harness: &mut Harness, method: &str, input: Value, cids: &[i64]) 
     let before = harness.cards(cids);
     let result = harness.record(method, input);
     let after = harness.cards(cids);
-    let states: Map<String, Value> = cids
-        .iter()
-        .map(|cid| (cid.to_string(), harness.card_states(*cid)))
-        .collect();
     let revlog: Map<String, Value> = cids
         .iter()
         .map(|cid| (cid.to_string(), harness.latest_revlog(*cid)))
@@ -490,7 +475,6 @@ fn change_case(harness: &mut Harness, method: &str, input: Value, cids: &[i64]) 
     json!({
         "error": result["error"],
         "after": after,
-        "states": states,
         "revlog": revlog,
         "undo_error": undone["error"],
         "undo_restored_exactly": restored == before,
@@ -557,41 +541,6 @@ fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<Stri
         );
         clock::advance_ms(1000);
     }
-    for (log, restore, reset) in [
-        (true, false, false),
-        (false, false, false),
-        (true, true, false),
-        (true, false, true),
-        (true, true, true),
-    ] {
-        changes.insert(
-            format!("forget log={log} restore_position={restore} reset_counts={reset}"),
-            change_case(
-                harness,
-                "ScheduleCardsAsNew",
-                json!({
-                    "card_ids": mixed,
-                    "log": log,
-                    "restore_position": restore,
-                    "reset_counts": reset,
-                }),
-                &mixed,
-            ),
-        );
-        clock::advance_ms(1000);
-    }
-    for (name, _) in RATINGS {
-        changes.insert(
-            format!("grade_now {name}"),
-            change_case(
-                harness,
-                "GradeNow",
-                json!({ "card_ids": mixed, "rating": name }),
-                &mixed,
-            ),
-        );
-        clock::advance_ms(1000);
-    }
     changes.insert(
         "suspend".into(),
         change_case(
@@ -609,21 +558,6 @@ fn ops(harness: &mut Harness, source: &Path, config: &Config) -> Result<Map<Stri
             "UnsuspendCards",
             json!({ "cids": suspended }),
             &suspended,
-        ),
-    );
-    changes.insert(
-        "sort".into(),
-        change_case(
-            harness,
-            "SortCards",
-            json!({
-                "card_ids": new_a,
-                "starting_from": 1,
-                "step_size": 1,
-                "randomize": false,
-                "shift_existing": true,
-            }),
-            &new_a,
         ),
     );
     output.insert("changes".into(), Value::Object(changes));
@@ -699,8 +633,7 @@ fn tools(harness: &mut Harness, source: &Path, _: &Config) -> Result<Map<String,
         "learning_step_count": 2,
         "relearning_step_count": 1,
     });
-    let calls: [(&str, Value); 7] = [
-        ("GetOptimalRetentionParameters", json!({ "search": search })),
+    let calls: [(&str, Value); 5] = [
         (
             "ComputeFsrsParams",
             json!({
@@ -708,10 +641,6 @@ fn tools(harness: &mut Harness, source: &Path, _: &Config) -> Result<Map<String,
                 "current_params": [],
                 "num_of_relearning_steps": 1,
             }),
-        ),
-        (
-            "EvaluateParams",
-            json!({ "search": search, "num_of_relearning_steps": 1 }),
         ),
         (
             "EvaluateParamsLegacy",

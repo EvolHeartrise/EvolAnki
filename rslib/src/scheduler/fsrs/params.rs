@@ -221,39 +221,6 @@ impl Collection {
             .get_revlog_entries_for_searched_cards_in_card_order()
     }
 
-    pub fn evaluate_params(
-        &mut self,
-        search: &str,
-        ignore_revlogs_before: TimestampMillis,
-        num_of_relearning_steps: usize,
-    ) -> Result<ModelEvaluation> {
-        let timing = self.timing_today()?;
-        let revlogs = self.revlog_for_srs(search)?;
-        let (items, card_ids, review_count) =
-            fsrs_items_for_training(revlogs, timing.next_day_at, ignore_revlogs_before);
-        let mut anki_progress = self.new_progress_handler::<ComputeParamsProgress>();
-        anki_progress.state.reviews = review_count as u32;
-        let input = ComputeParametersInput {
-            train_set: items.clone(),
-            card_ids: Some(card_ids),
-            progress: None,
-            enable_short_term: true,
-            num_relearning_steps: Some(num_of_relearning_steps),
-            training_config: Some(TrainingConfig {
-                num_epochs: 8,
-                ..Default::default()
-            }),
-        };
-        Ok(fsrs::evaluate_with_time_series_splits(input, |ip| {
-            anki_progress
-                .update(false, |p| {
-                    p.total_iterations = ip.total as u32;
-                    p.current_iteration = ip.current as u32;
-                })
-                .is_ok()
-        })?)
-    }
-
     pub fn evaluate_params_legacy(
         &mut self,
         params: &Params,

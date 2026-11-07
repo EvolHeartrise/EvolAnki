@@ -497,24 +497,6 @@ impl Collection {
         })
     }
 
-    pub(crate) fn home_deck_config(
-        &self,
-        config_id: Option<DeckConfigId>,
-        home_deck_id: DeckId,
-    ) -> Result<DeckConfig> {
-        let config_id = if let Some(config_id) = config_id {
-            config_id
-        } else {
-            let home_deck = self
-                .storage
-                .get_deck(home_deck_id)?
-                .or_not_found(home_deck_id)?;
-            home_deck.config_id().or_invalid("home deck is filtered")?
-        };
-
-        Ok(self.storage.get_deck_config(config_id)?.unwrap_or_default())
-    }
-
     /// Update the elapsed time of the answer state to match the current state.
     ///
     /// Since the state calculation takes the current time into account, the

@@ -19,6 +19,7 @@ use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
 
+use anki::collection::CollectionBuilder;
 use anki_proto::deck_config::deck_config::Config;
 use anki_proto::decks::deck::kind_container;
 use anki_proto::decks::deck::KindContainer;
@@ -26,9 +27,9 @@ use anki_proto::decks::deck::Normal;
 use anki_proto::import_export::export_limit::Limit;
 use anki_proto::import_export::ExportAnkiPackageOptions;
 use anki_proto::import_export::ExportAnkiPackageRequest;
-use anki_proto::import_export::ExportCollectionPackageRequest;
 use anki_proto::import_export::ExportLimit;
 use evolanki_server::collection::close_collection;
+use evolanki_server::collection::media_paths;
 use evolanki_server::collection::open_collection;
 use evolanki_server::rpc;
 use evolanki_server::rpc::call_typed;
@@ -1279,16 +1280,13 @@ fn export_packages(fx: &Fixture) -> (PathBuf, PathBuf) {
     )
     .unwrap();
     close_collection(&backend).unwrap();
-    open_collection(&backend, &fx.collection()).unwrap();
-    let _: anki_proto::generic::Empty = call_typed(
-        &backend,
-        "exportCollectionPackage",
-        &ExportCollectionPackageRequest {
-            out_path: colpkg.to_str().unwrap().to_string(),
-            include_media: true,
-        },
-    )
-    .unwrap();
+    let (media_dir, media_db) = media_paths(&fx.collection());
+    CollectionBuilder::new(fx.collection())
+        .set_media_paths(media_dir, media_db)
+        .build()
+        .unwrap()
+        .export_colpkg(&colpkg, true)
+        .unwrap();
     (apkg, colpkg)
 }
 

@@ -183,8 +183,8 @@ impl Harness {
     /// The newest revlog row as the stats RPC reports it, and how many there
     /// are.
     pub fn latest_revlog(&mut self, cid: i64) -> Value {
-        let response = self.record("GetReviewLogs", json!({ "cid": cid }));
-        let entries = response["entries"].as_array().cloned().unwrap_or_default();
+        let response = self.record("CardStats", json!({ "cid": cid }));
+        let entries = response["revlog"].as_array().cloned().unwrap_or_default();
         let mut latest = Value::Null;
         let mut latest_time = i64::MIN;
         for entry in &entries {
@@ -195,29 +195,6 @@ impl Harness {
             }
         }
         json!({ "count": entries.len(), "latest": latest })
-    }
-
-    /// Everything a person reviewing the card would be told about it.
-    pub fn card_states(&mut self, cid: i64) -> Value {
-        let memory = self.record("ComputeMemoryState", json!({ "cid": cid }));
-        let raw = match self.rpc("GetSchedulingStates", json!({ "cid": cid })) {
-            Ok(raw) => raw,
-            Err(err) => return json!({ "states_error": err, "memory": memory }),
-        };
-        let labels = self.record("DescribeNextStates", raw.clone());
-        let context = match self.timing() {
-            Ok(timing) => StateContext {
-                timing,
-                desired_retention: memory["desired_retention"].as_f64().unwrap_or(0.0) as f32,
-                decay: memory["decay"].as_f64().unwrap_or(0.0) as f32,
-            },
-            Err(err) => return json!({ "states_error": err.to_string() }),
-        };
-        json!({
-            "states": flat_states(&raw, &context),
-            "labels": labels["vals"],
-            "memory": memory,
-        })
     }
 
     pub fn answer(

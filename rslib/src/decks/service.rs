@@ -55,19 +55,6 @@ impl crate::services::DecksService for Collection {
         Ok(self.storage.get_deck(did)?.or_not_found(did)?.into())
     }
 
-    fn get_deck_names(
-        &mut self,
-        input: anki_proto::decks::GetDeckNamesRequest,
-    ) -> error::Result<anki_proto::decks::DeckNames> {
-        let skip_default = input.skip_empty_default && self.default_deck_is_empty()?;
-        let names = if input.include_filtered {
-            self.get_all_deck_names(skip_default)?
-        } else {
-            self.get_all_normal_deck_names(skip_default)?
-        };
-        Ok(deck_names_to_proto(names))
-    }
-
     fn remove_decks(
         &mut self,
         input: anki_proto::decks::DeckIds,
@@ -192,16 +179,6 @@ fn kind_from_inline(k: DeckKind) -> anki_proto::decks::deck::Kind {
     match k {
         DeckKind::Normal(n) => anki_proto::decks::deck::Kind::Normal(n),
         DeckKind::Filtered(f) => anki_proto::decks::deck::Kind::Filtered(f),
-    }
-}
-
-fn deck_name_to_proto((id, name): (DeckId, String)) -> anki_proto::decks::DeckNameId {
-    anki_proto::decks::DeckNameId { id: id.0, name }
-}
-
-fn deck_names_to_proto(names: Vec<(DeckId, String)>) -> anki_proto::decks::DeckNames {
-    anki_proto::decks::DeckNames {
-        entries: names.into_iter().map(deck_name_to_proto).collect(),
     }
 }
 
@@ -452,76 +429,19 @@ mod tests {
     // ----------------------------------------------------------------------
 
     #[test]
-    fn get_deck_names_honours_include_filtered() {
+    fn deck_names_honour_include_filtered() {
         let mut col = Collection::new();
         DeckAdder::new("NormalDeck").add(&mut col);
         DeckAdder::new("FilteredDeck").filtered(true).add(&mut col);
 
-        let normal_only = DecksService::get_deck_names(
-            &mut col,
-            anki_proto::decks::GetDeckNamesRequest {
-                skip_empty_default: false,
-                include_filtered: false,
-            },
-        )
-        .unwrap();
-        let names: Vec<&str> = normal_only
-            .entries
-            .iter()
-            .map(|e| e.name.as_str())
-            .collect();
+        let normal_only = col.get_all_normal_deck_names(false).unwrap();
+        let names: Vec<&str> = normal_only.iter().map(|e| e.1.as_str()).collect();
         assert!(names.contains(&"NormalDeck"));
         assert!(!names.contains(&"FilteredDeck"), "filtered deck excluded");
 
-        let all = DecksService::get_deck_names(
-            &mut col,
-            anki_proto::decks::GetDeckNamesRequest {
-                skip_empty_default: false,
-                include_filtered: true,
-            },
-        )
-        .unwrap();
-        let names: Vec<&str> = all.entries.iter().map(|e| e.name.as_str()).collect();
+        let all = col.get_all_deck_names(false).unwrap();
+        let names: Vec<&str> = all.iter().map(|e| e.1.as_str()).collect();
         assert!(names.contains(&"FilteredDeck"), "filtered deck included");
-    }
-
-    #[test]
-    fn get_deck_names_skips_empty_default() {
-        let mut col = Collection::new();
-        let names = DecksService::get_deck_names(
-            &mut col,
-            anki_proto::decks::GetDeckNamesRequest {
-                skip_empty_default: true,
-                include_filtered: false,
-            },
-        )
-        .unwrap();
-        let names: Vec<&str> = names.entries.iter().map(|e| e.name.as_str()).collect();
-        assert!(
-            !names.contains(&"Default"),
-            "empty default deck should be skipped"
-        );
-    }
-
-    #[test]
-    fn get_deck_names_keeps_nonempty_default_when_empty_default_is_skipped() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-
-        let names = DecksService::get_deck_names(
-            &mut col,
-            anki_proto::decks::GetDeckNamesRequest {
-                skip_empty_default: true,
-                include_filtered: true,
-            },
-        )
-        .unwrap();
-        let names: Vec<&str> = names.entries.iter().map(|e| e.name.as_str()).collect();
-
-        assert!(
-            names.contains(&"Default"),
-            "nonempty default deck should not be skipped"
-        );
     }
 
     #[test]

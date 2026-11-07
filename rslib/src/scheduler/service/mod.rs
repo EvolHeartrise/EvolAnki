@@ -4,23 +4,16 @@
 mod answering;
 mod states;
 
-use anki_proto::cards;
 use anki_proto::generic;
 use anki_proto::scheduler;
-use anki_proto::scheduler::ComputeMemoryStateResponse;
 use anki_proto::scheduler::ComputeOptimalRetentionResponse;
-use anki_proto::scheduler::FuzzDeltaRequest;
-use anki_proto::scheduler::FuzzDeltaResponse;
-use anki_proto::scheduler::GetOptimalRetentionParametersResponse;
 use anki_proto::scheduler::SimulateFsrsReviewRequest;
 use anki_proto::scheduler::SimulateFsrsReviewResponse;
 use anki_proto::scheduler::SimulateFsrsWorkloadResponse;
 
 use crate::prelude::*;
 use crate::scheduler::fsrs::params::ComputeParamsRequest;
-use crate::scheduler::new::NewCardDueOrder;
 use crate::scheduler::states::SchedulingStates;
-use crate::search::SortMode;
 
 impl crate::services::SchedulerService for Collection {
     fn sched_timing_today(&mut self) -> Result<scheduler::SchedTimingTodayResponse> {
@@ -30,25 +23,6 @@ impl crate::services::SchedulerService for Collection {
     /// Fetch data from DB and return rendered string.
     fn studied_today(&mut self) -> Result<generic::String> {
         self.studied_today().map(Into::into)
-    }
-
-    fn extend_limits(&mut self, input: scheduler::ExtendLimitsRequest) -> Result<()> {
-        self.transact_no_undo(|col| {
-            let today = col.current_due_day(0)?;
-            col.extend_limits(
-                today,
-                input.deck_id.into(),
-                input.new_delta,
-                input.review_delta,
-            )
-        })
-    }
-
-    fn counts_for_deck_today(
-        &mut self,
-        input: anki_proto::decks::DeckId,
-    ) -> Result<scheduler::CountsForDeckTodayResponse> {
-        self.counts_for_deck_today(input.did.into())
     }
 
     fn unsuspend_cards(
@@ -86,23 +60,6 @@ impl crate::services::SchedulerService for Collection {
         self.rebuild_filtered_deck(input.did.into()).map(Into::into)
     }
 
-    fn schedule_cards_as_new(
-        &mut self,
-        input: scheduler::ScheduleCardsAsNewRequest,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        let cids = input.card_ids.into_newtype(CardId);
-        self.reschedule_cards_as_new(
-            &cids,
-            input.log,
-            input.restore_position,
-            input.reset_counts,
-            input
-                .context
-                .and_then(|s| scheduler::schedule_cards_as_new_request::Context::try_from(s).ok()),
-        )
-        .map(Into::into)
-    }
-
     fn set_due_date(
         &mut self,
         input: scheduler::SetDueDateRequest,
@@ -111,43 +68,6 @@ impl crate::services::SchedulerService for Collection {
         let days = input.days;
         let cids = input.card_ids.into_newtype(CardId);
         self.set_due_date(&cids, &days, config).map(Into::into)
-    }
-
-    fn grade_now(
-        &mut self,
-        input: scheduler::GradeNowRequest,
-    ) -> Result<anki_proto::collection::OpChanges> {
-        self.grade_now(&input.card_ids.into_newtype(CardId), input.rating)
-            .map(Into::into)
-    }
-
-    fn sort_cards(
-        &mut self,
-        input: scheduler::SortCardsRequest,
-    ) -> Result<anki_proto::collection::OpChangesWithCount> {
-        let cids = input.card_ids.into_newtype(CardId);
-        let (start, step, random, shift) = (
-            input.starting_from,
-            input.step_size,
-            input.randomize,
-            input.shift_existing,
-        );
-        let order = if random {
-            NewCardDueOrder::Random
-        } else {
-            NewCardDueOrder::Preserve
-        };
-
-        self.sort_cards(&cids, start, step, order, shift)
-            .map(Into::into)
-    }
-
-    fn get_scheduling_states(
-        &mut self,
-        input: anki_proto::cards::CardId,
-    ) -> Result<scheduler::SchedulingStates> {
-        let cid: CardId = input.into();
-        self.get_scheduling_states(cid).map(Into::into)
     }
 
     fn describe_next_states(
@@ -218,21 +138,6 @@ impl crate::services::SchedulerService for Collection {
         })
     }
 
-    fn evaluate_params(
-        &mut self,
-        input: scheduler::EvaluateParamsRequest,
-    ) -> Result<scheduler::EvaluateParamsResponse> {
-        let ret = self.evaluate_params(
-            &input.search,
-            input.ignore_revlogs_before_ms.into(),
-            input.num_of_relearning_steps as usize,
-        )?;
-        Ok(scheduler::EvaluateParamsResponse {
-            log_loss: ret.log_loss,
-            rmse_bins: ret.rmse_bins,
-        })
-    }
-
     fn evaluate_params_legacy(
         &mut self,
         input: scheduler::EvaluateParamsLegacyRequest,
@@ -245,59 +150,6 @@ impl crate::services::SchedulerService for Collection {
         Ok(scheduler::EvaluateParamsResponse {
             log_loss: ret.log_loss,
             rmse_bins: ret.rmse_bins,
-        })
-    }
-
-    fn get_optimal_retention_parameters(
-        &mut self,
-        input: scheduler::GetOptimalRetentionParametersRequest,
-    ) -> Result<scheduler::GetOptimalRetentionParametersResponse> {
-        let revlogs = self
-            .search_cards_into_table(&input.search, SortMode::NoOrder)?
-            .col
-            .storage
-            .get_revlog_entries_for_searched_cards_in_card_order()?;
-        let simulator_config = self.get_optimal_retention_parameters(revlogs)?;
-        Ok(GetOptimalRetentionParametersResponse {
-            deck_size: simulator_config.deck_size as u32,
-            learn_span: simulator_config.learn_span as u32,
-            max_cost_perday: simulator_config.max_cost_perday,
-            max_ivl: simulator_config.max_ivl,
-            first_rating_prob: simulator_config.first_rating_prob.to_vec(),
-            review_rating_prob: simulator_config.review_rating_prob.to_vec(),
-            loss_aversion: 1.0,
-            learn_limit: simulator_config.learn_limit as u32,
-            review_limit: simulator_config.review_limit as u32,
-            learning_step_transitions: simulator_config
-                .learning_step_transitions
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-            relearning_step_transitions: simulator_config
-                .relearning_step_transitions
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-            state_rating_costs: simulator_config
-                .state_rating_costs
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-            learning_step_count: simulator_config.learning_step_count as u32,
-            relearning_step_count: simulator_config.relearning_step_count as u32,
-        })
-    }
-
-    fn compute_memory_state(&mut self, input: cards::CardId) -> Result<ComputeMemoryStateResponse> {
-        self.compute_memory_state(input.into())
-    }
-
-    fn fuzz_delta(&mut self, input: FuzzDeltaRequest) -> Result<FuzzDeltaResponse> {
-        Ok(FuzzDeltaResponse {
-            delta_days: self.get_fuzz_delta(input.card_id.into(), input.interval)?,
         })
     }
 }
@@ -322,6 +174,13 @@ mod tests {
     use crate::prelude::*;
     use crate::services::SchedulerService;
     use crate::tests::NoteAdder;
+
+    /// The default deck's (new, review) counts studied today.
+    fn studied_in_default_deck(col: &mut Collection) -> (i32, i32) {
+        let today = col.timing_today().unwrap().days_elapsed;
+        let deck = col.storage.get_deck(DeckId(1)).unwrap().unwrap();
+        deck.new_rev_counts(today)
+    }
 
     fn add_basic_card(col: &mut Collection) -> CardId {
         let note = NoteAdder::basic(col).add(col);
@@ -377,10 +236,8 @@ mod tests {
         )
         .unwrap();
 
-        let counts =
-            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
-                .unwrap();
-        assert_eq!(counts.new, -5, "new limit was extended by the delta");
+        let (new, _) = studied_in_default_deck(&mut col);
+        assert_eq!(new, -5, "new limit was extended by the delta");
     }
 
     #[test]
@@ -401,21 +258,12 @@ mod tests {
         .unwrap();
 
         // Extending the limits lowers the studied counts, freeing up more cards.
-        SchedulerService::extend_limits(
-            &mut col,
-            anki_proto::scheduler::ExtendLimitsRequest {
-                deck_id: 1,
-                new_delta: 2,
-                review_delta: 1,
-            },
-        )
-        .unwrap();
+        col.transact_no_undo(|col| col.extend_limits(today, DeckId(1), 2, 1))
+            .unwrap();
 
-        let counts =
-            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
-                .unwrap();
-        assert_eq!(counts.new, 3, "5 studied minus a limit extension of 2");
-        assert_eq!(counts.review, 4, "5 studied minus a limit extension of 1");
+        let (new, review) = studied_in_default_deck(&mut col);
+        assert_eq!(new, 3, "5 studied minus a limit extension of 2");
+        assert_eq!(review, 4, "5 studied minus a limit extension of 1");
     }
 
     #[test]
@@ -546,28 +394,6 @@ mod tests {
     }
 
     #[test]
-    fn get_scheduling_states_returns_all_rating_states_for_new_card() {
-        let mut col = Collection::new();
-        let cid = add_basic_card(&mut col);
-
-        let states = SchedulerService::get_scheduling_states(
-            &mut col,
-            anki_proto::cards::CardId { cid: cid.0 },
-        )
-        .unwrap();
-
-        // A new card must expose a current state plus the four rating previews.
-        assert!(
-            states.current.is_some(),
-            "current state should be populated"
-        );
-        assert!(states.again.is_some());
-        assert!(states.hard.is_some());
-        assert!(states.good.is_some());
-        assert!(states.easy.is_some());
-    }
-
-    #[test]
     fn unsuspend_brings_card_back_to_queue() {
         let mut col = Collection::new();
         let cid = add_basic_card(&mut col);
@@ -642,34 +468,6 @@ mod tests {
     }
 
     #[test]
-    fn schedule_cards_as_new_resets_graduated_card() {
-        let mut col = Collection::new();
-        NoteAdder::basic(&mut col).add(&mut col);
-
-        // graduate the card to review first
-        let card_id = answer_top_card(&mut col, Rating::Easy);
-        let card = col.storage.get_card(CardId(card_id)).unwrap().unwrap();
-        assert_eq!(card.ctype, CardType::Review, "precondition: card graduated");
-
-        // reset it back to new
-        let _ = SchedulerService::schedule_cards_as_new(
-            &mut col,
-            anki_proto::scheduler::ScheduleCardsAsNewRequest {
-                card_ids: vec![card_id],
-                log: true,
-                restore_position: true,
-                reset_counts: false,
-                context: None,
-            },
-        )
-        .unwrap();
-
-        let card = col.storage.get_card(CardId(card_id)).unwrap().unwrap();
-        assert_eq!(card.ctype, CardType::New, "card should be reset to new");
-        assert_eq!(card.queue, CardQueue::New);
-    }
-
-    #[test]
     fn set_due_date_moves_card_to_review_with_given_offset() {
         let mut col = Collection::new();
         let cid = add_basic_card(&mut col);
@@ -736,196 +534,13 @@ mod tests {
     }
 
     #[test]
-    fn grade_now_easy_graduates_card_by_id() {
-        let mut col = Collection::new();
-        let cid = add_basic_card(&mut col);
-
-        // grade the card directly by id, without pulling it from the queue
-        let _ = SchedulerService::grade_now(
-            &mut col,
-            anki_proto::scheduler::GradeNowRequest {
-                card_ids: vec![cid.0],
-                rating: Rating::Easy as i32,
-            },
-        )
-        .unwrap();
-
-        let card = col.storage.get_card(cid).unwrap().unwrap();
-        assert_eq!(
-            card.ctype,
-            CardType::Review,
-            "Easy grade_now graduates the card"
-        );
-        assert_eq!(card.queue, CardQueue::Review);
-    }
-
-    #[test]
-    fn sort_cards_repositions_new_cards_from_starting_offset() {
-        let mut col = Collection::new();
-        let note1 = NoteAdder::basic(&mut col).add(&mut col);
-        let note2 = NoteAdder::basic(&mut col).fields(&["b", ""]).add(&mut col);
-        let cid1 = col.storage.card_ids_of_notes(&[note1.id]).unwrap()[0];
-        let cid2 = col.storage.card_ids_of_notes(&[note2.id]).unwrap()[0];
-
-        // reposition the two new cards starting at position 5, step 1, preserving order
-        let out = SchedulerService::sort_cards(
-            &mut col,
-            anki_proto::scheduler::SortCardsRequest {
-                card_ids: vec![cid1.0, cid2.0],
-                starting_from: 5,
-                step_size: 1,
-                randomize: false,
-                shift_existing: false,
-            },
-        )
-        .unwrap();
-        assert_eq!(out.count, 2, "both cards should be repositioned");
-
-        // new card position is stored in `due`; order preserved => 5 then 6
-        let card1 = col.storage.get_card(cid1).unwrap().unwrap();
-        let card2 = col.storage.get_card(cid2).unwrap().unwrap();
-        assert_eq!(card1.due, 5);
-        assert_eq!(card2.due, 6);
-    }
-
-    #[test]
-    fn sort_cards_with_shift_existing_pushes_pre_existing_cards_forward() {
-        let mut col = Collection::new();
-
-        // Place an existing card at position 5 via a first sort.
-        let occupant = add_basic_card(&mut col);
-        let _ = SchedulerService::sort_cards(
-            &mut col,
-            anki_proto::scheduler::SortCardsRequest {
-                card_ids: vec![occupant.0],
-                starting_from: 5,
-                step_size: 1,
-                randomize: false,
-                shift_existing: false,
-            },
-        )
-        .unwrap();
-        assert_eq!(
-            col.storage.get_card(occupant).unwrap().unwrap().due,
-            5,
-            "precondition: occupant sits at position 5"
-        );
-
-        // Reposition two new cards starting at 5 with step_size=2 and
-        // shift_existing=true. Using step_size=2 (not 1) ensures the shift
-        // amount is step*count=4, which differs from a buggy implementation
-        // that used count alone (shift=2).
-        let incoming1 = add_basic_card(&mut col);
-        let incoming2 = add_basic_card(&mut col);
-        let _ = SchedulerService::sort_cards(
-            &mut col,
-            anki_proto::scheduler::SortCardsRequest {
-                card_ids: vec![incoming1.0, incoming2.0],
-                starting_from: 5,
-                step_size: 2,
-                randomize: false,
-                shift_existing: true,
-            },
-        )
-        .unwrap();
-
-        let occ = col.storage.get_card(occupant).unwrap().unwrap();
-        let inc1 = col.storage.get_card(incoming1).unwrap().unwrap();
-        let inc2 = col.storage.get_card(incoming2).unwrap().unwrap();
-        assert_eq!(inc1.due, 5, "first incoming card lands at starting_from");
-        assert_eq!(
-            inc2.due, 7,
-            "second incoming card lands at starting_from + step_size"
-        );
-        // shift = step_size * count = 2 * 2 = 4; occupant moves from 5 to 9
-        assert_eq!(
-            occ.due, 9,
-            "pre-existing card is shifted by step_size * incoming_count"
-        );
-    }
-
-    #[test]
-    fn sort_cards_with_randomize_produces_different_ordering_than_preserve() {
-        const N: usize = 8;
-        let mut col = Collection::new();
-
-        let cids: Vec<CardId> = (0..N)
-            .map(|i| {
-                let note = NoteAdder::basic(&mut col)
-                    .fields(&[&i.to_string(), ""])
-                    .add(&mut col);
-                col.storage.card_ids_of_notes(&[note.id]).unwrap()[0]
-            })
-            .collect();
-        let cid_ints: Vec<i64> = cids.iter().map(|c| c.0).collect();
-
-        // Establish the deterministic baseline: cids[i].due == i.
-        let _ = SchedulerService::sort_cards(
-            &mut col,
-            anki_proto::scheduler::SortCardsRequest {
-                card_ids: cid_ints.clone(),
-                starting_from: 0,
-                step_size: 1,
-                randomize: false,
-                shift_existing: false,
-            },
-        )
-        .unwrap();
-        let preserve_dues: Vec<i32> = cids
-            .iter()
-            .map(|&id| col.storage.get_card(id).unwrap().unwrap().due)
-            .collect();
-
-        // Loop until the RNG produces an ordering that differs from preserve.
-        // One different result out of 100 attempts is sufficient to confirm randomness;
-        // the probability of 100 consecutive identical shuffles is (1/N!)^100 ≈ 0.
-        for _ in 0..100 {
-            let out = SchedulerService::sort_cards(
-                &mut col,
-                anki_proto::scheduler::SortCardsRequest {
-                    card_ids: cid_ints.clone(),
-                    starting_from: 0,
-                    step_size: 1,
-                    randomize: true,
-                    shift_existing: false,
-                },
-            )
-            .unwrap();
-            assert_eq!(out.count, N as u32);
-
-            let random_dues: Vec<i32> = cids
-                .iter()
-                .map(|&id| col.storage.get_card(id).unwrap().unwrap().due)
-                .collect();
-
-            // Every card must receive a unique position within [0, N).
-            let mut sorted = random_dues.clone();
-            sorted.sort_unstable();
-            assert_eq!(
-                sorted,
-                (0..N as i32).collect::<Vec<_>>(),
-                "positions must be a permutation of [0, N)"
-            );
-
-            if random_dues != preserve_dues {
-                return;
-            }
-        }
-        unreachable!("randomized sort never produced a different ordering than preserve");
-    }
-
-    #[test]
     fn describe_next_states_returns_one_label_per_button() {
         let mut col = Collection::new();
         let cid = add_basic_card(&mut col);
 
-        let states = SchedulerService::get_scheduling_states(
-            &mut col,
-            anki_proto::cards::CardId { cid: cid.0 },
-        )
-        .unwrap();
+        let states = col.get_scheduling_states(cid).unwrap();
 
-        let labels = SchedulerService::describe_next_states(&mut col, states).unwrap();
+        let labels = SchedulerService::describe_next_states(&mut col, states.into()).unwrap();
 
         // one human-readable interval label for Again/Hard/Good/Easy
         assert_eq!(labels.vals.len(), 4);
@@ -957,24 +572,18 @@ mod tests {
     }
 
     #[test]
-    fn counts_for_deck_today_tracks_new_cards_studied() {
+    fn studied_counts_track_new_cards_studied() {
         let mut col = Collection::new();
         NoteAdder::basic(&mut col).add(&mut col);
 
         // Nothing studied yet in the default deck.
-        let before =
-            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
-                .unwrap();
-        assert_eq!(before.new, 0);
-        assert_eq!(before.review, 0);
+        assert_eq!(studied_in_default_deck(&mut col), (0, 0));
 
         // Answering the new card counts it as one new card studied today.
         answer_top_card(&mut col, Rating::Good);
 
-        let after =
-            SchedulerService::counts_for_deck_today(&mut col, anki_proto::decks::DeckId { did: 1 })
-                .unwrap();
-        assert_eq!(after.new, 1, "studying a new card increments the new count");
+        let (new, _) = studied_in_default_deck(&mut col);
+        assert_eq!(new, 1, "studying a new card increments the new count");
     }
 
     /// Adds a learning card that the default filtered-deck search will gather.
